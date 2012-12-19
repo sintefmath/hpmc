@@ -1,7 +1,7 @@
 /* -*- mode: C++; tab-width:4; c-basic-offset: 4; indent-tabs-mode:nil -*-
  ***********************************************************************
  *
- *  File: hpmc.h
+ *  File: hpmc_internal.h
  *
  *  Created: 24. June 2009
  *
@@ -35,94 +35,203 @@
 #ifndef _HPMC_INTERNAL_H_
 #define _HPMC_INTERNAL_H_
 
+#include <GL/glew.h>
 #include <string>
+#include <vector>
 
 /** \addtogroup hpmc_public
   * \{
   */
 
-/** Constant data shared by multiple HistoPyramids.
-  *
-  */
+// -----------------------------------------------------------------------------
+enum HPMCVolumeLayout {
+    HPMC_VOLUME_LAYOUT_CUSTOM,
+    HPMC_VOLUME_LAYOUT_TEXTURE_3D
+};
+
+// -----------------------------------------------------------------------------
+/** Constant data shared by multiple HistoPyramids. */
 struct HPMCConstants
 {
     GLuint            m_vertex_count_tex;
     GLuint            m_edge_decode_tex;
     GLuint            m_enumerate_vbo;
     GLsizei           m_enumerate_vbo_n;
-
     GLuint            m_gpgpu_quad_vbo;
 };
 
-/** A HistoPyramid for a particular volume configuration.
-  *
-  */
+// -----------------------------------------------------------------------------
+/** A HistoPyramid for a particular volume configuration. */
 struct HPMCHistoPyramid
 {
-    struct HPMCConstants* m_constants;
-    GLsizei               m_volume_width;
-    GLsizei               m_volume_height;
-    GLsizei               m_volume_depth;
-    GLint                 m_volume_type;
-    HPMCVolumeLayout      m_volume_layout;
-    bool                  m_func_discrete_gradient;
-    bool                  m_func_omit_boundary;
+    /** Tag that the HP is changes such that shaders etc must be rebuilt. */
+    bool                   m_tainted;
+    /** Tag that we have had an error and all entry points should return until
+      * HP is reconfigured.
+      */
+    bool                   m_broken;
+    /** Pointer to a set of constants on this context. */
+    struct HPMCConstants*  m_constants;
+    /** Cache to hold the threshold value used to build the HP. */
+    GLfloat                m_threshold;
 
-    GLuint            m_volume_tex;
-    GLfloat           m_threshold;
+    // -------------------------------------------------------------------------
+    /** Specifies how the base level of the HistoPyramid is laid out. */
+    struct HPMCTiling {
+        /** The size of a tile in the base level. */
+        GLsizei       m_tile_size[2];
+        /** The number of tiles in the base level along the x and y direction. */
+        GLsizei       m_layout[2];
+    }
+    m_tiling;
 
-    GLsizei           m_base_tile_width;
-    GLsizei           m_base_tile_height;
+    // -------------------------------------------------------------------------
+    /** Information about the HistoPyramid texture. */
+    struct {
+        /** The size of the HP tex.
+          *
+          * The tex is quadratic, so the size is the same along x and y.
+          */
+        GLsizei              m_size;
+        /** The two-log of the size of the HP tex.
+          *
+          * The tex size is always a power-of-two, so this is always an integer.
+          */
+        GLsizei              m_size_l2;
+        /** Texture name of the HP tex. */
+        GLuint               m_tex;
+        /** A set of FBOs, one FBO per mipmap level in the HP tex. */
+        std::vector<GLuint>  m_fbos;
+        /** Pixel pack buffer for async readback of HP top element. */
+        GLuint               m_top_pbo;
+        /** Cache result of readback of the HP top element PBO. */
+        GLsizei              m_top_count;
+        /** Tag that the cached result is valid, so PBO need not to be consulted. */
+        GLsizei              m_top_count_updated;
+    }
+    m_histopyramid;
 
-    GLsizei           m_base_cols;
-    GLsizei           m_base_rows;
-    GLsizei           m_base_size_l2;
-    GLsizei           m_base_size;
-    GLuint            m_histopyramid_tex;
-    GLuint*           m_histopyramid_fbos;
+    // -------------------------------------------------------------------------
+    /** Specifies the layout of the scalar field. */
+    struct {
+        /** The x,y,z-size of the lattice of scalar field samples. */
+        GLsizei       m_size[3];
+        /** The x,y,z-size of the MC grid, defaults to m_size-[1,1,1]. */
+        GLsizei       m_cells[3];
+        /** The extent of the MC grid when outputted from the traversal shader. */
+        GLfloat       m_extent[3];
+    }
+    m_field;
 
-    GLuint            m_gpgpu_passthrough_v;
-    GLuint            m_baselevel_f;
-    GLuint            m_baselevel_p;
-    GLint             m_baselevel_threshold_loc;
+    // -------------------------------------------------------------------------
+    /** Specifies how data is fetched from the scalar field. */
+    struct {
+        /** Specifies what type of fetching is used.
+          *
+          * Currently supported is fetching from a Texture3D or using a custom
+          * shader function.
+          */
+        HPMCVolumeLayout  m_mode;
+        /** The source code of the custom fetch shader function (if custom fetch). */
+        std::string       m_shader_source;
+        /** The texture name of the Texture3D to fetch from (if fetch from Texture3D). */
+        GLuint            m_tex;
+        /** True if the texture or the shader function can provide gradients.
+          *
+          * If gradients are provided, they are used to find normal vectors,
+          * it not, forward differences are used.
+          */
+        bool              m_gradient;
+    }                 m_fetch;
 
-    GLuint            m_first_reduction_f;
-    GLuint            m_first_reduction_p;
-    GLint             m_first_reduction_delta_loc;
+    /** State during HistoPyramid construction */
+    struct {
+        GLuint           m_tex_unit_1;          ///< Bound to vertex count in base level pass, bound to HP in other passes.
+        GLuint           m_tex_unit_2;          ///< Bound to volume texture if HPMC handles texturing of scalar field.
+        GLuint           m_gpgpu_vertex_shader; ///< Common GPGPU pass-through vertex shader.
 
-    GLuint            m_reduction_f;
-    GLuint            m_reduction_p;
-    GLint             m_reduction_delta_loc;
+        /** Base level construction pass. */
+        struct {
+            GLuint            m_fragment_shader;
+            GLuint            m_program;
+            GLint             m_loc_threshold;
+        }                 m_base;
 
-    GLuint            m_state_shader;
-    GLuint            m_state_fbo;
+        /** First pure reduction pass. */
+        struct {
+            GLuint            m_fragment_shader;
+            GLuint            m_program;
+            GLint             m_loc_delta;
+        }                 m_first;
 
-    std::string       m_fetch_shader;
-    GLuint            m_build_first_tex_unit;
+       /** First pure reduction pass. */
+        struct {
+            GLuint            m_fragment_shader;
+            GLuint            m_program;
+            GLint             m_loc_delta;
+        }                 m_upper;
 
+    }               m_hp_build;
 };
 
+// -----------------------------------------------------------------------------
 struct HPMCTraversalHandle
 {
     struct HPMCHistoPyramid*  m_handle;
-    GLuint              m_program;
-    GLuint              m_scalarfield_unit;
-    GLuint              m_histopyramid_unit;
-    GLuint              m_edge_decode_unit;
-    GLint               m_offset_loc;
-    GLint               m_threshold_loc;
+    GLuint                    m_program;
+    GLuint                    m_scalarfield_unit;
+    GLuint                    m_histopyramid_unit;
+    GLuint                    m_edge_decode_unit;
+    GLint                     m_offset_loc;
+    GLint                     m_threshold_loc;
 };
 
 /** \} */
+// -----------------------------------------------------------------------------
 /** \defgroup hpmc_internal Internal API
   * \{
   */
 
-void
-HPMCpushState( struct HPMCHistoPyramid* h );
 
-void
-HPMCpopState( struct HPMCHistoPyramid* h );
+extern int      HPMC_triangle_table[256][16];
+
+extern GLfloat  HPMC_edge_table[12][4];
+
+extern GLfloat  HPMC_gpgpu_quad_vertices[3*4];
+
+/** Sets up hp textures and shaders.
+  *
+  * \sideeffect GL_CURRENT_PROGRAM,
+  *             GL_TEXTURE_2D_BINDING,
+  *             GL_FRAMEBUFFER_BINDING
+  */
+bool
+HPMCsetup( struct HPMCHistoPyramid* h );
+
+/** Checks field and grid sizes and determine HistoPyramid layout and tiling.
+  *
+  * \sideeffect None.
+ */
+bool
+HPMCdetermineLayout( struct HPMCHistoPyramid* h );
+
+/** Creates the HistoPyramid texture and framebuffer object.
+  *
+  * \sideeffect GL_TEXTURE_2D_BINDING, GL_FRAMEBUFFER_BINDING
+  */
+bool
+HPMCsetupTexAndFBOs( struct HPMCHistoPyramid* h );
+
+bool
+HPMCfreeHPBuildShaders( struct HPMCHistoPyramid* h );
+
+/** Build reduction shaders.
+  *
+  * \sideeffect GL_CURRENT_PROGRAM
+  */
+bool
+HPMCbuildHPBuildShaders( struct HPMCHistoPyramid* h );
+
 
 bool
 HPMCcheckFramebufferStatus( const std::string& file, const int line );
@@ -160,36 +269,38 @@ HPMCgenerateGPGPUVertexPassThroughShader( struct HPMCHistoPyramid* h );
 std::string
 HPMCgenerateExtractVertexFunction( struct HPMCHistoPyramid* h );
 
-GLuint
-HPMCbuildVertexCountTable( );
 
-GLuint
-HPMCbuildEdgeDecodeTable( );
+/** Trigger computations that build the Histopyramid.
+  *
+  * Evaluates the scalar field, determines codes and vertex counts and builds the HP base layer.
+  *
+  * \sideeffect Active texture unit,
+  *             two texture units (see h->m_base_level,m_tex_units..),
+  *             GL_CURRENT_PROGRAM,
+  *             GL_FRAMEBUFFER_BINDING,
+  *             GL_VIEWPORT,
+  *             GL_VERTEX_ARRAY,
+  *             GL_VERTEX_ARRAY_SIZE,
+  *             GL_VERTEX_ARRAY_TYPE,
+  *             GL_VERTEX_ARRAY_STRIDE,
+  *             GL_VERTEX_ARRAY_POINTER.
+  *             GL_PIXEL_PACK_BUFFER binding
+  */
+bool
+HPMCtriggerHistopyramidBuildPasses( struct HPMCHistoPyramid* h );
 
-GLuint
-HPMCbuildGPGPUQuadVBO( );
-
-GLuint
-HPMCbuildEnumerateVBO( GLsizei vertices );
-
-void
-HPMCbuildHistopyramidBaselevel( struct HPMCHistoPyramid* h );
-
-void
-HPMCbuildHistopyramidFirstLevel( struct HPMCHistoPyramid* h );
-
-void
-HPMCbuildHistopyramidUpperLevels( struct HPMCHistoPyramid* h );
 
 void
 HPMCsetLayout( struct HPMCHistoPyramid* h );
 
-void
-HPMCcreateHistopyramid( struct HPMCHistoPyramid* h );
-
-void
-HPMCcreateShaderPrograms( struct HPMCHistoPyramid* h );
-
+/** Renders a GPGPU quad from a VBO.
+  *
+  * \sideeffect GL_VERTEX_ARRAY,
+  *             GL_VERTEX_ARRAY_SIZE,
+  *             GL_VERTEX_ARRAY_TYPE,
+  *             GL_VERTEX_ARRAY_STRIDE,
+  *             GL_VERTEX_ARRAY_POINTER.
+  */
 void
 HPMCrenderGPGPUQuad( struct HPMCHistoPyramid* h );
 

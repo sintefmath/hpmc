@@ -13,24 +13,36 @@ FIND_PACKAGE( GLUT REQUIRED )
 FIND_PACKAGE( GLEW REQUIRED )
 
 SET( HPMC_SRC
-     "hpmc/src/hpmc_handle.cpp"
-     "hpmc/src/hpmc_util.cpp"
-     "hpmc/src/hpmc_shadergen.cpp"
-     "hpmc/src/hpmc_tables.cpp"
-     "hpmc/src/hpmc_traversal.cpp"
-     "hpmc/src/hpmc_build.cpp"
-     "hpmc/src/hpmc_init.cpp"
-     "hpmc/src/hpmc_constants.cpp"
+     "hpmc/src/hpiface.cpp"
+     "hpmc/src/util.cpp"
+     "hpmc/src/tables.cpp"
+     "hpmc/src/triface.cpp"
+     "hpmc/src/buildpass.cpp"
+     "hpmc/src/init.cpp"
+     "hpmc/src/constants.cpp"
+     "hpmc/src/shadergen.cpp"
+     "hpmc/src/shaderbuild.cpp"
+     "hpmc/src/texfbosetup.cpp"
 )
-SET( CMAKE_CXX_FLAGS "-DDEBUG ${CMAKE_CXX_FLAGS}" )
+SET( CMAKE_CXX_FLAGS "-pedantic -O2 -DDEBUG ${CMAKE_CXX_FLAGS}" )
+#SET( CMAKE_CXX_FLAGS "-pedantic ${CMAKE_CXX_FLAGS}" )
 
-ADD_LIBRARY( hpmc_0.1a STATIC ${HPMC_SRC} )
-TARGET_LINK_LIBRARIES( hpmc_0.1a ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+ADD_LIBRARY( hpmc STATIC ${HPMC_SRC} )
+TARGET_LINK_LIBRARIES( hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
 INCLUDE_DIRECTORIES( ${GLUT_INCLUDE_DIR} ${GLEW_INCLUDE_DIR} )
 
-ADD_EXECUTABLE( texture3D "apps/texture3D/texture3D.cpp" )
-TARGET_LINK_LIBRARIES( texture3D hpmc_0.1a ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+ADD_EXECUTABLE( texture3d "apps/texture3d/texture3d.cpp" )
+TARGET_LINK_LIBRARIES( texture3d hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
-ADD_EXECUTABLE( formula "apps/formula/formula.cpp" )
-TARGET_LINK_LIBRARIES( formula hpmc_0.1a ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+ADD_EXECUTABLE( cayley "apps/cayley/cayley.cpp" )
+TARGET_LINK_LIBRARIES( cayley hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+
+ADD_EXECUTABLE( transform_feedback "apps/transform_feedback/transform_feedback.cpp" )
+TARGET_LINK_LIBRARIES( transform_feedback hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+
+ADD_EXECUTABLE( metaballs "apps/metaballs/metaballs.cpp" )
+TARGET_LINK_LIBRARIES( metaballs hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+
+ADD_EXECUTABLE( particles "apps/particles/particles.cpp" )
+TARGET_LINK_LIBRARIES( particles hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )

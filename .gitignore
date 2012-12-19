@@ -2,8 +2,11 @@ CMakeCache.txt
 CMakeFiles/
 Makefile
 cmake_install.cmake
-/formula
-/texture3D
+/cayley
+/metaballs
+/particles
+/texture3d
+/transform_feedback
 
 # Compiled Object files
 *.slo

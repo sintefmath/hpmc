@@ -1,7 +1,7 @@
 /* -*- mode: C++; tab-width:4; c-basic-offset: 4; indent-tabs-mode:nil -*-
  ***********************************************************************
  *
- *  File: hpmc.h
+ *  File: util.cpp
  *
  *  Created: 24. June 2009
  *
@@ -38,9 +38,13 @@
 #include <hpmc_internal.h>
 
 using std::string;
+using std::vector;
 using std::stringstream;
 using std::setw;
+using std::cerr;
+using std::endl;
 
+// -----------------------------------------------------------------------------
 #define HELPER(a) case a: error = #a; break
 bool
 HPMCcheckFramebufferStatus( const std::string& file, const int line )
@@ -61,12 +65,14 @@ HPMCcheckFramebufferStatus( const std::string& file, const int line )
         HELPER( GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT );
         HELPER( GL_FRAMEBUFFER_UNSUPPORTED_EXT );
     }
-    std::cerr << "HPMC: framebuffer incomplete (" << error << ") in " << file << " at line " << line << ".\n";
+    cerr << "HPMC error: framebuffer incomplete (" << error << ") in "
+            << file << " at line " << line << "." << endl;
 #endif
 
     return false;
 }
 
+// -----------------------------------------------------------------------------
 bool
 HPMCcheckGL( const std::string& file, const int line )
 {
@@ -87,15 +93,16 @@ HPMCcheckGL( const std::string& file, const int line )
         HELPER( GL_TABLE_TOO_LARGE );
         HELPER( GL_INVALID_FRAMEBUFFER_OPERATION );
     }
-    std::cerr << "HPMC: error on gl state (" << error << ", code="<<glerror<<") in " << file << " at line " << line << ".\n";
+    cerr << "HPMC warning: error on gl state ("
+         << error << ", code="<<glerror<<") in "
+         << file << " at line " << line << "." << endl;
 #endif
 
     return false;
-
 }
 #undef HELPER
 
-
+// -----------------------------------------------------------------------------
 std::string
 HPMCaddLineNumbers( const std::string& src )
 {
@@ -120,6 +127,7 @@ HPMCaddLineNumbers( const std::string& src )
     return out.str();
 }
 
+// -----------------------------------------------------------------------------
 GLuint
 HPMCcompileShader( const std::string& src, GLuint type )
 {
@@ -140,10 +148,10 @@ HPMCcompileShader( const std::string& src, GLuint type )
 
     // compilation failed
 #ifdef DEBUG
-    std::cerr << "HPMC: compilation of shader failed.\n";
-    std::cerr << "HPMC: *** shader source code ***\n";
-    std::cerr << HPMCaddLineNumbers( src );
-    std::cerr << "HPMC: *** shader build log ***\n";
+    cerr << "HPMC error: compilation of shader failed." << endl;
+    cerr << "HPMC error: *** shader source code ***" << endl;
+    cerr << HPMCaddLineNumbers( src );
+    cerr << "HPMC error: *** shader build log ***" << endl;
 
     // get size of build log
     GLint logsize;
@@ -151,12 +159,12 @@ HPMCcompileShader( const std::string& src, GLuint type )
 
     // get build log
     if( logsize == 0 ) {
-        std::cerr << "HPMC: empty log.\n";
+        cerr << "HPMC error: empty log." << endl;
     }
     else {
-        std::vector<GLchar> infolog( logsize+1 );
+        vector<GLchar> infolog( logsize+1 );
         glGetShaderInfoLog( shader, logsize, NULL, &infolog[0] );
-        std::cerr << string( infolog.begin(), infolog.end() ) << "\n";
+        cerr << string( infolog.begin(), infolog.end() ) << endl;
     }
 #endif
 
@@ -164,6 +172,7 @@ HPMCcompileShader( const std::string& src, GLuint type )
     return 0u;
 }
 
+// -----------------------------------------------------------------------------
 bool
 HPMClinkProgram( GLuint program )
 {
@@ -178,8 +187,8 @@ HPMClinkProgram( GLuint program )
 
     // linking failed
 #ifdef DEBUG
-    std::cerr << "HPMC: linking of program failed.\n";
-    std::cerr << "HPMC: *** program link log ***\n";
+    cerr << "HPMC: linking of program failed." << endl;
+    cerr << "HPMC: *** program link log ***" << endl;
 
     // get size of build log
     GLint logsize;
@@ -187,50 +196,32 @@ HPMClinkProgram( GLuint program )
 
     // get build log
     if( logsize == 0 ) {
-        std::cerr << "HPMC: empty log.\n";
+        cerr << "HPMC: empty log." << endl;
     }
     else {
-        std::vector<GLchar> infolog( logsize+1 );
+        vector<GLchar> infolog( logsize+1 );
         glGetProgramInfoLog( program, logsize, NULL, &infolog[0] );
-        std::cerr << string( infolog.begin(), infolog.end() ) << "\n";
+        cerr << string( infolog.begin(), infolog.end() ) << endl;
     }
 #endif
 
     return false;
 }
 
+// -----------------------------------------------------------------------------
 GLint
 HPMCgetUniformLocation( GLuint program, const std::string& name )
 {
     GLint loc = glGetUniformLocation( program, name.c_str() );
 #ifdef DEBUG
     if( loc < 0 ) {
-        std::cerr << "HPMC: failed to locate uniform \"" << name << "\".\n";
+        cerr << "HPMC warning: failed to locate uniform \"" << name << "\"." << endl;
     }
 #endif
     return loc;
 }
 
-void
-HPMCpushState( struct HPMCHistoPyramid* h )
-{
-    glGetIntegerv( GL_CURRENT_PROGRAM, (GLint*)&h->m_state_shader );
-    glGetIntegerv( GL_FRAMEBUFFER_BINDING_EXT, (GLint*)&h->m_state_fbo );
-    glPushAttrib( GL_ALL_ATTRIB_BITS );
-}
-
-void
-HPMCpopState( struct HPMCHistoPyramid* h )
-{
-    glUseProgram( h->m_state_shader );
-    glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, h->m_state_fbo );
-    glPopAttrib();
-}
-
-/** moo
-  *
-  * \sideeffect Enables GL_ARRAY_BUFFER and GL_VERTEX_ARRAY client state.
-  */
+// -----------------------------------------------------------------------------
 void
 HPMCrenderGPGPUQuad( struct HPMCHistoPyramid* h )
 {
