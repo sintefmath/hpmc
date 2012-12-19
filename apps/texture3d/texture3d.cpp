@@ -49,7 +49,11 @@
 #include <fstream>
 #include <vector>
 #include <GL/glew.h>
+#ifdef __APPLE__
+#include <glut.h>
+#else
 #include <GL/glut.h>
+#endif
 #include "hpmc.h"
 #include "../common/common.cpp"
 

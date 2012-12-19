@@ -68,7 +68,7 @@ HPMCcreateTraversalHandle( struct HPMCHistoPyramid* h )
                    reinterpret_cast<GLint*>(&old_pbo) );
     glGetIntegerv( GL_CURRENT_PROGRAM,
                    reinterpret_cast<GLint*>(&old_prog) );
-    glGetIntegerv( GL_FRAMEBUFFER_BINDING,
+    glGetIntegerv( GL_FRAMEBUFFER_BINDING_EXT,
                    reinterpret_cast<GLint*>(&old_fbo) );
 
     if( !HPMCsetup( h ) ) {
@@ -79,7 +79,7 @@ HPMCcreateTraversalHandle( struct HPMCHistoPyramid* h )
     }
 
     // --- restore state -------------------------------------------------------
-    glBindFramebuffer( GL_FRAMEBUFFER, old_fbo );
+    glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, old_fbo );
     glUseProgram( old_prog );
     glBindBuffer( GL_PIXEL_PACK_BUFFER, old_pbo );
     glPopAttrib();
@@ -141,7 +141,7 @@ HPMCgetTraversalShaderFunctions( struct HPMCTraversalHandle* th )
                    reinterpret_cast<GLint*>(&old_pbo) );
     glGetIntegerv( GL_CURRENT_PROGRAM,
                    reinterpret_cast<GLint*>(&old_prog) );
-    glGetIntegerv( GL_FRAMEBUFFER_BINDING,
+    glGetIntegerv( GL_FRAMEBUFFER_BINDING_EXT,
                    reinterpret_cast<GLint*>(&old_fbo) );
 
     if( !HPMCsetup( th->m_handle ) ) {
@@ -152,7 +152,7 @@ HPMCgetTraversalShaderFunctions( struct HPMCTraversalHandle* th )
     }
 
     // --- restore state -------------------------------------------------------
-    glBindFramebuffer( GL_FRAMEBUFFER, old_fbo );
+    glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, old_fbo );
     glUseProgram( old_prog );
     glBindBuffer( GL_PIXEL_PACK_BUFFER, old_pbo );
     glPopAttrib();
@@ -375,29 +375,41 @@ HPMCextractVerticesHelper( struct HPMCTraversalHandle*  th,
 
     // --- render triangles ----------------------------------------------------
     if( transform_feedback_mode == 1 ) {
+#ifdef GL_VERSION_3_0
         glBeginTransformFeedback( GL_TRIANGLES );
+#endif
     }
     else if( transform_feedback_mode == 2 ) {
+#ifdef GL_NV_transform_feedback
         glBeginTransformFeedbackNV( GL_TRIANGLES );
+#endif
     }
     else if( transform_feedback_mode == 3 ) {
+#ifdef GL_EXT_transform_feedback
         glBeginTransformFeedbackEXT( GL_TRIANGLES );
+#endif
     }
 
     GLsizei N = th->m_handle->m_histopyramid.m_top_count;
     for(GLsizei i=0; i<N; i+= th->m_handle->m_constants->m_enumerate_vbo_n) {
-        glUniform1f( th->m_offset_loc, i );
+        glUniform1f( th->m_offset_loc, static_cast<GLfloat>( i ) );
         glDrawArrays( GL_TRIANGLES, 0, min( N-i,
                                             th->m_handle->m_constants->m_enumerate_vbo_n ) );
     }
     if( transform_feedback_mode == 1 ) {
+#ifdef GL_VERSION_3_0
         glEndTransformFeedback( );
+#endif
     }
     else if( transform_feedback_mode == 2 ) {
+#ifdef GL_NV_transform_feedback
         glEndTransformFeedbackNV( );
+#endif
     }
     else if( transform_feedback_mode == 3 ) {
+#ifdef GL_EXT_transform_feedback
         glEndTransformFeedbackEXT( );
+#endif
     }
 
     // --- restore state -------------------------------------------------------
@@ -425,19 +437,34 @@ HPMCextractVertices( struct HPMCTraversalHandle* th )
 bool
 HPMCextractVerticesTransformFeedback( struct HPMCTraversalHandle* th )
 {
+#ifdef GL_VERSION_3_0
     return HPMCextractVerticesHelper( th, 1 );
+#else
+    cerr << "HPMC error: compiled with old GLEW not defining OpenGL 3.0 interface." << endl;
+    return false;
+#endif
 }
 
 // -----------------------------------------------------------------------------
 bool
 HPMCextractVerticesTransformFeedbackNV( struct HPMCTraversalHandle* th )
 {
+#ifdef GL_NV_transform_feedback
     return HPMCextractVerticesHelper( th, 2 );
+#else
+    cerr << "HPMC error: compiled with old GLEW not defining GL_NV_transform_feedback." << endl;
+    return false;
+#endif
 }
 
 // -----------------------------------------------------------------------------
 bool
 HPMCextractVerticesTransformFeedbackEXT( struct HPMCTraversalHandle* th )
 {
+#ifdef GL_EXT_transform_feedback
     return HPMCextractVerticesHelper( th, 3 );
+#else
+    cerr << "HPMC error: compiled with old GLEW not defining GL_EXT_transform_feedback." << endl;
+    return false;
+#endif
 }

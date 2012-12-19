@@ -59,7 +59,11 @@
 #include <algorithm>
 #include <vector>
 #include <GL/glew.h>
+#ifdef __APPLE__
+#include <glut.h>
+#else
 #include <GL/glut.h>
+#endif
 #include "hpmc.h"
 #include "../common/common.cpp"
 
@@ -387,9 +391,9 @@ string billboard_geometry_shader =
         "{\n"
         "    float i = ininfo[0].x;\n"
         //   determine size of billboard
-        "    float r = 0.005 + 0.005*max(0.0,pow(i,30));\n"
+        "    float r = 0.005 + 0.005*max(0.0,pow(i,30.0));\n"
         //   color of particle
-        "    gl_FrontColor.xyz = vec3( pow(i,30), ininfo[0].y, 0.8 );\n"
+        "    gl_FrontColor.xyz = vec3( pow(i,30.0), ininfo[0].y, 0.8 );\n"
         "    vec4 p = gl_PositionIn[0];\n"
         //   calculate depth, see note in fragment shader
         "    vec4 ppp = (gl_ProjectionMatrix * p);\n"
@@ -664,7 +668,7 @@ render( float t, float dt, float fps )
         particles_vbo_n = 0.0f;
         threshold = 500;
         particles_vbo_p = 0;
-        srand48(42);
+        srand(42);
         std::cerr << "reset\n";
     }
 
@@ -759,7 +763,7 @@ render( float t, float dt, float fps )
     // produced.
     glUseProgram( emitter_p );
     glUniform1i( glGetUniformLocation( emitter_p, "threshold" ), threshold );
-    int off = (int)(threshold*drand48());
+    int off = (int)(threshold*(rand()/(RAND_MAX+1.0f) ) );
     glUniform1i( glGetUniformLocation( emitter_p, "off" ), off );
 
     // Store emitted particles in the beginning of next frame's particle

@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 2.4)
+if(COMMAND cmake_policy)
+    cmake_policy(SET CMP0003 NEW)
+endif(COMMAND cmake_policy)
 PROJECT( hpmc )
 
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
@@ -24,7 +27,7 @@ SET( HPMC_SRC
      "hpmc/src/shaderbuild.cpp"
      "hpmc/src/texfbosetup.cpp"
 )
-SET( CMAKE_CXX_FLAGS "-pedantic -O2 -DDEBUG ${CMAKE_CXX_FLAGS}" )
+#SET( CMAKE_CXX_FLAGS "-pedantic -O2 -DDEBUG ${CMAKE_CXX_FLAGS}" )
 #SET( CMAKE_CXX_FLAGS "-pedantic ${CMAKE_CXX_FLAGS}" )
 
 ADD_LIBRARY( hpmc STATIC ${HPMC_SRC} )

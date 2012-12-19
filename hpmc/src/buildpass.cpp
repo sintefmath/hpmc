@@ -95,8 +95,8 @@ HPMCtriggerHistopyramidBuildPasses( struct HPMCHistoPyramid* h )
 
     // distance between texels in base layer of HP
     glUniform2f( h->m_hp_build.m_first.m_loc_delta,
-                -0.5/h->m_histopyramid.m_size,
-                 0.5/h->m_histopyramid.m_size );
+                -0.5f/h->m_histopyramid.m_size,
+                 0.5f/h->m_histopyramid.m_size );
 
     // trigger
     glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, h->m_histopyramid.m_fbos[1] );
@@ -120,8 +120,8 @@ HPMCtriggerHistopyramidBuildPasses( struct HPMCHistoPyramid* h )
 
         // Distance between texels in the previous level.
         glUniform2f( h->m_hp_build.m_upper.m_loc_delta,
-                    -0.5/(1<<(h->m_histopyramid.m_size_l2+1-m)),
-                     0.5/(1<<(h->m_histopyramid.m_size_l2+1-m)) );
+                    -0.5f/(1<<(h->m_histopyramid.m_size_l2+1-m)),
+                     0.5f/(1<<(h->m_histopyramid.m_size_l2+1-m)) );
 
         // Trigger
         glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, h->m_histopyramid.m_fbos[m] );

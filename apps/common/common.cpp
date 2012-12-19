@@ -114,7 +114,6 @@ compileShader( GLuint shader, const string& what )
     }
 }
 
-
 // --- compile program and check for errors ------------------------------------
 void
 linkProgram( GLuint program, const string& what )
@@ -171,7 +170,7 @@ setFeedbackVaryings( GLuint program,
     glTransformFeedbackVaryingsNV( program,
                                    count,
                                    &locs[0],
-                                   GL_INTERLEAVED_ATTRIBS );
+                                   GL_INTERLEAVED_ATTRIBS_NV );
 }
 
 // -----------------------------------------------------------------------------
@@ -215,7 +214,6 @@ void
 render( float t, float dt, float fps );
 
 // --- calculate fps and call render loop func ---------------------------------
-
 void
 display()
 {

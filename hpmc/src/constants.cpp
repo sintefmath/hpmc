@@ -121,7 +121,7 @@ HPMCcreateConstants()
             }
         }
 
-        tricount[ remapCode(j) ] = count;
+        tricount[ remapCode(j) ] = static_cast<GLfloat>( count );
     }
 
     glGenTextures( 1, &s->m_vertex_count_tex );

@@ -77,7 +77,7 @@ struct HPMCHistoPyramid
 
     // -------------------------------------------------------------------------
     /** Specifies how the base level of the HistoPyramid is laid out. */
-    struct HPMCTiling {
+    struct Tiling {
         /** The size of a tile in the base level. */
         GLsizei       m_tile_size[2];
         /** The number of tiles in the base level along the x and y direction. */
@@ -87,7 +87,7 @@ struct HPMCHistoPyramid
 
     // -------------------------------------------------------------------------
     /** Information about the HistoPyramid texture. */
-    struct {
+    struct HistoPyramid {
         /** The size of the HP tex.
           *
           * The tex is quadratic, so the size is the same along x and y.
@@ -113,7 +113,7 @@ struct HPMCHistoPyramid
 
     // -------------------------------------------------------------------------
     /** Specifies the layout of the scalar field. */
-    struct {
+    struct Field {
         /** The x,y,z-size of the lattice of scalar field samples. */
         GLsizei       m_size[3];
         /** The x,y,z-size of the MC grid, defaults to m_size-[1,1,1]. */
@@ -125,7 +125,7 @@ struct HPMCHistoPyramid
 
     // -------------------------------------------------------------------------
     /** Specifies how data is fetched from the scalar field. */
-    struct {
+    struct Fetch {
         /** Specifies what type of fetching is used.
           *
           * Currently supported is fetching from a Texture3D or using a custom
@@ -142,36 +142,41 @@ struct HPMCHistoPyramid
           * it not, forward differences are used.
           */
         bool              m_gradient;
-    }                 m_fetch;
+    }
+    m_fetch;
 
     /** State during HistoPyramid construction */
-    struct {
+    struct HistoPyramidBuild {
         GLuint           m_tex_unit_1;          ///< Bound to vertex count in base level pass, bound to HP in other passes.
         GLuint           m_tex_unit_2;          ///< Bound to volume texture if HPMC handles texturing of scalar field.
         GLuint           m_gpgpu_vertex_shader; ///< Common GPGPU pass-through vertex shader.
 
         /** Base level construction pass. */
-        struct {
+        struct BaseConstruction {
             GLuint            m_fragment_shader;
             GLuint            m_program;
             GLint             m_loc_threshold;
-        }                 m_base;
+        }
+        m_base;
 
         /** First pure reduction pass. */
-        struct {
+        struct FirstReduction {
             GLuint            m_fragment_shader;
             GLuint            m_program;
             GLint             m_loc_delta;
-        }                 m_first;
+        }
+        m_first;
 
        /** First pure reduction pass. */
-        struct {
+        struct UpperReduction {
             GLuint            m_fragment_shader;
             GLuint            m_program;
             GLint             m_loc_delta;
-        }                 m_upper;
+        }
+        m_upper;
 
-    }               m_hp_build;
+    }
+    m_hp_build;
 };
 
 // -----------------------------------------------------------------------------

@@ -68,7 +68,11 @@
 #include <iostream>
 #include <vector>
 #include <GL/glew.h>
+#ifdef __APPLE__
+#include <glut.h>
+#else
 #include <GL/glut.h>
+#endif
 #include "hpmc.h"
 #include "../common/common.cpp"
 
@@ -175,19 +179,27 @@ void
 init()
 {
     // --- check for availability of transform feedback ------------------------
-    if( GLEW_EXT_transform_feedback ) {
-        cerr << "Using GL_EXT_transform_feedback mechanism." << endl;
-        use_ext = true;
-    }
-    else if( GLEW_NV_transform_feedback ) {
-        cerr << "Using GL_NV_transform_feedback mechanism." << endl;
+    if( GLEW_NV_transform_feedback ) {
+        cerr << "Using GL_NV_transform_feedback extension." << endl;
         use_ext = false;
     }
+#ifdef GL_EXT_transform_feedback
+    else if( GLEW_EXT_transform_feedback ) {
+        cerr << "Using GL_EXT_transform_feedback extension." << endl;
+        use_ext = true;
+    }
     else {
-        cerr << "Required transform feedback mechanism missing, exiting." << endl;
+        cerr << "Neither GL_NV_transform_feedback nor "
+             << "GL_EXT_transform_feedback extensions present, exiting." << endl;
         exit( EXIT_FAILURE );
     }
-
+#else
+    else {
+        cerr << "Note: Compiled with old GLEW that doesn't have GL_EXT_transform_feedback defined." << endl;
+        cerr << "GL_NV_transform_feedback extension missing, exiting." << endl;
+        exit( EXIT_FAILURE );
+    }
+#endif
 
     // --- create HistoPyramid -------------------------------------------------
     hpmc_c = HPMCcreateConstants();
@@ -288,10 +300,12 @@ init()
     // varying locations of the varyings that shall be fed back, and then ship
     // this to GL.
     if( use_ext ) {
+#ifdef GL_EXT_transform_feedback
         glTransformFeedbackVaryingsEXT( flat_p,
                                         2,
                                         &flat_varying_names[0],
                                         GL_INTERLEAVED_ATTRIBS_EXT );
+#endif
     }
     else {
         // tag the varyings we will record as active (so they don't get
@@ -390,10 +404,12 @@ render( float t, float dt, float fps )
         glColor3f(0.1, 0.1, 0.2 );
         glEnable( GL_POLYGON_OFFSET_FILL );
         if( use_ext ) {
+#ifdef GL_EXT_transform_feedback
             glBindBufferBaseEXT( GL_TRANSFORM_FEEDBACK_BUFFER_EXT,
                                  0, mc_tri_vbo );
             HPMCextractVerticesTransformFeedbackEXT( hpmc_th_flat );
             glFlush(); // on ATI catalyst 9.10, this is needed to avoid some artefacts
+#endif
         }
         else {
             glBindBufferBaseNV( GL_TRANSFORM_FEEDBACK_BUFFER_NV,
