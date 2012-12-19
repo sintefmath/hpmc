@@ -33,7 +33,7 @@
 #include <string>
 #include <fstream>
 #include <GL/glew.h>
-#ifdef __unix
+#if defined(__unix) || defined(__APPLE__)
 #include <sys/time.h>
 #include <unistd.h>
 #endif
@@ -71,7 +71,7 @@ bool wireframe = false;
 double
 getTimeOfDay()
 {
-#if defined(__unix)
+#if defined(__unix) || defined(__APPLE__)
     struct timeval tv;
     struct timezone tz;
     gettimeofday(&tv, &tz);

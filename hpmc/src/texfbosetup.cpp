@@ -77,11 +77,11 @@ HPMCsetupTexAndFBOs( struct HPMCHistoPyramid* h )
 
     // --- create hp framebuffer objects, one fbo per level --------------------
     if( !h->m_histopyramid.m_fbos.empty() ) {
-        glDeleteFramebuffersEXT( h->m_histopyramid.m_fbos.size(),
+        glDeleteFramebuffersEXT( static_cast<GLsizei>( h->m_histopyramid.m_fbos.size() ),
                                  &h->m_histopyramid.m_fbos[0] );
     }
     h->m_histopyramid.m_fbos.resize( h->m_histopyramid.m_size_l2+1 );
-    glGenFramebuffersEXT( h->m_histopyramid.m_fbos.size(),
+    glGenFramebuffersEXT( static_cast<GLsizei>( h->m_histopyramid.m_fbos.size() ),
                           &h->m_histopyramid.m_fbos[0] );
 
     for( GLuint m=0; m<h->m_histopyramid.m_fbos.size(); m++) {
