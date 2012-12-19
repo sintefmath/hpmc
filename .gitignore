@@ -1,3 +1,10 @@
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+/formula
+/texture3D
+
 # Compiled Object files
 *.slo
 *.lo
