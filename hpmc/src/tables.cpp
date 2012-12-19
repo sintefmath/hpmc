@@ -296,6 +296,21 @@ int HPMC_triangle_table[256][16] =
 };
 
 // -----------------------------------------------------------------------------
+/** Lattice edge table
+ *
+ * Each vertex in the Marching Cubes algorithm lies on an edge in the lattice.
+ * Given the origin of the cell we're creating vertices for, we can find the
+ * edge from this table. Each entry has four components:
+ * - X component is the x-shift (0 or 1)
+ * - Y component is the y-shift (0 or 1)
+ * - Z component is the z-shift (0 or 1)
+ * - W component gives the direction (0 is positive X, 1 is positive Y, and 2 is
+ *   positive Z).
+ *
+ * Thus, the first point of the edge is found by adding the shift to the origin
+ * of the cell. The second point is to go one unit in the direction of given in
+ * the w-component.
+ */
 GLfloat HPMC_edge_table[12][4] =
 {
     { 0.0, 0.0, 0.0, 0.0f }, { 1.0, 0.0, 0.0, 2.0f },
@@ -306,11 +321,27 @@ GLfloat HPMC_edge_table[12][4] =
     { 1.0, 0.0, 1.0, 1.0f }, { 0.0, 0.0, 1.0, 1.0f }
 };
 
+/** Midpoint table
+ *
+ * This is just a convenience deduction of \ref HPMC_edge_table. We use the edge
+ * midpoints to calculate normal vectors in the table we use for binary fields.
+ */
+GLfloat HPMC_midpoint_table[12][3] =
+{
+    { 0.5, 0.0, 0.0 }, { 1.0, 0.0, 0.5 },
+    { 0.5, 0.0, 1.0 }, { 0.0, 0.0, 0.5 },
+    { 0.5, 1.0, 0.0 }, { 1.0, 1.0, 0.5 },
+    { 0.5, 1.0, 1.0 }, { 0.0, 1.0, 0.5 },
+    { 0.0, 0.5, 0.0 }, { 1.0, 0.5, 0.0 },
+    { 1.0, 0.5, 1.0 }, { 0.0, 0.5, 1.0 }
+
+};
+
 // -----------------------------------------------------------------------------
 GLfloat HPMC_gpgpu_quad_vertices[3*4] =
 {
     -1.0f, -1.0f, 0.0f,
      1.0f, -1.0f, 0.0f,
-     1.0f,  1.0f, 0.0f,
-    -1.0f,  1.0f, 0.0f
+    -1.0f,  1.0f, 0.0f,
+     1.0f,  1.0f, 0.0f
 };

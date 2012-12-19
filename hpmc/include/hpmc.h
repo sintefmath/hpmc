@@ -48,7 +48,11 @@
   * The public interface to HPMC is defined in \c hpmc.h
   *
   * Use of HPMC usually involves the following initialization steps:
-  * - Create a set of constants
+  * - First, choose an OpenGL target version (\ref HPMCTarget). This determines
+  *   which parts of the OpenGL API HPMC uses as well as to which GLSL dialect
+  *   the shaders are generated in.
+  *
+  * - In initialization, create an HPMCConstants .
   * - Create one or more HistoPyramid instances, for each HistoPyramid:
   *   - Specify lattice and grid dimensions.
   *   - Specify the scalar field.
@@ -294,9 +298,49 @@ extern "C" {
 
 struct HPMCConstants;
 
-struct HPMCHistoPyramid;
+struct HPMCIsoSurface;
 
-struct HPMCTraversalHandle;
+struct HPMCIsoSurfaceRenderer;
+
+/** Specifies which GL features to use and not to use. */
+typedef enum {
+    /** OpenGL version 2.0, shading language version 1.10.
+     *
+     * - gl_VertexID is faked using a vbo with indices.
+     *
+     */
+    HPMC_TARGET_GL20_GLSL110,
+    /** OpenGL version 2.1, shading language version 1.20.
+     *
+     * Same as \ref HPMC_TARGET_GL20_GLSL110.:
+     */
+    HPMC_TARGET_GL21_GLSL120,
+    /** OpenGL version 3.0, shading language version 1.30.
+     *
+     * Same as \ref HPMC_TARGET_GL21_GLSL120, except:
+     * - Use overloaded texture() instead of texture2D(), texture3D(), etc.
+     * - Use gl_VertexID instead of index VBO.
+     * - Use of vertex array to feed the GPGPU pass
+     * - Removed use of deprecated builtin variables.
+     * - Use of in/out qualified variables instead of varying variables.
+     */
+    HPMC_TARGET_GL30_GLSL130,
+    HPMC_TARGET_GL31_GLSL140,
+    HPMC_TARGET_GL32_GLSL150,
+    HPMC_TARGET_GL33_GLSL330,
+    HPMC_TARGET_GL40_GLSL400,
+    HPMC_TARGET_GL41_GLSL410,
+    HPMC_TARGET_GL42_GLSL420,
+    HPMC_TARGET_GL43_GLSL430
+} HPMCTarget;
+
+typedef enum {
+    HPMC_DEBUG_NONE,
+    HPMC_DEBUG_STDERR,
+    HPMC_DEBUG_STDERR_VERBOSE,
+    HPMC_DEBUG_KHR_DEBUG,
+    HPMC_DEBUG_KHR_DEBUG_VERBOSE
+} HPMCDebugBehaviour;
 
 /** Creates a set of constants for the current context.
   *
@@ -305,10 +349,13 @@ struct HPMCTraversalHandle;
   * set of sharing contexts. Thus, it is highly likely that you only need one
   * instance of constants.
   *
+  * \param glsl_version  Target glsl version to be used. Shaders are formulated
+  *                      in different ways depending on this version.
+  *
   * \sideeffect None.
   */
 struct HPMCConstants*
-HPMCcreateConstants();
+HPMCcreateConstants( HPMCTarget target, HPMCDebugBehaviour debug );
 
 /** Destroys a set of constants.
   *
@@ -327,8 +374,8 @@ HPMCdestroyConstants( struct HPMCConstants* c );
   *
   * \sideeffect None.
   */
-struct HPMCHistoPyramid*
-HPMCcreateHistoPyramid( struct HPMCConstants* s );
+struct HPMCIsoSurface*
+HPMCcreateIsoSurface( struct HPMCConstants* s );
 
 /** Specify size of scalar field lattice.
   *
@@ -343,7 +390,7 @@ HPMCcreateHistoPyramid( struct HPMCConstants* s );
   * \sideeffect Triggers rebuilding of shaders and textures.
   */
 void
-HPMCsetLatticeSize( struct HPMCHistoPyramid*  h,
+HPMCsetLatticeSize( struct HPMCIsoSurface*  h,
                     GLsizei                   x_size,
                     GLsizei                   y_size,
                     GLsizei                   z_size );
@@ -365,7 +412,7 @@ HPMCsetLatticeSize( struct HPMCHistoPyramid*  h,
   * \sideeffect Triggers rebuilding of shaders and textures.
   */
 void
-HPMCsetGridSize( struct HPMCHistoPyramid*  h,
+HPMCsetGridSize( struct HPMCIsoSurface*  h,
                  GLsizei                   x_size,
                  GLsizei                   y_size,
                  GLsizei                   z_size );
@@ -382,10 +429,21 @@ HPMCsetGridSize( struct HPMCHistoPyramid*  h,
   * \sideeffect Triggers rebuilding of shaders and textures.
   */
 void
-HPMCsetGridExtent( struct HPMCHistoPyramid*  h,
+HPMCsetGridExtent( struct HPMCIsoSurface*  h,
                    GLfloat                   x_extent,
                    GLfloat                   y_extent,
                    GLfloat                   z_extent );
+
+/** Specify that the scalar field is a binary field
+ *
+ * The scalar field is assumed to be either 0 or 1, and the iso-value is fixed
+ * at 0.5. This allows certain optimizations to be made.
+ *
+ * \param h   Pointer to an existing HistoPyramid instance.
+ *
+ */
+void
+HPMCsetFieldAsBinary( struct HPMCIsoSurface*  h );
 
 /** Sets that a Texture3D shall define the scalar field lattice.
   *
@@ -395,7 +453,7 @@ HPMCsetGridExtent( struct HPMCHistoPyramid*  h,
   *                         the gradient is approximated using forward differences.
   */
 void
-HPMCsetFieldTexture3D( struct HPMCHistoPyramid*  h,
+HPMCsetFieldTexture3D( struct HPMCIsoSurface*  h,
                        GLuint                    texture,
                        GLboolean                 gradient );
 
@@ -422,6 +480,15 @@ HPMCsetFieldTexture3D( struct HPMCHistoPyramid*  h,
   * \endcode
   * The coordinates of p are texel centers in normalized texture coordinates.
   *
+  * If the fetch function requires that e.g. certain uniforms are set, the
+  * applictaion must query HPMC for these programs and configure the shader
+  * program. The fetch function may be used in two places:
+  * - It is always used in the HistoPyramid buildup phase, and that shader
+  *   program can be queried by \ref HPMCgetBuilderProgram.
+  * - It is used in the HistoPyramid traversal phase unless the field is binary
+  *   (in which case the Marching Cube case gives all required information). The
+  *   traversal program is directly managed by the application.
+  *
   * \param h                Pointer to an existing HistoPyramid instance.
   * \param shader_source    A string containing the custom fetch shader source.
   * \param builder_texunit  A texunit that HPMC can use during baselevel
@@ -431,18 +498,23 @@ HPMCsetFieldTexture3D( struct HPMCHistoPyramid*  h,
   *                         the gradient is approximated using forward differences.
   */
 void
-HPMCsetFieldCustom( struct HPMCHistoPyramid*  h,
+HPMCsetFieldCustom( struct HPMCIsoSurface*  h,
                     const char*               shader_source,
                     GLuint                    builder_texunit,
                     GLboolean                 gradient );
 
+/** Get the shader program that inspects the field in the histopyramid build step.
+ *
+ * \note If the HistoPyramid is reconfigured in some way, shader programs are
+ * rebuilt.
+ */
 GLuint
-HPMCgetBuilderProgram( struct HPMCHistoPyramid*  h );
+HPMCgetBuilderProgram( struct HPMCIsoSurface*  h );
 
 
 /** Free the resources associated with a handle. */
 void
-HPMCdestroyHandle( struct HPMCHistoPyramid* handle );
+HPMCdestroyIsoSurface( struct HPMCIsoSurface* handle );
 
 /** Builds the histopyramid using a volume texture.
   *
@@ -451,7 +523,7 @@ HPMCdestroyHandle( struct HPMCHistoPyramid* handle );
   *             GL_FRAMEBUFFER_BINDING
   */
 void
-HPMCbuildHistopyramid( struct HPMCHistoPyramid*  h,
+HPMCbuildIsoSurface( struct HPMCIsoSurface*  h,
                        GLfloat                   threshold );
 
 /** Returns the number of vertices in the histopyramid.
@@ -459,7 +531,7 @@ HPMCbuildHistopyramid( struct HPMCHistoPyramid*  h,
   * \note Must be called after HPMCbuildHistopyramd*().
   */
 GLuint
-HPMCacquireNumberOfVertices( struct HPMCHistoPyramid* handle );
+HPMCacquireNumberOfVertices( struct HPMCIsoSurface* handle );
 
 
 /** Create a new traversal handle instance.
@@ -468,15 +540,15 @@ HPMCacquireNumberOfVertices( struct HPMCHistoPyramid* handle );
   *              on failure.
   * \sideeffect  None.
   */
-struct HPMCTraversalHandle*
-HPMCcreateTraversalHandle( struct HPMCHistoPyramid* handle );
+struct HPMCIsoSurfaceRenderer*
+HPMCcreateIsoSurfaceRenderer( struct HPMCIsoSurface* handle );
 
 /** Destroy a traversal handle and free associated resources.
   *
   * \sideeffect None.
   */
 void
-HPMCdestroyTraversalHandle( struct HPMCTraversalHandle* th );
+HPMCdestroyIsoSurfaceRenderer( struct HPMCIsoSurfaceRenderer* th );
 
 /** Get shader source that implements the traversal and extraction.
   *
@@ -486,7 +558,7 @@ HPMCdestroyTraversalHandle( struct HPMCTraversalHandle* th );
   * \sideeffect  None.
   */
 char*
-HPMCgetTraversalShaderFunctions( struct HPMCTraversalHandle* th );
+HPMCisoSurfaceRendererShaderSource( struct HPMCIsoSurfaceRenderer* th );
 
 /** Associates a linked shader program with a traversal handle.
   *
@@ -507,7 +579,7 @@ HPMCgetTraversalShaderFunctions( struct HPMCTraversalHandle* th );
   * \sideeffect            None.
   */
 bool
-HPMCsetTraversalHandleProgram( struct  HPMCTraversalHandle *th,
+HPMCsetIsoSurfaceRendererProgram( struct  HPMCIsoSurfaceRenderer *th,
                                GLuint  program,
                                GLuint  tex_unit_work1,
                                GLuint  tex_unit_work2,
@@ -525,16 +597,16 @@ HPMCsetTraversalHandleProgram( struct  HPMCTraversalHandle *th,
  */
 
 bool
-HPMCextractVertices( struct HPMCTraversalHandle* th );
+HPMCextractVertices( struct HPMCIsoSurfaceRenderer* th, GLboolean flip_orientation );
 
 bool
-HPMCextractVerticesTransformFeedback( struct HPMCTraversalHandle* th );
+HPMCextractVerticesTransformFeedback( struct HPMCIsoSurfaceRenderer* th, GLboolean flip_orientation );
 
 bool
-HPMCextractVerticesTransformFeedbackNV( struct HPMCTraversalHandle* th );
+HPMCextractVerticesTransformFeedbackNV( struct HPMCIsoSurfaceRenderer* th, GLboolean flip_orientation );
 
 bool
-HPMCextractVerticesTransformFeedbackEXT( struct HPMCTraversalHandle* th );
+HPMCextractVerticesTransformFeedbackEXT( struct HPMCIsoSurfaceRenderer* th, GLboolean flip_orientation );
 
 
 #ifdef __cplusplus

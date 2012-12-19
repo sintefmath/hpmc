@@ -61,9 +61,9 @@ GLuint flat_v;
 GLuint flat_p;
 
 struct HPMCConstants* hpmc_c;
-struct HPMCHistoPyramid* hpmc_h;
-struct HPMCTraversalHandle* hpmc_th_shiny;
-struct HPMCTraversalHandle* hpmc_th_flat;
+struct HPMCIsoSurface* hpmc_h;
+struct HPMCIsoSurfaceRenderer* hpmc_th_shiny;
+struct HPMCIsoSurfaceRenderer* hpmc_th_flat;
 
 
 // -----------------------------------------------------------------------------
@@ -137,8 +137,8 @@ void
 init()
 {
     // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = HPMCcreateConstants();
-    hpmc_h = HPMCcreateHistoPyramid( hpmc_c );
+    hpmc_c = HPMCcreateConstants( HPMC_TARGET_GL20_GLSL110, HPMC_DEBUG_STDERR );
+    hpmc_h = HPMCcreateIsoSurface( hpmc_c );
 
     HPMCsetLatticeSize( hpmc_h,
                         volume_size_x,
@@ -162,9 +162,9 @@ init()
 
 
     // --- shiny traversal vertex shader ---------------------------------------
-    hpmc_th_shiny = HPMCcreateTraversalHandle( hpmc_h );
+    hpmc_th_shiny = HPMCcreateIsoSurfaceRenderer( hpmc_h );
 
-    char *traversal_code = HPMCgetTraversalShaderFunctions( hpmc_th_shiny );
+    char *traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shiny );
     const char* shiny_vsrc[2] =
     {
         traversal_code,
@@ -189,14 +189,14 @@ init()
     linkProgram( shiny_p, "shiny program" );
 
     // associate the linked program with the traversal handle
-    HPMCsetTraversalHandleProgram( hpmc_th_shiny,
+    HPMCsetIsoSurfaceRendererProgram( hpmc_th_shiny,
                                    shiny_p,
                                    0, 1, 2 );
 
     // --- flat traversal vertex shader ----------------------------------------
-    hpmc_th_flat = HPMCcreateTraversalHandle( hpmc_h );
+    hpmc_th_flat = HPMCcreateIsoSurfaceRenderer( hpmc_h );
 
-    traversal_code = HPMCgetTraversalShaderFunctions( hpmc_th_shiny );
+    traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shiny );
     const char* flat_src[2] =
     {
         traversal_code,
@@ -212,7 +212,7 @@ init()
     linkProgram( flat_p, "flat program" );
 
     // associate the linked program with the traversal handle
-    HPMCsetTraversalHandleProgram( hpmc_th_flat,
+    HPMCsetIsoSurfaceRendererProgram( hpmc_th_flat,
                                    flat_p,
                                    0, 1, 2 );
 
@@ -225,30 +225,6 @@ init()
 void
 render( float t, float dt, float fps )
 {
-/*
-void
-display()
-{
-    ASSERT_GL;
-
-    // --- timing --------------------------------------------------------------
-    double t = getTimeOfDay();;
-    static double start;
-    static bool first = true;
-    static int frames;
-    static double prevcalc;
-    static char message[256];
-    frames++;
-
-    if( first ) {
-        first = false;
-        start = t;
-        prevcalc = 0.0;
-        frames = 0;
-        message[0] = '\0';
-    }
-    t = t-start;
-*/
     // --- clear screen and set up view ----------------------------------------
     glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -291,25 +267,25 @@ display()
 
     // --- build HistoPyramid --------------------------------------------------
     GLfloat iso = 10.0f;
-    HPMCbuildHistopyramid( hpmc_h, iso );
+    HPMCbuildIsoSurface( hpmc_h, iso );
 
     // --- render solid surface ------------------------------------------------
     glEnable( GL_DEPTH_TEST );
 
     if( !wireframe ) {
-        HPMCextractVertices( hpmc_th_shiny );
+        HPMCextractVertices( hpmc_th_shiny, GL_FALSE );
     }
     else {
         glColor3f( 0.1, 0.1, 0.5 );
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glEnable( GL_POLYGON_OFFSET_FILL );
-        HPMCextractVertices( hpmc_th_flat );
+        HPMCextractVertices( hpmc_th_flat, GL_FALSE );
         glDisable( GL_POLYGON_OFFSET_FILL );
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE );
         glColor3f( 1.0, 1.0, 1.0 );
-        HPMCextractVertices( hpmc_th_flat );
+        HPMCextractVertices( hpmc_th_flat, GL_FALSE );
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 

@@ -92,8 +92,8 @@ GLuint mc_tri_vbo;
 GLsizei mc_tri_vbo_N;
 
 struct HPMCConstants* hpmc_c;
-struct HPMCHistoPyramid* hpmc_h;
-struct HPMCTraversalHandle* hpmc_th;
+struct HPMCIsoSurface* hpmc_h;
+struct HPMCIsoSurfaceRenderer* hpmc_th;
 
 // -----------------------------------------------------------------------------
 std::string fetch_code =
@@ -121,7 +121,7 @@ std::string fetch_code =
 GLuint shaded_v;
 GLuint shaded_f;
 GLuint shaded_p;
-struct HPMCTraversalHandle* hpmc_th_flat;
+struct HPMCIsoSurfaceRenderer* hpmc_th_flat;
 std::string shaded_vertex_shader =
         "varying vec3 normal;\n"
         "void\n"
@@ -152,7 +152,7 @@ std::string shaded_fragment_shader =
 GLuint flat_v;
 GLuint flat_f;
 GLuint flat_p;
-struct HPMCTraversalHandle* hpmc_th_shaded;
+struct HPMCIsoSurfaceRenderer* hpmc_th_shaded;
 std::string flat_vertex_shader =
         "varying vec3 normal;\n"
         "varying vec3 position;\n"
@@ -202,8 +202,8 @@ init()
 #endif
 
     // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = HPMCcreateConstants();
-    hpmc_h = HPMCcreateHistoPyramid( hpmc_c );
+    hpmc_c = HPMCcreateConstants( HPMC_TARGET_GL20_GLSL110, HPMC_DEBUG_STDERR );
+    hpmc_h = HPMCcreateIsoSurface( hpmc_c );
 
     HPMCsetLatticeSize( hpmc_h,
                         volume_size_x,
@@ -228,9 +228,9 @@ init()
 
 
      // --- create traversal vertex shader --------------------------------------
-    hpmc_th_shaded = HPMCcreateTraversalHandle( hpmc_h );
+    hpmc_th_shaded = HPMCcreateIsoSurfaceRenderer( hpmc_h );
 
-    char *traversal_code = HPMCgetTraversalShaderFunctions( hpmc_th_shaded );
+    char *traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shaded );
     const char* shaded_vsrc[2] =
     {
         traversal_code,
@@ -256,14 +256,14 @@ init()
     linkProgram( shaded_p, "shaded program" );
 
     // associate program with traversal handle
-    HPMCsetTraversalHandleProgram( hpmc_th_shaded,
+    HPMCsetIsoSurfaceRendererProgram( hpmc_th_shaded,
                                    shaded_p,
                                    0, 1, 2 );
 
 
-    hpmc_th_flat = HPMCcreateTraversalHandle( hpmc_h );
+    hpmc_th_flat = HPMCcreateIsoSurfaceRenderer( hpmc_h );
 
-    traversal_code = HPMCgetTraversalShaderFunctions( hpmc_th_flat );
+    traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_flat );
     const char* flat_src[2] =
     {
         traversal_code,
@@ -333,7 +333,7 @@ init()
 
 
     // associate program with traversal handle
-    HPMCsetTraversalHandleProgram( hpmc_th_flat,
+    HPMCsetIsoSurfaceRendererProgram( hpmc_th_flat,
                                    flat_p,
                                    0, 1, 2 );
 
@@ -374,7 +374,7 @@ render( float t, float dt, float fps )
 
     // --- build HistoPyramid --------------------------------------------------
     float iso = sin(t);
-    HPMCbuildHistopyramid( hpmc_h, iso );
+    HPMCbuildIsoSurface( hpmc_h, iso );
 
     // --- render solid surface ------------------------------------------------
     glColor3f( 0.5, 0.5, 0.5 );
@@ -385,7 +385,7 @@ render( float t, float dt, float fps )
     if(!wireframe) {
         // render normally
         glColor3f( 1.0-iso, 0.0, iso );
-        HPMCextractVertices( hpmc_th_shaded );
+        HPMCextractVertices( hpmc_th_shaded, GL_FALSE );
     }
     else {
         // resize buffer if needed
@@ -407,14 +407,14 @@ render( float t, float dt, float fps )
 #ifdef GL_EXT_transform_feedback
             glBindBufferBaseEXT( GL_TRANSFORM_FEEDBACK_BUFFER_EXT,
                                  0, mc_tri_vbo );
-            HPMCextractVerticesTransformFeedbackEXT( hpmc_th_flat );
+            HPMCextractVerticesTransformFeedbackEXT( hpmc_th_flat, GL_FALSE );
             glFlush(); // on ATI catalyst 9.10, this is needed to avoid some artefacts
 #endif
         }
         else {
             glBindBufferBaseNV( GL_TRANSFORM_FEEDBACK_BUFFER_NV,
                                 0, mc_tri_vbo );
-            HPMCextractVerticesTransformFeedbackNV( hpmc_th_flat );
+            HPMCextractVerticesTransformFeedbackNV( hpmc_th_flat, GL_FALSE );
         }
         glDisable( GL_POLYGON_OFFSET_FILL );
 

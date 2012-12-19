@@ -71,13 +71,13 @@ vector<GLubyte> dataset;
 GLuint volume_tex;
 
 struct HPMCConstants* hpmc_c;
-struct HPMCHistoPyramid* hpmc_h;
+struct HPMCIsoSurface* hpmc_h;
 
 // -----------------------------------------------------------------------------
 GLuint shaded_v;
 GLuint shaded_f;
 GLuint shaded_p;
-struct HPMCTraversalHandle* hpmc_th_flat;
+struct HPMCIsoSurfaceRenderer* hpmc_th_flat;
 std::string shaded_vertex_shader =
         "varying vec3 normal;\n"
         "void\n"
@@ -106,7 +106,7 @@ std::string shaded_fragment_shader =
 
 GLuint flat_v;
 GLuint flat_p;
-struct HPMCTraversalHandle* hpmc_th_shaded;
+struct HPMCIsoSurfaceRenderer* hpmc_th_shaded;
 std::string flat_vertex_shader =
         "void\n"
         "main()\n"
@@ -140,8 +140,8 @@ init()
     glPixelStorei( GL_UNPACK_ALIGNMENT, alignment );
 
     // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = HPMCcreateConstants();
-    hpmc_h = HPMCcreateHistoPyramid( hpmc_c );
+    hpmc_c = HPMCcreateConstants( HPMC_TARGET_GL20_GLSL110, HPMC_DEBUG_STDERR );
+    hpmc_h = HPMCcreateIsoSurface( hpmc_c );
 
     HPMCsetLatticeSize( hpmc_h,
                         volume_size_x,
@@ -164,9 +164,9 @@ init()
                            GL_FALSE );
 
     // --- create traversal vertex shader --------------------------------------
-    hpmc_th_shaded = HPMCcreateTraversalHandle( hpmc_h );
+    hpmc_th_shaded = HPMCcreateIsoSurfaceRenderer( hpmc_h );
 
-    char *traversal_code = HPMCgetTraversalShaderFunctions( hpmc_th_shaded );
+    char *traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shaded );
     const char* shaded_vsrc[2] =
     {
         traversal_code,
@@ -192,13 +192,13 @@ init()
     linkProgram( shaded_p, "shaded program" );
 
     // associate program with traversal handle
-    HPMCsetTraversalHandleProgram( hpmc_th_shaded,
+    HPMCsetIsoSurfaceRendererProgram( hpmc_th_shaded,
                                    shaded_p,
                                    0, 1, 2 );
 
-    hpmc_th_flat = HPMCcreateTraversalHandle( hpmc_h );
+    hpmc_th_flat = HPMCcreateIsoSurfaceRenderer( hpmc_h );
 
-    traversal_code = HPMCgetTraversalShaderFunctions( hpmc_th_flat );
+    traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_flat );
     const char* flat_src[2] =
     {
         traversal_code,
@@ -215,7 +215,7 @@ init()
     linkProgram( flat_p, "flat program" );
 
     // associate program with traversal handle
-    HPMCsetTraversalHandleProgram( hpmc_th_flat,
+    HPMCsetIsoSurfaceRendererProgram( hpmc_th_flat,
                                    flat_p,
                                    0, 1, 2 );
 
@@ -235,14 +235,17 @@ render( float t, float dt, float fps )
 
     glMatrixMode( GL_PROJECTION );
     glLoadIdentity();
-    glFrustum( -0.14*aspect_x, 0.14*aspect_x, -0.14*aspect_y, 0.14*aspect_y, 0.5, 3.0 );
+    glFrustum( -0.15*aspect_x, 0.15*aspect_x, -0.15*aspect_y, 0.15*aspect_y, 0.5, 3.0 );
+
+//    t = 5.5;
 
     glMatrixMode( GL_MODELVIEW );
     glLoadIdentity();
     glTranslatef( 0.0f, 0.0f, -2.0f );
-    glRotatef( 20, 1.0, 0.0, 0.0 );
     glRotatef( 20.0*t, 0.0, 1.0, 0.0 );
     glRotatef( -90, 1.0, 0.0, 0.0 );
+
+
 
     float max_size = max( volume_size_x, max( volume_size_y, volume_size_z ) );
     glTranslatef( -0.5f*volume_size_x / max_size,
@@ -251,24 +254,25 @@ render( float t, float dt, float fps )
 
     // --- build HistoPyramid --------------------------------------------------
     float iso = 0.5 + 0.48*cosf( t );
-    HPMCbuildHistopyramid( hpmc_h, iso );
+//    float iso = 0.21;//0.5 + 0.48*cosf( t );
+    HPMCbuildIsoSurface( hpmc_h, iso );
 
     // --- render surface ------------------------------------------------------
     glEnable( GL_DEPTH_TEST );
     if( !wireframe ) {
         glColor3f( 1.0-iso, 0.0, iso );
-        HPMCextractVertices( hpmc_th_shaded );
+        HPMCextractVertices( hpmc_th_shaded, GL_FALSE );
     }
     else {
         glColor3f( 0.2*(1.0-iso), 0.0, 0.2*iso );
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glEnable( GL_POLYGON_OFFSET_FILL );
-        HPMCextractVertices( hpmc_th_flat );
+        HPMCextractVertices( hpmc_th_flat, GL_FALSE );
         glDisable( GL_POLYGON_OFFSET_FILL );
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE );
         glColor3f( 1.0, 1.0, 1.0 );
-        HPMCextractVertices( hpmc_th_flat );
+        HPMCextractVertices( hpmc_th_flat, GL_FALSE );
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
@@ -295,7 +299,7 @@ render( float t, float dt, float fps )
     glColor3f( 1.0, 1.0, 1.0 );
     glRasterPos2f( -0.99, 0.95 );
     for(int i=0; i<255 && message[i] != '\0'; i++) {
-        glutBitmapCharacter( GLUT_BITMAP_8_BY_13, (int)message[i] );
+//        glutBitmapCharacter( GLUT_BITMAP_8_BY_13, (int)message[i] );
     }
 }
 
@@ -339,7 +343,8 @@ main(int argc, char **argv)
         }
     }
     glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
-    glutInitWindowSize( 1280, 720 );
+    glutInitWindowSize( 2598, 3307 );
+//    glutInitWindowSize( 1280, 720 );
     glutCreateWindow( argv[0] );
     glewInit();
     glutReshapeFunc( reshape );

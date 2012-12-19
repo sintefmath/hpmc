@@ -1,3 +1,12 @@
+2012-xxxxx: Release 1.1
+    * Continued work on making HPMC to be clean C++ internally (and not C).
+    * Added ability for HPMC to use specific feature sets of an given OpenGL
+      version. Should work using the prescribed core version.
+    * Added KHR_debug output (and removed a lot of CHECK_GL).
+    * GPGPU pass uses GL_TRIANGLE_STRIP instead of GL_QUADS.
+    * Better support for binary fields (e.g. using tables for normals).
+    * Removed obsolete transform feedback extensions (supports only 3.0 core)
+
 2009-12-01: Release 1.0.1
 
     * Fixes some mac-specific issues.

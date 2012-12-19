@@ -92,8 +92,8 @@ GLuint particles_vbo_n;  // number of particles in buffer
 GLuint particles_vbo_N;  // size of particle buffer
 
 struct HPMCConstants* hpmc_c;
-struct HPMCHistoPyramid* hpmc_h;
-struct HPMCTraversalHandle* hpmc_th;
+struct HPMCIsoSurface* hpmc_h;
+struct HPMCIsoSurfaceRenderer* hpmc_th;
 
 // -----------------------------------------------------------------------------
 std::string fetch_code =
@@ -444,8 +444,8 @@ init()
     }
 
     // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = HPMCcreateConstants();
-    hpmc_h = HPMCcreateHistoPyramid( hpmc_c );
+    hpmc_c = HPMCcreateConstants( HPMC_TARGET_GL20_GLSL110, HPMC_DEBUG_STDERR );
+    hpmc_h = HPMCcreateIsoSurface( hpmc_c );
 
     HPMCsetLatticeSize( hpmc_h,
                         volume_size_x,
@@ -469,9 +469,9 @@ init()
     ASSERT_GL;
 
     // --- create traversal vertex shader --------------------------------------
-    hpmc_th = HPMCcreateTraversalHandle( hpmc_h );
+    hpmc_th = HPMCcreateIsoSurfaceRenderer( hpmc_h );
 
-    char *traversal_code = HPMCgetTraversalShaderFunctions( hpmc_th );
+    char *traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th );
     const char* vertex_shader[2] =
     {
         traversal_code,
@@ -504,8 +504,8 @@ init()
     setFeedbackVaryings( onscreen_p, 2, onscreen_varying_names );
     ASSERT_GL;
 
-    // associate the linked program with the traversal handle 
-    HPMCsetTraversalHandleProgram( hpmc_th,
+    // associate the linked program with the traversal handle
+    HPMCsetIsoSurfaceRendererProgram( hpmc_th,
                                    onscreen_p,
                                    0, 1, 2 );
     ASSERT_GL;
@@ -725,7 +725,7 @@ render( float t, float dt, float fps )
     GLuint builder = HPMCgetBuilderProgram( hpmc_h );
     glUseProgram( builder );
     glUniform1fv( glGetUniformLocation( builder, "shape" ), 12, &CC[0] );
-    HPMCbuildHistopyramid( hpmc_h, iso );
+    HPMCbuildIsoSurface( hpmc_h, iso );
 
     // Get number of vertices in MC triangulation, forces CPU-GPU sync.
     GLsizei N = HPMCacquireNumberOfVertices( hpmc_h );
@@ -754,7 +754,7 @@ render( float t, float dt, float fps )
     glUseProgram( onscreen_p );
     glUniform1fv( glGetUniformLocation( onscreen_p, "shape" ), 12, &CC[0] );
     glBindBufferBaseNV( GL_TRANSFORM_FEEDBACK_BUFFER_NV, 0, mc_tri_vbo );
-    HPMCextractVerticesTransformFeedbackNV( hpmc_th );
+    HPMCextractVerticesTransformFeedbackNV( hpmc_th, GL_FALSE );
     ASSERT_GL;
 
     // --- emit particles ------------------------------------------------------

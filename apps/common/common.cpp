@@ -56,6 +56,7 @@ using std::back_insert_iterator;
 double aspect_x=1.0;
 double aspect_y=1.0;
 bool wireframe = false;
+bool record = false;
 
 // -----------------------------------------------------------------------------
 #define ASSERT_GL do {                                                         \
@@ -63,9 +64,21 @@ bool wireframe = false;
     if( err != GL_NO_ERROR ) {                                                 \
         cerr << __FILE__ << '@' << __LINE__ << ": OpenGL error:"               \
              << err << endl;                                                   \
-        exit( EXIT_FAILURE );                                                  \
+        /*exit( EXIT_FAILURE );*/                                                  \
     }                                                                          \
 } while(0);
+
+// -----------------------------------------------------------------------------
+void
+checkFramebufferStatus( const std::string& file, const int line )
+{
+    GLenum status = glCheckFramebufferStatusEXT( GL_FRAMEBUFFER_EXT );
+    if( status != GL_FRAMEBUFFER_COMPLETE_EXT ) {
+        cerr << __FILE__ << '@' << __LINE__ << ": Framebuffer error: "
+             << status << endl;
+        exit( EXIT_FAILURE );
+    }
+}
 
 // -----------------------------------------------------------------------------
 double
@@ -177,10 +190,13 @@ setFeedbackVaryings( GLuint program,
 void
 keyboard( unsigned char key, int x, int y )
 {
-    if(key == 'w') {
+    if(key == 'r') {
+        record = !record;
+    }
+    else if(key == 'w') {
         wireframe = !wireframe;
     }
-    else if(key == 'q') {
+    else if(key == 'q' || key == 27) {
         exit( EXIT_SUCCESS );
     }
 }
@@ -214,10 +230,26 @@ void
 render( float t, float dt, float fps );
 
 // --- calculate fps and call render loop func ---------------------------------
+
+#ifdef SINTEF_INTERNAL
+struct frame_info
+{
+    frame_info( float t, float fps, bool wf )
+            : m_t(t), m_fps( fps ), m_wf(wf) {}
+    float m_t;
+    float m_fps;
+    bool  m_wf;
+};
+#include "/work/projects/siut/siut/io_utils/DumpFrames.hpp"
+#endif
+
 void
 display()
 {
-    ASSERT_GL;
+    GLenum error = glGetError();
+    while( error != GL_NO_ERROR ) {
+        error = glGetError();
+    }
 
     double t = getTimeOfDay();;
     static double pt;
@@ -239,7 +271,52 @@ display()
         last_fps_t = t;
         frames = 0;
     }
+#ifdef SINTEF_INTERNAL
+    static std::vector<frame_info> sequence;
+    static int seq_p = 0;
+    static float rpt;
+    static float rlf;
+    if( record ) {
+        sequence.push_back( frame_info( t, fps, wireframe ) );
+        float rpt = sequence[0].m_t;
+        float rlf = sequence[0].m_t;
+        render( t, dt, fps );
+    }
+    else if( seq_p < sequence.size() ) {
+        float rt = sequence[ seq_p ].m_t;
+        float rfps = sequence[ seq_p ].m_fps;
+        wireframe = sequence[ seq_p ].m_wf;
+        float rdt = rt - rpt;
+        render( rt, rdt, rfps );
+        if( (rdt==0.0) || ((rt-rlf) > (1.0/60.0)) ) {
+            int no_frames = floorf( (rt-rlf)*60.0 );
+            std::cerr << "storing " << no_frames << " frame(s) at t=" << t << ", dt = " << dt << "\n";
+            for(int i=0; i<no_frames; i++) {
+                siut::io_utils::dumpFrames( "/work/frame_" );
+            }
+            rlf = rt - ((rt-rlf)*60.0-floorf( (rt-rlf)*60.0 ))/60.0;
+        }
+        rpt = rt;
+        seq_p++;
+    }
+    else if (seq_p > 0) {
+        keyboard( 'q', 0, 0 );
+    }
+    else {
+        render( t, dt, fps );
+    }
+#else
     render( t, dt, fps );
+#endif
     pt = t;
     glutSwapBuffers();
+
+    error = glGetError();
+    while( error != GL_NO_ERROR ) {
+        fprintf( stderr, "render loop produced GL error %x\n", error );
+        error = glGetError();
+    }
 }
+
+
+
