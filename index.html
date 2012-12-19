@@ -73,33 +73,28 @@ Computer Graphics Forum 27 (8), 2008.</p>
 
 <p>The best way of helping out is to use HPMC. Bug reports and patches are always welcome; If you have trouble with HPMC on a system configuration that should be able to run it, please contact the author. Also, if you find this software useful, sending the author an email stating this is an excellent motivation for continuing the development.</p>
 
-<h3>Downloads</h3>
+<h3>Releases</h3>
 
-<h5>Version 1.0.1 (current release)</h5>
-
+<ul>
+<li>Version 1.0.1 (current release)
 <ul>
 <li>
 <a href="http://erikd.at.ifi.uio.no/hpmc-1.0.1.tar.gz">hpmc-1.0.1.tar.gz</a> Full source code.</li>
 <li>
 <a href="http://erikd.at.ifi.uio.no/hpmc-1.0.1.zip">hpmc-1.0.1.zip</a> Full source code with Visual Studio 2008 
 solution and project files.</li>
-</ul><h5>Minimal system requirements:</h5>
-
+<li><a href="http://public.ict.sintef.no/hpmc/doxydocs/index.html">Online documentation</a>.</li>
+<li>Minimal system requirements
 <ul>
-<li>A C++ compiler.</li>
 <li>CMake, unless you use the Visual Studio solution.</li>
-<li>GLEW, version 1.5.1 or newer.</li>
-<li>An OpenGL implementation:
-
-<ul>
-<li>Minimum is OpenGL 2.0 with GL_ARB_texture_float extension allowing texturing from a mip-map'ed GL_ALPHA32F_ARB Texture2D in the vertex shader.</li>
-<li>Support of texturing from Texture3D in the vertex shader is required if you intend to encode the scalar field in a 3D texture.</li>
-<li>Use of transform feedback requires either OpenGL 3.0, the GL_NV_transform_feedback, or the GL_EXT_transform_feedback extensions.</li>
+<li>GLEW 1.5.1 or newer.</li>
+<li>FreeGLUT or GLUT if you intend to build the sample applications.</li>
+<li>OpenGL 2.0 with GL_ARB_texture_float extension allowing texturing from mip-map'ed GL_ALPHA32F_ARB Texture2D in the vertex shader.</li>
+<li>OpenGL 2.0 with support of texturing from Texture3D in the vertex shader is required if you intend to encode the scalar field in a 3D texture.</li>
+<li>OpenGL 3.0 or OpenGL 2.0 with either GL_NV_transform_feedback or GL_EXT_transform_feedback if you intend to use transform feedback.</li>
 </ul>
 </li>
-<li>FreeGLUT or GLUT if you intend to build the examples..</li>
-</ul><p>In particular, HPMC has been tested and verified to work the following system configurations:</p>
-
+<li>Built and tested on the following configurations:
 <ul>
 <li>Gentoo linux-2.6.30, GeForce GTX 260, NVIDIA Display Driver 190.18.05.</li>
 <li>Gentoo linux-2.6.30, GeForce 8400M GS,NVIDA Display Driver 190.42</li>
@@ -117,42 +112,43 @@ solution and project files.</li>
 <li>Windows XP SP2, GeForce 8800 GT, NVIDIA Display Driver 195.62, Visual Studio 2005.</li>
 <li>MacOS X 10.6.2, GeForce 9400M, Display Driver 1.6.6, i686-apple-darwin10-gcc-4.2.1
 <em>Note: particles do not run as GL_NV_transform_feedback seems to be missing</em>.</li>
-</ul><h3>Sample applications</h3>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+
+<h3>Sample applications</h3>
 
 <p>The HPMC distribution currently contains five sample applications:</p>
 
-<h5>Extracting iso-surfaces from an existing voxel set (texture3D.cpp)</h5>
+<h4>Extracting iso-surfaces from an existing voxel set (texture3D.cpp)</h4>
+<iframe align=right width="320" height="197" src="http://www.youtube.com/embed/Gl_ft7dxpps" frameborder="0" allowfullscreen></iframe>
 
 <p>This example demonstrates the most basic use of HPMC, providing the scalar field as a 3D texture. The example gets volume dimensions and a file name of a 8-bit raw dataset from the command line, reads the data into a 3D texture and passes this texture to HPMC. For each frame, a time-dependent iso-value is calculated, passed to HPMC which analyzes the scalar field using this iso-value. Then, HPMC renders the corresponding iso-surface. Wireframe rendering is done straight-forwardly by rendering the surface twice (traversing the HistoPyramid both times), one time with solid triangles in a dark color offset slightly away from the camera, and the second time using the line-drawing polygon mode to render the actual wireframe in white.</p>
 
-<ul>
-<li>
-<a href="http://youtu.be/Gl_ft7dxpps">Video on Youtube</a>.</li>
-</ul><h5>Extracting iso-surfaces from a scalar field defined using shader code (cayley.cpp)</h5>
+<h4>Extracting iso-surfaces from a scalar field defined using shader code (cayley.cpp)</h4>
+<iframe align=right width="320" height="197" src="http://www.youtube.com/embed/c-o9IMto1ic" frameborder="0" allowfullscreen></iframe>
 
 <p>This example is similar to the texture3d example. The difference is that instead of fetching scalar values from a texture 3d, the scalar value is fetched from an application provided shader function, which in this example evaluates the algebraic surface defined by 1 - 16xyz -4x^2 - 4y^2 - 4z^2 = iso. The application also provides the gradient field for this function, which is used instead of forward differences to determine surface normals.</p>
 
 <p>For each frame, a time-dependent iso-value is calculated, passed to HPMC which analyzes the scalar field using this iso-value. Then, HPMC renders the corresponding iso-surface. Wireframe rendering is done straight-forwardly by rendering the surface twice (traversing the HistoPyramid both times), one time with solid triangles in a dark color offset slightly away from the camera, and the second time using the line-drawing polygon mode to render the actual wireframe in white.</p>
 
-<ul>
-<li>
-<a href="http://youtu.be/c-o9IMto1ic">Video on YouTube</a>.</li>
-</ul><h5>Metaballs (metaballs.cpp)</h5>
+<h4>Metaballs (metaballs.cpp)</h4>
+<iframe align=right width="320" height="197" src="http://www.youtube.com/embed/HJSkNlxiYH0" frameborder="0" allowfullscreen></iframe>
 
 <p>This example demonstrates the use of a custom fetch function and how the application can get hold of program names to update uniform variables. In principle, the fetch calculates the distance field defined by eight metaballs, whose position is provided through uniform variables. To make the example more interesting, the domain is twisted time-dependently along the z- and y-axes.</p>
 
-<ul>
-<li>
-<a href="http://youtu.be/HJSkNlxiYH0">Video on YouTube</a>.</li>
-</ul><h5>Basic use of transform feedback (tranform_feedback.cpp)</h5>
+<h4>Basic use of transform feedback (tranform_feedback.cpp)</h4>
+<iframe align=right width="320" height="197" src="http://www.youtube.com/embed/RlYYnsIS-Rs" frameborder="0" allowfullscreen></iframe>
 
 <p>Extracting iso-surfaces from a scalar field defined in terms shader code, and use transform feedback to capture geometry for wireframe rendering. This example is basically the same as cayley, the main difference is that instead of traversing the HistoPyramid twice when rendering wireframe, transform feedback is used to capture the geometry in the flat shading pass, and the result of this is rendered again using plain OpenGL to produce the line rendering.</p>
 
 <p>The actual surface is an algebraic surface defined by 1 - 16xyz -4x^2 - 4y^2 - 4z^2 = iso. The application also provides the gradient field for this function, which is used instead of forward differences to determine surface normals.</p>
 
-<ul>
-<li><a href="http://youtu.be/RlYYnsIS-Rs">Video on YouTube</a></li>
-</ul><h5>Morphing algebraic shapes that emits particles (particles.cpp)</h5>
+<h4>Morphing algebraic shapes that emits particles (particles.cpp)</h4>
+<iframe align=right width="320" height="197" src="http://www.youtube.com/embed/S5NZxxDooCU" frameborder="0" allowfullscreen></iframe>
 
 <p>This example demonstrates using the surface generated by HPMC as input to a geometry shader that emits particles randomly over the surface. The particles are pulled by gravity, and uses the scalar field passed to HPMC to determine when particles hit the surface, and in this case, they bounce. To test if a particle hits the surface is done by evaluating the sign of the scalar field at the position of the particle at the beginning of the timestep and at the end. This approach is a bit too simple for these shapes, as they usually have a great deal of regions with multiple zeros, and this leads to the artefact of particles falling through the surface at some places.</p>
 
@@ -162,10 +158,9 @@ solution and project files.</li>
 <li>Use HPMC to determine the iso-surface of the current scalar field</li>
 <li>Render the iso surface, but tap vertex position and normals into a transform feedback buffer.</li>
 <li>Pass this buffer into a geometry shader that emits particles (points) at some of the triangles, output stored in another transform feedback buffer.</li>
-<li>Pass the particles from the previous frame into a geometry shader that does a series of Euler-steps to integrate velocity and position, checking for collisions in-between. The output of this pass is concatenated at the end of the newly created particles using transform feedback.</li>
-<li><p>Render the particles using a geometry shader that expands the point positions into quadrilateral screen-aligned billboards. </p></li>
-<li><p><a href="http://youtu.be/S5NZxxDooCU">Video on YouTube</a></p></li>
-</ul><h3>Further references</h3>
+<li>Pass the particles from the previous frame into a geometry shader that does a series of Euler-steps to integrate velocity and position, checking for collisions in-between. The output of this pass is concatenated at the end of the newly created particles using transform feedback.</
+
+<h3>Further references</h3>
 
 <p>HistoPyramids are used and discussed in the following papers:</p>
 
