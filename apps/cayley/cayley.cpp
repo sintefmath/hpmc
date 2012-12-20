@@ -178,7 +178,7 @@ init( int argc, char** argv )
 
 
     traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_flat );
-    GLint flat_v = glCreateShader( GL_VERTEX_SHADER );
+    GLuint flat_v = glCreateShader( GL_VERTEX_SHADER );
     if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
         sources[0] = traversal_code;
         sources[1] = flat_vertex_shader_110.c_str();
@@ -192,7 +192,7 @@ init( int argc, char** argv )
     }
     compileShader( flat_v, "flat vertex shader" );
     free( traversal_code );
-    flat_f = glCreateShader( GL_FRAGMENT_SHADER );
+    GLuint flat_f = glCreateShader( GL_FRAGMENT_SHADER );
     if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
         sources[0] = flat_fragment_shader_110.c_str();
         glShaderSource( flat_f, 1, sources, NULL );

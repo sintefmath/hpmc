@@ -65,49 +65,67 @@ GLuint volume_tex;
 struct HPMCConstants* hpmc_c;
 struct HPMCIsoSurface* hpmc_h;
 
-// -----------------------------------------------------------------------------
 GLuint shaded_v;
 GLuint shaded_f;
 GLuint shaded_p;
 struct HPMCIsoSurfaceRenderer* hpmc_th_flat;
-std::string shaded_vertex_shader_110 =
-        "varying vec3 normal;\n"
-        "void\n"
-        "main()\n"
-        "{\n"
-        "    vec3 p, n;\n"
-        "    extractVertex( p, n );\n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * vec4( p, 1.0 );\n"
-        "    normal = gl_NormalMatrix * n;\n"
-        "    gl_FrontColor = gl_Color;\n"
-        "}\n";
-std::string shaded_fragment_shader_110 =
-        "varying vec3 normal;\n"
-        "void\n"
-        "main()\n"
-        "{\n"
-        "    const vec3 v = vec3( 0.0, 0.0, 1.0 );\n"
-        "    vec3 l = normalize( vec3( 1.0, 1.0, 1.0 ) );\n"
-        "    vec3 h = normalize( v+l );\n"
-        "    vec3 n = normalize( normal );\n"
-        "    float diff = max( 0.1, dot( n, l ) );\n"
-        "    float spec = pow( max( 0.0, dot(n, h)), 20.0);\n"
-        "    gl_FragColor = diff * gl_Color +\n"
-        "                   spec * vec4(1.0);\n"
-        "}\n";
 
 GLuint flat_v;
 GLuint flat_p;
 struct HPMCIsoSurfaceRenderer* hpmc_th_shaded;
-std::string flat_vertex_shader_110 =
-        "void\n"
-        "main()\n"
-        "{\n"
-        "    vec3 p, n;\n"
-        "    extractVertex( p, n );\n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * vec4( p, 1.0 );\n"
-        "    gl_FrontColor = gl_Color;\n"
-        "}\n";
+
+/*
+int
+main(int argc, char **argv)
+{
+    glutInit( &argc, argv );
+
+    if( argc != 5 ) {
+        cerr << "HPMC demo application that visualizes raw volumes."<<endl<<endl;
+        cerr << "Usage: " << argv[0] << " xsize ysize zsize rawfile"<<endl<<endl;
+        cerr << "where: xsize    The number of samples in the x-direction."<<endl;
+        cerr << "       ysize    The number of samples in the y-direction."<<endl;
+        cerr << "       zsize    The number of samples in the z-direction."<<endl;
+        cerr << "       rawfile  Filename of a raw set of bytes describing"<<endl;
+        cerr << "                the volume."<<endl<<endl;
+        cerr << "Raw volumes can be found e.g. at http://www.volvis.org."<<endl<<endl;
+        cerr << "Example usage:"<<endl;
+        cerr << "    " << argv[0] << " 64 64 64 neghip.raw"<< endl;
+        cerr << "    " << argv[0] << " 256 256 256 foot.raw"<< endl;
+        cerr << "    " << argv[0] << " 256 256 178 BostonTeapot.raw"<< endl;
+        cerr << "    " << argv[0] << " 301 324 56 lobster.raw"<< endl;
+        exit( EXIT_FAILURE );
+    }
+    else {
+        volume_size_x = atoi( argv[1] );
+        volume_size_y = atoi( argv[2] );
+        volume_size_z = atoi( argv[3] );
+
+        dataset.resize( volume_size_x * volume_size_y * volume_size_z );
+        ifstream datafile( argv[4], std::ios::in | std::ios::binary );
+        if( datafile.good() ) {
+            datafile.read( reinterpret_cast<char*>( &dataset[0] ),
+                           dataset.size() );
+        }
+        else {
+            cerr << "Error opening \"" << argv[4] << "\" for reading." << endl;
+            exit( EXIT_FAILURE );
+        }
+    }
+    glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
+    glutInitWindowSize( 2598, 3307 );
+//    glutInitWindowSize( 1280, 720 );
+    glutCreateWindow( argv[0] );
+    glewInit();
+    glutReshapeFunc( reshape );
+    glutDisplayFunc( display );
+    glutKeyboardFunc( keyboard );
+    glutIdleFunc( idle );
+    init();
+    glutMainLoop();
+    return EXIT_SUCCESS;
+}
+*/
 
 // -----------------------------------------------------------------------------
 void
@@ -145,7 +163,7 @@ init()
                      volume_size_y-1,
                      volume_size_z-1 );
 
-    float max_size = max( volume_size_x, max( volume_size_y, volume_size_z ) );
+    float max_size = std::max( volume_size_x, std::max( volume_size_y, volume_size_z ) );
     HPMCsetGridExtent( hpmc_h,
                        volume_size_x / max_size,
                        volume_size_y / max_size,
@@ -219,8 +237,6 @@ init()
 void
 render( float t, float dt, float fps )
 {
-    ASSERT_GL;
-
     // --- clear screen and set up view ----------------------------------------
     glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -239,7 +255,7 @@ render( float t, float dt, float fps )
 
 
 
-    float max_size = max( volume_size_x, max( volume_size_y, volume_size_z ) );
+    float max_size = std::max( volume_size_x, std::max( volume_size_y, volume_size_z ) );
     glTranslatef( -0.5f*volume_size_x / max_size,
                   -0.5f*volume_size_y / max_size,
                   -0.5f*volume_size_z / max_size );
@@ -295,55 +311,3 @@ render( float t, float dt, float fps )
     }
 }
 
-
-// -----------------------------------------------------------------------------
-int
-main(int argc, char **argv)
-{
-    glutInit( &argc, argv );
-
-    if( argc != 5 ) {
-        cerr << "HPMC demo application that visualizes raw volumes."<<endl<<endl;
-        cerr << "Usage: " << argv[0] << " xsize ysize zsize rawfile"<<endl<<endl;
-        cerr << "where: xsize    The number of samples in the x-direction."<<endl;
-        cerr << "       ysize    The number of samples in the y-direction."<<endl;
-        cerr << "       zsize    The number of samples in the z-direction."<<endl;
-        cerr << "       rawfile  Filename of a raw set of bytes describing"<<endl;
-        cerr << "                the volume."<<endl<<endl;
-        cerr << "Raw volumes can be found e.g. at http://www.volvis.org."<<endl<<endl;
-        cerr << "Example usage:"<<endl;
-        cerr << "    " << argv[0] << " 64 64 64 neghip.raw"<< endl;
-        cerr << "    " << argv[0] << " 256 256 256 foot.raw"<< endl;
-        cerr << "    " << argv[0] << " 256 256 178 BostonTeapot.raw"<< endl;
-        cerr << "    " << argv[0] << " 301 324 56 lobster.raw"<< endl;
-        exit( EXIT_FAILURE );
-    }
-    else {
-        volume_size_x = atoi( argv[1] );
-        volume_size_y = atoi( argv[2] );
-        volume_size_z = atoi( argv[3] );
-
-        dataset.resize( volume_size_x * volume_size_y * volume_size_z );
-        ifstream datafile( argv[4], std::ios::in | std::ios::binary );
-        if( datafile.good() ) {
-            datafile.read( reinterpret_cast<char*>( &dataset[0] ),
-                           dataset.size() );
-        }
-        else {
-            cerr << "Error opening \"" << argv[4] << "\" for reading." << endl;
-            exit( EXIT_FAILURE );
-        }
-    }
-    glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
-    glutInitWindowSize( 2598, 3307 );
-//    glutInitWindowSize( 1280, 720 );
-    glutCreateWindow( argv[0] );
-    glewInit();
-    glutReshapeFunc( reshape );
-    glutDisplayFunc( display );
-    glutKeyboardFunc( keyboard );
-    glutIdleFunc( idle );
-    init();
-    glutMainLoop();
-    return EXIT_SUCCESS;
-}
