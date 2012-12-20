@@ -218,10 +218,18 @@ HPMCgetBuilderProgram( struct HPMCIsoSurface*  h )
 }
 
 
-//void
-//HPMCdestroyIsoSurface( struct HPMCIsoSurface* handle );
+// -----------------------------------------------------------------------------
+void
+HPMCdestroyIsoSurface( struct HPMCIsoSurface* h )
+{
+    if( h == NULL ) {
+        return;
+    }
+    Logger log( h->constants(), package + ".destroyIsoSurface" );
+    delete h;
+}
 
-
+// -----------------------------------------------------------------------------
 void
 HPMCbuildIsoSurface( struct   HPMCIsoSurface* h,
                        GLfloat  threshold )
@@ -295,14 +303,14 @@ HPMCcreateIsoSurfaceRenderer( struct HPMCIsoSurface* h )
     return new HPMCIsoSurfaceRenderer(h);
 }
 
-
+// -----------------------------------------------------------------------------
 void
 HPMCdestroyIsoSurfaceRenderer( struct HPMCIsoSurfaceRenderer* th )
 {
-    Logger log( th->m_handle->constants(), package + ".destroyIsoSurfaceRenderer", true );
     if( th == NULL ) {
         return;
     }
+    Logger log( th->m_handle->constants(), package + ".destroyIsoSurfaceRenderer", true );
     delete th;
 }
 
