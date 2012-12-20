@@ -1,37 +1,32 @@
-/* -*- mode: C++; tab-width:4; c-basic-offset: 4; indent-tabs-mode:nil -*-
- ***********************************************************************
+/* Copyright STIFTELSEN SINTEF 2012
  *
- *  File: common.cpp
+ * Authors: Christopher Dyken <christopher.dyken@sintef.no>
  *
- *  Created: 24. June 2009
+ * This file is part of the HPMC library.
  *
- *  Version: $Id: $
+ * The HPMC library is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License ("GPL") as published by the
+ * Free Software Foundation, either version 2 of the License, or (at your
+ * option) any later version.
  *
- *  Authors: Christopher Dyken <christopher.dyken@sintef.no>
+ * The HPMC library is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
- *  This file is part of the HPMC library.
- *  Copyright (C) 2009 by SINTEF.  All rights reserved.
- *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License
- *  ("GPL") version 2 as published by the Free Software Foundation.
- *  See the file LICENSE.GPL at the root directory of this source
- *  distribution for additional information about the GNU GPL.
- *
- *  For using HPMC with software that can not be combined with the
- *  GNU GPL, please contact SINTEF for aquiring a commercial license
- *  and support.
- *
- *  SINTEF, Pb 124 Blindern, N-0314 Oslo, Norway
- *  http://www.sintef.no
- *********************************************************************/
+ * You should have received a copy of the GNU General Public License along with
+ * the HPMC library.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include <cstring>
 #include <iostream>
+#include <sstream>
 #include <algorithm>
+#include <iomanip>
 #include <vector>
 #include <string>
 #include <fstream>
+#include <cmath>
 #include <GL/glew.h>
 #if defined(__unix) || defined(__APPLE__)
 #include <sys/time.h>
@@ -43,6 +38,17 @@
 #include <windows.h>
 #define snprintf _snprintf_s
 #endif
+/*
+#ifdef __APPLE__
+#include <glut.h>
+#else
+#include <GL/glut.h>
+#endif
+*/
+#include <GL/freeglut.h>
+#include <GL/freeglut_ext.h>
+#include "common.hpp"
+
 using std::min;
 using std::max;
 using std::cerr;
@@ -53,10 +59,177 @@ using std::ofstream;
 using std::copy;
 using std::back_insert_iterator;
 
-double aspect_x=1.0;
-double aspect_y=1.0;
-bool wireframe = false;
-bool record = false;
+double              aspect_x=1.0;
+double              aspect_y=1.0;
+bool                wireframe = false;
+bool                record = false;
+bool                binary = false;
+HPMCTarget          hpmc_target     = HPMC_TARGET_GL20_GLSL110;
+HPMCDebugBehaviour  hpmc_debug      = HPMC_DEBUG_KHR_DEBUG;
+
+// === misc shader sources =====================================================
+
+const std::string shader_version_130 =
+        "#version 130\n";
+
+const std::string shaded_vertex_shader_110 =
+        "varying vec3 normal;\n"
+        "void\n"
+        "main()\n"
+        "{\n"
+        "    vec3 p, n;\n"
+        "    extractVertex( p, n );\n"
+        "    gl_Position = gl_ModelViewProjectionMatrix * vec4( p, 1.0 );\n"
+        "    normal = gl_NormalMatrix * n;\n"
+        "    gl_FrontColor = gl_Color;\n"
+        "}\n";
+
+const std::string shaded_vertex_shader_130 =
+        "out vec3 normal;\n"
+        "uniform mat4 PM;\n"
+        "uniform mat3 NM;\n"
+        "void\n"
+        "main()\n"
+        "{\n"
+        "    vec3 p, n;\n"
+        "    extractVertex( p, n );\n"
+        "    gl_Position = PM * vec4( p, 1.0 );\n"
+        "    normal = NM * n;\n"
+        "}\n";
+
+const std::string shaded_fragment_shader_110 =
+        "varying vec3 normal;\n"
+        "void\n"
+        "main()\n"
+        "{\n"
+        "    const vec3 v = vec3( 0.0, 0.0, 1.0 );\n"
+        "    vec3 l = normalize( vec3( 1.0, 1.0, 1.0 ) );\n"
+        "    vec3 h = normalize( v+l );\n"
+        "    vec3 n = normalize( normal );\n"
+        "    float diff = max( 0.1, dot( n, l ) );\n"
+        "    float spec = pow( max( 0.0, dot(n, h)), 20.0);\n"
+        "    gl_FragColor = diff * gl_Color + spec * vec4(1.0);\n"
+        "}\n";
+const std::string shaded_fragment_shader_130 =
+        "in vec3 normal;\n"
+        "out vec4 fragment;\n"
+        "uniform vec4 color;\n"
+        "void\n"
+        "main()\n"
+        "{\n"
+        "    const vec3 v = vec3( 0.0, 0.0, 1.0 );\n"
+        "    vec3 l = normalize( vec3( 1.0, 1.0, 1.0 ) );\n"
+        "    vec3 h = normalize( v+l );\n"
+        "    vec3 n = normalize( normal );\n"
+        "    float diff = max( 0.1, dot( n, l ) );\n"
+        "    float spec = pow( max( 0.0, dot(n, h)), 20.0);\n"
+        "    fragment = diff * color + spec * vec4(1.0);\n"
+        "}\n";
+const std::string flat_vertex_shader_110 =
+        "void\n"
+        "main()\n"
+        "{\n"
+        "    vec3 p, n;\n"
+        "    extractVertex( p, n );\n"
+        "    gl_Position = gl_ModelViewProjectionMatrix * vec4( p, 1.0 );\n"
+        "    gl_FrontColor = gl_Color;\n"
+        "}\n";
+const std::string flat_vertex_shader_130 =
+        "uniform mat4 PM;\n"
+        "void\n"
+        "main()\n"
+        "{\n"
+        "    vec3 p, n;\n"
+        "    extractVertex( p, n );\n"
+        "    gl_Position = PM * vec4( p, 1.0 );\n"
+        "    gl_FrontColor = gl_Color;\n"
+        "}\n";
+const std::string flat_fragment_shader_110 =
+        "void\n"
+        "main()\n"
+        "{\n"
+        "    gl_FragColor = gl_Color;\n"
+        "}\n";
+const std::string flat_fragment_shader_130 =
+        "out vec4 fragment;\n"
+        "uniform vec4 color;\n"
+        "void\n"
+        "main()\n"
+        "{\n"
+        "    fragment = color;\n"
+        "}\n";
+
+
+// === misc matrix operations ==================================================
+
+void
+frustum( GLfloat* dst, GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n, GLfloat f )
+{
+    dst[ 0] = 2.f*n/(r-l); dst[ 1] = 0.f;         dst[ 2] = 0.f;            dst[ 3] = 0.f;
+    dst[ 4] = 0.f;         dst[ 5] = 2.f*n/(t-b); dst[ 6] = 0.f;            dst[ 7] = 0.f;
+    dst[ 8] = (r+l)/(r-l); dst[ 9] = (t+b)/(t-b); dst[10] = -(f+n)/(f-n);   dst[11] = -1.f;
+    dst[12] = 0.f;         dst[13] = 0.f;         dst[14] = -2.f*f*n/(f-n); dst[15] = 0.f;
+}
+
+void
+translate( GLfloat* dst, GLfloat x, GLfloat y, GLfloat z )
+{
+    dst[ 0] = 1.f;    dst[ 1] = 0.f;    dst[ 2] = 0.f;    dst[ 3] = 0.f;
+    dst[ 4] = 0.f;    dst[ 5] = 1.f;    dst[ 6] = 0.f;    dst[ 7] = 0.f;
+    dst[ 8] = 0.f;    dst[ 9] = 0.f;    dst[10] = 1.f;    dst[11] = 0.f;
+    dst[12] = x;      dst[13] = y;      dst[14] = z;      dst[15] = 1.f;
+}
+
+void
+rotX( GLfloat* dst, GLfloat degrees )
+{
+    GLfloat c = cosf( (M_PI/180.f)*degrees );
+    GLfloat s = sinf( (M_PI/180.f)*degrees );
+    dst[ 0] = 1.f;    dst[ 1] = 0.f;    dst[ 2] = 0.f;    dst[ 3] = 0.f;
+    dst[ 4] = 0.f;    dst[ 5] = c;      dst[ 6] = s;      dst[ 7] = 0.f;
+    dst[ 8] = 0.f;    dst[ 9] = -s;     dst[10] = c;      dst[11] = 0.f;
+    dst[12] = 0.f;    dst[13] = 0.f;    dst[14] = 0.f;    dst[15] = 1.f;
+}
+
+void
+rotY( GLfloat* dst, GLfloat degrees )
+{
+    GLfloat c = cosf( (M_PI/180.f)*degrees );
+    GLfloat s = sinf( (M_PI/180.f)*degrees );
+    dst[ 0] = c;      dst[ 1] = 0.f;    dst[ 2] = -s;     dst[ 3] = 0.f;
+    dst[ 4] = 0.f;    dst[ 5] = 1.f;    dst[ 6] = 0.f;    dst[ 7] = 0.f;
+    dst[ 8] = s;      dst[ 9] = 0.f;    dst[10] = c;      dst[11] = 0.f;
+    dst[12] = 0.f;    dst[13] = 0.f;    dst[14] = 0.f;    dst[15] = 1.f;
+}
+
+void
+extractUpperLeft3x3( GLfloat* dst, GLfloat* src )
+{
+    for(int j=0; j<3; j++ ) {
+        for(int i=0; i<3; i++ ) {
+            dst[3*j+i] = src[4*j+i];
+        }
+    }
+}
+
+
+void
+rightMulAssign( GLfloat* A, GLfloat* B )
+{
+    for(int j=0; j<4; j++ ) {
+        GLfloat row[4];
+        for(int i=0; i<4; i++ ) {
+            row[i] = 0.f;
+            for(int k=0; k<4; k++) {
+                row[i] += A[ 4*k + j ]*B[ 4*i + k ];
+            }
+        }
+        for(int k=0; k<4; k++) {
+            A[4*k+j] = row[k];
+        }
+    }
+}
+
 
 // -----------------------------------------------------------------------------
 #define ASSERT_GL do {                                                         \
@@ -225,9 +398,6 @@ idle()
         glutPostRedisplay();
 }
 
-// --- prototype; the applications implement their own render loop -------------
-void
-render( float t, float dt, float fps );
 
 // --- calculate fps and call render loop func ---------------------------------
 
@@ -271,6 +441,27 @@ display()
         last_fps_t = t;
         frames = 0;
     }
+
+    GLfloat P[16];
+    GLfloat MV[16];
+    GLfloat PMV[16];
+    GLfloat NM[9];
+    GLfloat T[16];
+
+    frustum( P,  -0.2*aspect_x, 0.2*aspect_x, -0.2*aspect_y, 0.2*aspect_y, 0.5, 3.0 );
+    translate( MV, 0.f, 0.f, -2.f );
+    rotX( T, 20.f );
+    rightMulAssign( MV, T );
+    rotY( T, 20.f*t );
+    rightMulAssign( MV, T );
+    translate( T, -0.5f, -0.5f, -0.5f );
+    rightMulAssign( MV, T );
+    extractUpperLeft3x3( NM, MV );
+
+    memcpy( PMV, P, sizeof(GLfloat)*16 );
+    rightMulAssign( PMV, MV );
+
+
 #ifdef SINTEF_INTERNAL
     static std::vector<frame_info> sequence;
     static int seq_p = 0;
@@ -306,8 +497,31 @@ display()
         render( t, dt, fps );
     }
 #else
-    render( t, dt, fps );
+    render( t, dt, fps, P, MV, PMV, NM );
 #endif
+
+    static std::string message = "";
+
+    if( floor(5.0*(t-dt)) != floor(5.0*(t)) ) {
+        message = infoString( fps );
+        if( HPMC_TARGET_GL31_GLSL140 < hpmc_target ) {
+            std::cerr << message << std::endl;
+        }
+    }
+    if( hpmc_target <= HPMC_TARGET_GL31_GLSL140 ) {
+        glUseProgram( 0 );
+        glMatrixMode( GL_PROJECTION );
+        glLoadIdentity();
+        glMatrixMode( GL_MODELVIEW );
+        glLoadIdentity();
+        glDisable( GL_DEPTH_TEST );
+        glColor3f( 1.0, 1.0, 1.0 );
+        glRasterPos2f( -0.99, 0.95 );
+        for(int i=0; i<message.size(); i++) {
+            glutBitmapCharacter( GLUT_BITMAP_8_BY_13, (int)message[i] );
+        }
+    }
+
     pt = t;
     glutSwapBuffers();
 
@@ -318,5 +532,280 @@ display()
     }
 }
 
+// -----------------------------------------------------------------------------
+#ifndef APIENTRY
+#define APIENTRY
+#endif
+
+static void APIENTRY debugLogger( GLenum source,
+                                  GLenum type,
+                                  GLuint id,
+                                  GLenum severity,
+                                  GLsizei length,
+                                  const GLchar* message,
+                                  void* data )
+{
+    const char* source_str = "---";
+    switch( source ) {
+    case GL_DEBUG_SOURCE_API: source_str = "API"; break;
+    case GL_DEBUG_SOURCE_WINDOW_SYSTEM: source_str = "WSY"; break;
+    case GL_DEBUG_SOURCE_SHADER_COMPILER: source_str = "SCM"; break;
+    case GL_DEBUG_SOURCE_THIRD_PARTY: source_str = "3PY"; break;
+    case GL_DEBUG_SOURCE_APPLICATION: source_str = "APP"; break;
+    case GL_DEBUG_SOURCE_OTHER: source_str = "OTH"; break;
+    }
+
+    const char* type_str = "---";
+    switch( type ) {
+    case GL_DEBUG_TYPE_ERROR: type_str = "error"; break;
+    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: type_str = "deprecated"; break;
+    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: type_str = "undef"; break;
+    case GL_DEBUG_TYPE_PORTABILITY: type_str = "portability"; break;
+    case GL_DEBUG_TYPE_PERFORMANCE: type_str = "performance"; break;
+    case GL_DEBUG_TYPE_OTHER: type_str = "other"; break;
+    }
+
+    const char* severity_str = "---";
+    switch( severity ) {
+    case GL_DEBUG_SEVERITY_HIGH: severity_str = "high"; break;
+    case GL_DEBUG_SEVERITY_MEDIUM: severity_str = "medium"; break;
+    case GL_DEBUG_SEVERITY_LOW: severity_str = "low"; break;
+    }
+
+    fprintf( stderr, "GL debug [src=%s, type=%s, severity=%s]: %s\n",
+             source_str,
+             type_str,
+             severity_str,
+             message );
+
+}
+
+static void APIENTRY debugLoggerARB( GLenum source,
+                                     GLenum type,
+                                     GLenum id,
+                                     GLenum severity,
+                                     GLsizei length,
+                                     const GLchar* message,
+                                     void* data )
+{
+    const char* source_str = "---";
+    switch( source ) {
+    case GL_DEBUG_SOURCE_API_ARB: source_str = "API"; break;
+    case GL_DEBUG_SOURCE_WINDOW_SYSTEM_ARB: source_str = "WSY"; break;
+    case GL_DEBUG_SOURCE_SHADER_COMPILER_ARB: source_str = "SCM"; break;
+    case GL_DEBUG_SOURCE_THIRD_PARTY_ARB: source_str = "3PY"; break;
+    case GL_DEBUG_SOURCE_APPLICATION_ARB: source_str = "APP"; break;
+    case GL_DEBUG_SOURCE_OTHER_ARB: source_str = "OTH"; break;
+    }
+
+    const char* type_str = "---";
+    switch( type ) {
+    case GL_DEBUG_TYPE_ERROR_ARB: type_str = "error"; break;
+    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR_ARB: type_str = "deprecated"; break;
+    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR_ARB: type_str = "undef"; break;
+    case GL_DEBUG_TYPE_PORTABILITY_ARB: type_str = "portability"; break;
+    case GL_DEBUG_TYPE_PERFORMANCE_ARB: type_str = "performance"; break;
+    case GL_DEBUG_TYPE_OTHER_ARB: type_str = "other"; break;
+    }
+
+    const char* severity_str = "---";
+    switch( severity ) {
+    case GL_DEBUG_SEVERITY_HIGH: severity_str = "high"; break;
+    case GL_DEBUG_SEVERITY_MEDIUM: severity_str = "medium"; break;
+    case GL_DEBUG_SEVERITY_LOW: severity_str = "low"; break;
+    }
+
+    fprintf( stderr, "GL debug [src=%s, type=%s, severity=%s]: %s\n",
+             source_str,
+             type_str,
+             severity_str,
+             message );
+
+}
+
+
+
+// -----------------------------------------------------------------------------
+int
+main(int argc, char **argv)
+{
+    glutInit( &argc, argv );
+
+    for( int i=1; i<argc; ) {
+        int eat = 0;
+        if( strcmp( argv[i], "--target-gl20" ) == 0 ) {
+            hpmc_target = HPMC_TARGET_GL20_GLSL110;
+            eat = 1;
+        }
+        else if( strcmp( argv[i], "--target-gl21" ) == 0 ) {
+            hpmc_target = HPMC_TARGET_GL21_GLSL120;
+            eat = 1;
+        }
+        else if( strcmp( argv[i], "--target-gl30" ) == 0 ) {
+            hpmc_target = HPMC_TARGET_GL30_GLSL130;
+            eat = 1;
+        }
+        else if( strcmp( argv[i], "--target-gl31" ) == 0 ) {
+            hpmc_target = HPMC_TARGET_GL31_GLSL140;
+            eat = 1;
+        }
+        else if( strcmp( argv[i], "--target-gl32" ) == 0 ) {
+            hpmc_target = HPMC_TARGET_GL32_GLSL150;
+            eat = 1;
+        }
+        else if( strcmp( argv[i], "--target-gl33" ) == 0 ) {
+            hpmc_target = HPMC_TARGET_GL33_GLSL330;
+            eat = 1;
+        }
+        else if( strcmp( argv[i], "--target-gl40" ) == 0 ) {
+            hpmc_target = HPMC_TARGET_GL40_GLSL400;
+            eat = 1;
+        }
+        else if( strcmp( argv[i], "--target-gl41" ) == 0 ) {
+            hpmc_target = HPMC_TARGET_GL41_GLSL410;
+            eat = 1;
+        }
+        else if( strcmp( argv[i], "--target-gl42" ) == 0 ) {
+            hpmc_target = HPMC_TARGET_GL42_GLSL420;
+            eat = 1;
+        }
+        else if( strcmp( argv[i], "--target-gl43" ) == 0 ) {
+            hpmc_target = HPMC_TARGET_GL43_GLSL430;
+            eat = 1;
+        }
+        else if( strcmp( argv[i], "--debug-none" ) == 0 ) {
+            hpmc_debug = HPMC_DEBUG_NONE;
+            eat = 1;
+        }
+        else if( strcmp( argv[i], "--debug-stderr" ) == 0  ) {
+            hpmc_debug = HPMC_DEBUG_STDERR;
+            eat = 1;
+        }
+        else if( strcmp( argv[i], "--debug-stderr-verbose" ) == 0  ) {
+            hpmc_debug = HPMC_DEBUG_STDERR_VERBOSE;
+            eat = 1;
+        }
+        else if( strcmp( argv[i], "--debug-khr-debug" ) == 0  ) {
+            hpmc_debug = HPMC_DEBUG_KHR_DEBUG;
+            eat = 1;
+        }
+        else if( strcmp( argv[i], "--debug-khr-debug-verbose" ) == 0  ) {
+            hpmc_debug = HPMC_DEBUG_KHR_DEBUG_VERBOSE;
+            eat = 1;
+        }
+        else if( strcmp( argv[i], "--help" ) == 0 ) {
+            fprintf( stderr, "Usage: [target] [dim]\n" );
+            fprintf( stderr, "  --target-gl20\n" );
+            fprintf( stderr, "  --target-gl21\n" );
+            fprintf( stderr, "  --target-gl30\n" );
+            fprintf( stderr, "  --target-gl31\n" );
+            fprintf( stderr, "  --target-gl32\n" );
+            fprintf( stderr, "  --target-gl33\n" );
+            fprintf( stderr, "  --target-gl40\n" );
+            fprintf( stderr, "  --target-gl41\n" );
+            fprintf( stderr, "  --target-gl42\n" );
+            fprintf( stderr, "  --debug-none\n" );
+            fprintf( stderr, "  --debug-stderr\n" );
+            fprintf( stderr, "  --debug-stderr-verbose\n" );
+            fprintf( stderr, "  --debug-khr-debug\n" );
+            fprintf( stderr, "  --debug-khr-debug-verbose\n" );
+            exit( -1 );
+        }
+        if( eat ) {
+            argc = argc - eat;
+            for( int k=i; k<argc; k++ ) {
+                argv[k] = argv[k+eat];
+            }
+        }
+        else {
+            i++;
+        }
+    }
+
+    switch( hpmc_target ) {
+    case HPMC_TARGET_GL20_GLSL110:
+        glutInitContextVersion( 2, 0 );
+        break;
+    case HPMC_TARGET_GL21_GLSL120:
+        glutInitContextVersion( 2, 1 );
+        break;
+    case HPMC_TARGET_GL30_GLSL130:
+        glutInitContextVersion( 3, 0 );
+        break;
+    case HPMC_TARGET_GL31_GLSL140:
+        glutInitContextVersion( 3, 1 );
+        break;
+    case HPMC_TARGET_GL32_GLSL150:
+        glutInitContextVersion( 3, 2 );
+        break;
+    case HPMC_TARGET_GL33_GLSL330:
+        glutInitContextVersion( 3, 3 );
+        break;
+    case HPMC_TARGET_GL40_GLSL400:
+        glutInitContextVersion( 4, 0 );
+        break;
+    case HPMC_TARGET_GL41_GLSL410:
+        glutInitContextVersion( 4, 1 );
+        break;
+    case HPMC_TARGET_GL42_GLSL420:
+        glutInitContextVersion( 4, 2 );
+        break;
+    case HPMC_TARGET_GL43_GLSL430:
+        glutInitContextVersion( 4, 2 );
+        break;
+    }
+
+    glutInitContextFlags( GLUT_CORE_PROFILE | GLUT_DEBUG );
+/*                          ((hpmc_debug == HPMC_DEBUG_KHR_DEBUG) ||
+                           (hpmc_debug == HPMC_DEBUG_KHR_DEBUG_VERBOSE)
+                           ? GLUT_DEBUG : 0 )
+                          );
+*/
+    glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
+    glutInitWindowSize( 1280, 720 );
+    glutCreateWindow( argv[0] );
+    GLenum error = glGetError();
+    while( error != GL_NO_ERROR ) {
+        fprintf( stderr, "Context creation created GL error %x\n", error );
+        error = glGetError();
+    }
+    glewExperimental = GL_TRUE;
+    GLenum glew_error = glewInit();
+    if( glew_error != GLEW_OK ) {
+        fprintf( stderr, "GLEW failed to initialize, exiting.\n" );
+        abort();
+    }
+    error = glGetError();
+    while( error != GL_NO_ERROR ) {
+        fprintf( stderr, "GLEW initialization created GL error %x\n", error );
+        error = glGetError();
+    }
+    if( (hpmc_debug == HPMC_DEBUG_KHR_DEBUG) || (hpmc_debug == HPMC_DEBUG_KHR_DEBUG_VERBOSE) ) {
+        if( glewIsSupported( "GL_KHR_debug" ) ) {
+            glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
+            glDebugMessageCallback( debugLogger, NULL );
+            glDebugMessageControl( GL_DONT_CARE,
+                                   GL_DONT_CARE,
+                                   hpmc_debug == HPMC_DEBUG_KHR_DEBUG_VERBOSE ? GL_DEBUG_SEVERITY_LOW : GL_DEBUG_SEVERITY_MEDIUM,
+                                   0, NULL, GL_TRUE );
+        }
+        else {
+            fprintf( stderr, "GL_KHR_debug extension not present.\n" );
+        }
+    }
+    error = glGetError();
+    while( error != GL_NO_ERROR ) {
+        fprintf( stderr, "Debug setup created GL error %x\n", error );
+        error = glGetError();
+    }
+
+    glutReshapeFunc( reshape );
+    glutDisplayFunc( display );
+    glutKeyboardFunc( keyboard );
+    glutIdleFunc( idle );
+    init( argc, argv );
+    glutMainLoop();
+    return EXIT_SUCCESS;
+}
 
 

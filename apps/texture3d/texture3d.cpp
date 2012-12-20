@@ -1,30 +1,22 @@
-/* -*- mode: C++; tab-width:4; c-basic-offset: 4; indent-tabs-mode:nil -*-
- ***********************************************************************
+/* Copyright STIFTELSEN SINTEF 2012
  *
- *  File: texture3d.cpp
+ * Authors: Christopher Dyken <christopher.dyken@sintef.no>
  *
- *  Created: 24. June 2009
+ * This file is part of the HPMC library.
  *
- *  Version: $Id: $
+ * The HPMC library is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License ("GPL") as published by the
+ * Free Software Foundation, either version 2 of the License, or (at your
+ * option) any later version.
  *
- *  Authors: Christopher Dyken <christopher.dyken@sintef.no>
+ * The HPMC library is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
- *  This file is part of the HPMC library.
- *  Copyright (C) 2009 by SINTEF.  All rights reserved.
- *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License
- *  ("GPL") version 2 as published by the Free Software Foundation.
- *  See the file LICENSE.GPL at the root directory of this source
- *  distribution for additional information about the GNU GPL.
- *
- *  For using HPMC with software that can not be combined with the
- *  GNU GPL, please contact SINTEF for aquiring a commercial license
- *  and support.
- *
- *  SINTEF, Pb 124 Blindern, N-0314 Oslo, Norway
- *  http://www.sintef.no
- *********************************************************************/
+ * You should have received a copy of the GNU General Public License along with
+ * the HPMC library.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 // Extracting iso-surfaces from a scalar field stored on disc.
 //
@@ -55,7 +47,7 @@
 #include <GL/glut.h>
 #endif
 #include "hpmc.h"
-#include "../common/common.cpp"
+#include "../common/common.hpp"
 
 using std::ifstream;
 using std::vector;
@@ -78,7 +70,7 @@ GLuint shaded_v;
 GLuint shaded_f;
 GLuint shaded_p;
 struct HPMCIsoSurfaceRenderer* hpmc_th_flat;
-std::string shaded_vertex_shader =
+std::string shaded_vertex_shader_110 =
         "varying vec3 normal;\n"
         "void\n"
         "main()\n"
@@ -89,7 +81,7 @@ std::string shaded_vertex_shader =
         "    normal = gl_NormalMatrix * n;\n"
         "    gl_FrontColor = gl_Color;\n"
         "}\n";
-std::string shaded_fragment_shader =
+std::string shaded_fragment_shader_110 =
         "varying vec3 normal;\n"
         "void\n"
         "main()\n"
@@ -107,7 +99,7 @@ std::string shaded_fragment_shader =
 GLuint flat_v;
 GLuint flat_p;
 struct HPMCIsoSurfaceRenderer* hpmc_th_shaded;
-std::string flat_vertex_shader =
+std::string flat_vertex_shader_110 =
         "void\n"
         "main()\n"
         "{\n"
@@ -170,7 +162,7 @@ init()
     const char* shaded_vsrc[2] =
     {
         traversal_code,
-        shaded_vertex_shader.c_str()
+        shaded_vertex_shader_110.c_str()
     };
     shaded_v = glCreateShader( GL_VERTEX_SHADER );
     glShaderSource( shaded_v, 2, &shaded_vsrc[0], NULL );
@@ -179,7 +171,7 @@ init()
 
     const char* shaded_fsrc[1] =
     {
-        shaded_fragment_shader.c_str()
+        shaded_fragment_shader_110.c_str()
     };
     shaded_f = glCreateShader( GL_FRAGMENT_SHADER );
     glShaderSource( shaded_f, 1, &shaded_fsrc[0], NULL );
@@ -202,7 +194,7 @@ init()
     const char* flat_src[2] =
     {
         traversal_code,
-        flat_vertex_shader.c_str()
+        flat_vertex_shader_110.c_str()
     };
     flat_v = glCreateShader( GL_VERTEX_SHADER );
     glShaderSource( flat_v, 2, &flat_src[0], NULL );
