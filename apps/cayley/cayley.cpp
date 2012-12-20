@@ -44,21 +44,24 @@
 #include <sstream>
 #include "../common/common.hpp"
 
+using std::cerr;
+using std::endl;
+
 int                             volume_size_x       = 64;
 int                             volume_size_y       = 64;
 int                             volume_size_z       = 64;
-struct HPMCConstants*           hpmc_c              = NULL;
-struct HPMCIsoSurface*          hpmc_h              = NULL;
 float                           iso                 = 0.5f;
 GLuint                          shaded_p            = 0;
 GLint                           shaded_loc_pm       = -1;
 GLint                           shaded_loc_nm       = -1;
 GLint                           shaded_loc_color    = -1;
-struct HPMCIsoSurfaceRenderer*  hpmc_th_shaded      = NULL;
 GLuint                          flat_p              = 0;
 GLint                           flat_loc_pm         = -1;
 GLint                           flat_loc_color      = -1;
-struct HPMCIsoSurfaceRenderer*   hpmc_th_flat       = NULL;
+struct HPMCConstants*           hpmc_c              = NULL;
+struct HPMCIsoSurface*          hpmc_h              = NULL;
+struct HPMCIsoSurfaceRenderer*  hpmc_th_shaded      = NULL;
+struct HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
 
 std::string fetch_code =
         // evaluates the scalar field
@@ -80,6 +83,22 @@ std::string fetch_code =
         "                 -16.0*p.x*p.y - 8.0*p.z,\n"
         "                 1.0 - 16.0*p.x*p.y*p.z - 4.0*p.x*p.x - 4.0*p.y*p.y - 4.0*p.z*p.z );\n"
         "}\n";
+
+
+void
+printHelp( const std::string& appname )
+{
+    cerr << "HPMC demo application that visualizes 1-16xyz-4x^2-4y^2-4z^2=iso."<<endl<<endl;
+    cerr << "Usage: " << appname << " [options] xsize [ysize zsize] "<<endl<<endl;
+    cerr << "where: xsize    The number of samples in the x-direction."<<endl;
+    cerr << "       ysize    The number of samples in the y-direction."<<endl;
+    cerr << "       zsize    The number of samples in the z-direction."<<endl;
+    cerr << "Example usage:"<<endl;
+    cerr << "    " << appname << " 64"<< endl;
+    cerr << "    " << appname << " 64 128 64"<< endl;
+    cerr << endl;
+    printOptions();
+}
 
 void
 init( int argc, char** argv )
@@ -124,11 +143,15 @@ init( int argc, char** argv )
                         0,
                         GL_TRUE );
 
+    // --- create traversal vertex shader --------------------------------------
     const char* sources[3];
-     // --- create traversal vertex shader --------------------------------------
-    hpmc_th_shaded = HPMCcreateIsoSurfaceRenderer( hpmc_h );
-    char *traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shaded );
+    char* traversal_code;
 
+    // Shaded pipeline
+    hpmc_th_shaded = HPMCcreateIsoSurfaceRenderer( hpmc_h );
+
+    // Vertex shader
+    traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shaded );
     GLuint shaded_v = glCreateShader( GL_VERTEX_SHADER );
     if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
         sources[0] = traversal_code;
@@ -144,6 +167,7 @@ init( int argc, char** argv )
     compileShader( shaded_v, "shaded vertex shader" );
     free( traversal_code );
 
+    // Fragment shader
     GLuint shaded_f = glCreateShader( GL_FRAGMENT_SHADER );
     if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
         sources[0] = shaded_fragment_shader_110.c_str();
@@ -156,8 +180,8 @@ init( int argc, char** argv )
     }
     compileShader( shaded_f, "shaded fragment shader" );
 
-    // link program
-    GLuint shaded_p = glCreateProgram();
+    // Program
+    shaded_p = glCreateProgram();
     glAttachShader( shaded_p, shaded_v );
     glAttachShader( shaded_p, shaded_f );
     glDeleteShader( shaded_v );
@@ -169,14 +193,16 @@ init( int argc, char** argv )
     shaded_loc_pm = glGetUniformLocation( shaded_p, "PM" );
     shaded_loc_nm = glGetUniformLocation( shaded_p, "NM" );
     shaded_loc_color = glGetUniformLocation( shaded_p, "color" );
-    // associate program with traversal handle
-    HPMCsetIsoSurfaceRendererProgram( hpmc_th_shaded,
-                                   shaded_p,
-                                   0, 1, 2 );
 
+    // Associate program with traversal handle
+    HPMCsetIsoSurfaceRendererProgram( hpmc_th_shaded,
+                                      shaded_p,
+                                      0, 1, 2 );
+
+    // Flat-shaded pipeline
     hpmc_th_flat = HPMCcreateIsoSurfaceRenderer( hpmc_h );
 
-
+    // Vertex shader
     traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_flat );
     GLuint flat_v = glCreateShader( GL_VERTEX_SHADER );
     if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
@@ -192,6 +218,8 @@ init( int argc, char** argv )
     }
     compileShader( flat_v, "flat vertex shader" );
     free( traversal_code );
+
+    // Fragment shader
     GLuint flat_f = glCreateShader( GL_FRAGMENT_SHADER );
     if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
         sources[0] = flat_fragment_shader_110.c_str();
@@ -203,7 +231,7 @@ init( int argc, char** argv )
         glShaderSource( flat_f, 2, sources, NULL );
     }
 
-    // link program
+    // Program
     flat_p = glCreateProgram();
     glAttachShader( flat_p, flat_v );
     glAttachShader( flat_p, flat_f );
@@ -216,12 +244,72 @@ init( int argc, char** argv )
     flat_loc_pm = glGetUniformLocation( flat_p, "PM" );
     flat_loc_color = glGetUniformLocation( flat_p, "color" );
 
-    // associate program with traversal handle
+    // Associate program with traversal handle
     HPMCsetIsoSurfaceRendererProgram( hpmc_th_flat,
-                                   flat_p,
-                                   0, 1, 2 );
+                                      flat_p,
+                                      0, 1, 2 );
 
     glPolygonOffset( 1.0, 1.0 );
+}
+
+void
+render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const GLfloat* PMV, const GLfloat *NM )
+{
+    // Clear screen
+    glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+
+    // Build histopyramid
+    iso = sin(t);
+    HPMCbuildIsoSurface( hpmc_h, iso );
+    // Set up view matrices if pre 3.0
+    glEnable( GL_DEPTH_TEST );
+    if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+        glMatrixMode( GL_PROJECTION );
+        glLoadMatrixf( P );
+        glMatrixMode( GL_MODELVIEW );
+        glLoadMatrixf( MV );
+    }
+
+    if( !wireframe ) {
+        // Solid shaded rendering
+        glUseProgram( shaded_p );
+        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+            glColor3f( 1.0-iso, 0.0, iso );
+        }
+        else {
+            glUniformMatrix4fv( shaded_loc_pm, 1, GL_FALSE, PMV );
+            glUniformMatrix3fv( shaded_loc_nm, 1, GL_FALSE, NM );
+            glUniform4f( shaded_loc_color,  1.0-iso, 0.0, iso, 1.f );
+        }
+        HPMCextractVertices( hpmc_th_shaded, GL_FALSE );
+    }
+    else {
+        // Wireframe rendering
+        glUseProgram( flat_p );
+        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+            glColor3f( 0.2*(1.0-iso), 0.0, 0.2*iso );
+        }
+        else {
+            glUniformMatrix4fv( flat_loc_pm, 1, GL_FALSE, PMV );
+            glUniform4f( flat_loc_color,  1.0-iso, 0.0, iso, 1.f );
+        }
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        glEnable( GL_POLYGON_OFFSET_FILL );
+        HPMCextractVertices( hpmc_th_flat, GL_FALSE );
+        glDisable( GL_POLYGON_OFFSET_FILL );
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE );
+        glUseProgram( flat_p );
+        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+            glColor3f( 1.0, 1.0, 1.0 );
+        }
+        else {
+            glUniform4f( flat_loc_color, 1.f, 1.f, 1.f, 1.f );
+        }
+        HPMCextractVertices( hpmc_th_flat, GL_FALSE );
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
 }
 
 const std::string
@@ -238,64 +326,4 @@ infoString( float fps )
       << " vertices, iso=" << iso
       << (wireframe?"[wireframe]":"");
     return o.str();
-}
-
-// -----------------------------------------------------------------------------
-void
-render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const GLfloat* PMV, const GLfloat *NM )
-{
-    // --- clear screen and set up view ----------------------------------------
-    glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-
-
-    // --- build HistoPyramid --------------------------------------------------
-    iso = sin(t);
-    HPMCbuildIsoSurface( hpmc_h, iso );
-
-    // --- render solid surface ------------------------------------------------
-    glEnable( GL_DEPTH_TEST );
-    if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
-        glMatrixMode( GL_PROJECTION );
-        glLoadMatrixf( P );
-        glMatrixMode( GL_MODELVIEW );
-        glLoadMatrixf( MV );
-    }
-    if( !wireframe ) {
-        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
-            glColor3f( 1.0-iso, 0.0, iso );
-        }
-        else {
-            glUseProgram( shaded_p );
-            glUniformMatrix4fv( shaded_loc_pm, 1, GL_FALSE, PMV );
-            glUniformMatrix3fv( shaded_loc_nm, 1, GL_FALSE, NM );
-            glUniform4f( shaded_loc_color,  1.0-iso, 0.0, iso, 1.f );
-        }
-        HPMCextractVertices( hpmc_th_shaded, GL_FALSE );
-    }
-    else {
-        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
-            glColor3f( 0.2*(1.0-iso), 0.0, 0.2*iso );
-        }
-        else {
-            glUseProgram( flat_p );
-            glUniformMatrix4fv( flat_loc_pm, 1, GL_FALSE, PMV );
-            glUniform4f( flat_loc_color,  1.0-iso, 0.0, iso, 1.f );
-        }
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        glEnable( GL_POLYGON_OFFSET_FILL );
-        HPMCextractVertices( hpmc_th_flat, GL_FALSE );
-        glDisable( GL_POLYGON_OFFSET_FILL );
-
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE );
-        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
-            glColor3f( 1.0, 1.0, 1.0 );
-        }
-        else {
-            glUseProgram( flat_p );
-            glUniform4f( flat_loc_color, 1.f, 1.f, 1.f, 1.f );
-        }
-        HPMCextractVertices( hpmc_th_flat, GL_FALSE );
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    }
 }

@@ -623,6 +623,28 @@ static void APIENTRY debugLoggerARB( GLenum source,
 
 }
 
+void
+printOptions()
+{
+    std::cerr << "Options that control profile:" << std::endl;
+    std::cerr << "    --target-gl20  OpenGL 2.0, GLSL 110" << std::endl;
+    std::cerr << "    --target-gl21  OpenGL 2.1, GLSL 120" << std::endl;
+    std::cerr << "    --target-gl30  OpenGL 3.0, GLSL 130" << std::endl;
+    std::cerr << "    --target-gl31  OpenGL 3.1, GLSL 140" << std::endl;
+    std::cerr << "    --target-gl32  OpenGL 3.2, GLSL 150" << std::endl;
+    std::cerr << "    --target-gl33  OpenGL 3.3, GLSL 330" << std::endl;
+    std::cerr << "    --target-gl40  OpenGL 4.0, GLSL 400" << std::endl;
+    std::cerr << "    --target-gl41  OpenGL 4.1, GLSL 410" << std::endl;
+    std::cerr << "    --target-gl42  OpenGL 4.2, GLSL 420" << std::endl;
+    std::cerr << "    --target-gl43  OpenGL 4.3, GLSL 430" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "Options that control error checking:" << std::endl;
+    std::cerr << "    --debug-none               No GL error checking." << std::endl;
+    std::cerr << "    --debug-stderr             Use glGetError to check for errors." << std::endl;
+    std::cerr << "    --debug-stderr-verbose     Use glGetError to check for errors." << std::endl;
+    std::cerr << "    --debug-khr-debug          Use GL_KHR_debug to check for errors." << std::endl;
+    std::cerr << "    --debug-khr-debug-verbose  Use GL_KHR_debug to check for errors." << std::endl;
+}
 
 
 // -----------------------------------------------------------------------------
@@ -694,21 +716,7 @@ main(int argc, char **argv)
             eat = 1;
         }
         else if( strcmp( argv[i], "--help" ) == 0 ) {
-            fprintf( stderr, "Usage: [target] [dim]\n" );
-            fprintf( stderr, "  --target-gl20\n" );
-            fprintf( stderr, "  --target-gl21\n" );
-            fprintf( stderr, "  --target-gl30\n" );
-            fprintf( stderr, "  --target-gl31\n" );
-            fprintf( stderr, "  --target-gl32\n" );
-            fprintf( stderr, "  --target-gl33\n" );
-            fprintf( stderr, "  --target-gl40\n" );
-            fprintf( stderr, "  --target-gl41\n" );
-            fprintf( stderr, "  --target-gl42\n" );
-            fprintf( stderr, "  --debug-none\n" );
-            fprintf( stderr, "  --debug-stderr\n" );
-            fprintf( stderr, "  --debug-stderr-verbose\n" );
-            fprintf( stderr, "  --debug-khr-debug\n" );
-            fprintf( stderr, "  --debug-khr-debug-verbose\n" );
+            printHelp( argv[0] );
             exit( -1 );
         }
         if( eat ) {

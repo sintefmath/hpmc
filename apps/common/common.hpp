@@ -34,7 +34,7 @@ void
 init( int argc, char** argv );
 
 void
-printHelp();
+printHelp( const std::string& appname );
 
 const std::string
 infoString( float fps );
@@ -60,6 +60,8 @@ extern const std::string    flat_vertex_shader_130;
 extern const std::string    flat_fragment_shader_110;
 extern const std::string    flat_fragment_shader_130;
 
+void
+printOptions();
 
 void
 frustum( GLfloat* dst, GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n, GLfloat f );
