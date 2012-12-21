@@ -144,7 +144,7 @@ init( int argc, char** argv )
                         GL_TRUE );
 
     // --- create traversal vertex shader --------------------------------------
-    const char* sources[3];
+    const char* sources[2];
     char* traversal_code;
 
     // Shaded pipeline
@@ -152,32 +152,22 @@ init( int argc, char** argv )
 
     // Vertex shader
     traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shaded );
+
     GLuint shaded_v = glCreateShader( GL_VERTEX_SHADER );
-    if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
-        sources[0] = traversal_code;
-        sources[1] = shaded_vertex_shader_110.c_str();
-        glShaderSource( shaded_v, 2, sources, NULL );
-    }
-    else {
-        sources[0] = shader_version_130.c_str();
-        sources[1] = traversal_code;
-        sources[2] =  shaded_vertex_shader_130.c_str();
-        glShaderSource( shaded_v, 3, sources, NULL );
-    }
+    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+               ? resources::phong_vs_110.c_str()
+               : resources::phong_vs_130.c_str();
+    sources[1] = traversal_code;
+    glShaderSource( shaded_v, 2, sources, NULL );
     compileShader( shaded_v, "shaded vertex shader" );
     free( traversal_code );
 
     // Fragment shader
     GLuint shaded_f = glCreateShader( GL_FRAGMENT_SHADER );
-    if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
-        sources[0] = shaded_fragment_shader_110.c_str();
-        glShaderSource( shaded_f, 1, sources, NULL );
-    }
-    else {
-        sources[0] = shader_version_130.c_str();
-        sources[1] = shaded_fragment_shader_130.c_str();
-        glShaderSource( shaded_f, 2, sources, NULL );
-    }
+    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+               ? resources::phong_fs_110.c_str()
+               : resources::phong_fs_130.c_str();
+    glShaderSource( shaded_f, 1, sources, NULL );
     compileShader( shaded_f, "shaded fragment shader" );
 
     // Program
@@ -205,31 +195,20 @@ init( int argc, char** argv )
     // Vertex shader
     traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_flat );
     GLuint flat_v = glCreateShader( GL_VERTEX_SHADER );
-    if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
-        sources[0] = traversal_code;
-        sources[1] = flat_vertex_shader_110.c_str();
+    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+               ? resources::solid_vs_110.c_str()
+               : resources::solid_vs_130.c_str();
+    sources[1] = traversal_code;
         glShaderSource( flat_v, 2, sources, NULL );
-    }
-    else {
-        sources[0] = shader_version_130.c_str();
-        sources[1] = traversal_code;
-        sources[2] = flat_vertex_shader_130.c_str();
-        glShaderSource( flat_v, 3, sources, NULL );
-    }
     compileShader( flat_v, "flat vertex shader" );
     free( traversal_code );
 
     // Fragment shader
     GLuint flat_f = glCreateShader( GL_FRAGMENT_SHADER );
-    if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
-        sources[0] = flat_fragment_shader_110.c_str();
-        glShaderSource( flat_f, 1, sources, NULL );
-    }
-    else {
-        sources[0] = shader_version_130.c_str();
-        sources[1] = flat_fragment_shader_130.c_str();
-        glShaderSource( flat_f, 2, sources, NULL );
-    }
+    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+               ? resources::solid_fs_110.c_str()
+               : resources::solid_fs_130.c_str();
+    glShaderSource( flat_f, 1, sources, NULL );
 
     // Program
     flat_p = glCreateProgram();

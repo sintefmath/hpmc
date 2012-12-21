@@ -352,7 +352,7 @@ HPMCHistoPyramid::downTraversalSource() const
     src << "        delta_x  *= 0.5;" << endl;
     src << "        delta_y  *= 0.5;" << endl;
     src << "    }" << endl;
-    src << "    vec4 raw = " << texture2DLod << "( HPMC_histopyramid, texpos, 0.f );" << endl;
+    src << "    vec4 raw = " << texture2DLod << "( HPMC_histopyramid, texpos, 0.0 );" << endl;
     src << "    vec4 sums = floor( raw );" << endl;
     src << "    vec4 hist = sums;" << endl;
     src << "    hist.w   += hist.z;" << endl;

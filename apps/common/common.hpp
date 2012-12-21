@@ -49,16 +49,16 @@ extern bool                 binary;
 extern HPMCTarget           hpmc_target;
 extern HPMCDebugBehaviour   hpmc_debug;
 
-// --- shared shader sources ---------------------------------------------------
-extern const std::string    shader_version_130;
-extern const std::string    shaded_vertex_shader_110;
-extern const std::string    shaded_vertex_shader_130;
-extern const std::string    shaded_fragment_shader_110;
-extern const std::string    shaded_fragment_shader_130;
-extern const std::string    flat_vertex_shader_110;
-extern const std::string    flat_vertex_shader_130;
-extern const std::string    flat_fragment_shader_110;
-extern const std::string    flat_fragment_shader_130;
+namespace resources {
+    extern const std::string    solid_vs_110;
+    extern const std::string    solid_vs_130;
+    extern const std::string    solid_fs_110;
+    extern const std::string    solid_fs_130;
+    extern const std::string    phong_vs_110;
+    extern const std::string    phong_vs_130;
+    extern const std::string    phong_fs_110;
+    extern const std::string    phong_fs_130;
+}
 
 void
 printOptions();
