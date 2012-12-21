@@ -49,16 +49,6 @@ extern bool                 binary;
 extern HPMCTarget           hpmc_target;
 extern HPMCDebugBehaviour   hpmc_debug;
 
-namespace resources {
-    extern const std::string    solid_vs_110;
-    extern const std::string    solid_vs_130;
-    extern const std::string    solid_fs_110;
-    extern const std::string    solid_fs_130;
-    extern const std::string    phong_vs_110;
-    extern const std::string    phong_vs_130;
-    extern const std::string    phong_fs_110;
-    extern const std::string    phong_fs_130;
-}
 
 void
 printOptions();

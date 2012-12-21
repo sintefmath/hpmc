@@ -30,6 +30,8 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
+#include <sstream>
+#include <iomanip>
 #include <iostream>
 #include <vector>
 #include <GL/glew.h>
@@ -41,95 +43,81 @@
 #include "hpmc.h"
 #include "../common/common.hpp"
 
-int volume_size_x;
-int volume_size_y;
-int volume_size_z;
+using std::cerr;
+using std::endl;
 
-GLuint shiny_v;
-GLuint shiny_f;
-GLuint shiny_p;
+int                             volume_size_x       = 64;
+int                             volume_size_y       = 64;
+int                             volume_size_z       = 64;
+float                           iso                 = 10.f;
+GLuint                          builder_p           = 0; // Builder program from HPMC
+GLint                           builder_loc_twist   = -1;
+GLint                           builder_loc_centers = -1;
+GLuint                          shiny_p             = 0;
+GLint                           shiny_loc_pm        = -1;
+GLint                           shiny_loc_nm        = -1;
+GLint                           shiny_loc_twist     = -1;
+GLint                           shiny_loc_centers   = -1;
+GLuint                          flat_p              = 0;
+GLint                           flat_loc_pm         = -1;
+GLint                           flat_loc_color      = -1;
+GLint                           flat_loc_twist      = -1;
+GLint                           flat_loc_centers    = -1;
+struct HPMCConstants*           hpmc_c              = NULL;
+struct HPMCIsoSurface*          hpmc_h              = NULL;
+struct HPMCIsoSurfaceRenderer*  hpmc_th_shiny       = NULL;
+struct HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
 
-GLuint flat_v;
-GLuint flat_p;
-
-struct HPMCConstants* hpmc_c;
-struct HPMCIsoSurface* hpmc_h;
-struct HPMCIsoSurfaceRenderer* hpmc_th_shiny;
-struct HPMCIsoSurfaceRenderer* hpmc_th_flat;
-
+namespace resources {
+    extern const std::string    solid_vs_110;
+    extern const std::string    solid_vs_130;
+    extern const std::string    solid_fs_110;
+    extern const std::string    solid_fs_130;
+    extern const std::string    shiny_vs_110;
+    extern const std::string    shiny_vs_130;
+    extern const std::string    shiny_fs_110;
+    extern const std::string    shiny_fs_130;
+    extern const std::string    cayley_fetch;
+    extern const std::string    metaballs_fetch;
+}
 
 // -----------------------------------------------------------------------------
 // a metaball evaluation shader, with domain twist
-std::string fetch_code =
-        "uniform float twist;\n"
-        "uniform vec3 centers[8];\n"
-        "float\n"
-        "HPMC_fetch( vec3 p )\n"
-        "{\n"
-        "    p = 2.0*p - 1.0;\n"
-        "    float rot1 = twist*p.z;\n"
-        "    float rot2 = 0.7*twist*p.y;\n"
-        "    p = mat3( cos(rot1), -sin(rot1), 0,\n"
-        "              sin(rot1),  cos(rot1), 0,\n"
-        "                      0,          0, 1)*p;\n"
-        "    p = mat3( cos(rot2), 0, -sin(rot2), \n"
-        "                      0, 1,          0,\n"
-        "              sin(rot2), 0,  cos(rot2) )*p;\n"
-        "    p = 0.5*p + vec3(0.5);\n"
-        "    float s = 0.0;\n"
-        "    for(int i=0; i<8; i++) {\n"
-        "        vec3 r = p-centers[i];\n"
-        "        s += 0.05/dot(r,r);\n"
-        "    }\n"
-        "    return s;\n"
-        "}\n";
 
-// -----------------------------------------------------------------------------
-// a small vertex shader that calls the provided extraction function
-std::string shiny_vertex_shader =
-        "varying vec3 normal;\n"
-        "void\n"                                                               \
-        "main()\n"                                                             \
-        "{\n"                                                                  \
-        "    vec3 p, n;\n"                                                     \
-        "    extractVertex( p, n );\n"                                         \
-        "    normal = gl_NormalMatrix * n;\n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * vec4( p, 1.0 );\n"   \
-        "}\n";
-std::string shiny_fragment_shader =
-        "varying vec3 normal;\n"
-        "void\n"
-        "main()\n"
-        "{\n"
-        "    vec3 v = vec3( 0.0, 0.0, 1.0 );\n"
-        "    vec3 n = normalize( normal );\n"
-        "    vec3 r = reflect( v, n );\n"
-        "    vec3 h = 0.5*(v+n);\n"
-        "    vec3 c_r = vec3(0.4, 1.3, 2.0) * max( 0.0, -r.y )\n"
-        "             + vec3(0.5, 0.4, 0.2) * pow( max( 0.0, r.y), 3.0 );\n"
-        "    vec3 c_s = vec3(0.7, 0.9, 1.0) * pow( max( 0.0, dot( v, h ) ), 50.0 );\n"
-        "    vec3 c_f = vec3(0.8, 0.9, 1.0) * pow( 1.0-abs(n.z), 5.0 );\n"
-        "    gl_FragColor = vec4( c_r + c_s + c_f, 1.0 );\n"
-        "}\n";
-
-// -----------------------------------------------------------------------------
-std::string flat_vertex_shader_110 =
-        "void\n"                                                               \
-        "main()\n"                                                             \
-        "{\n"                                                                  \
-        "    vec3 p, n;\n"                                                     \
-        "    extractVertex( p, n );\n"                                         \
-        "    gl_Position = gl_ModelViewProjectionMatrix * vec4( p, 1.0 );\n"   \
-        "    gl_FrontColor = gl_Color;\n"                              \
-        "}\n";
+void
+printHelp( const std::string& appname )
+{
+    cerr << "HPMC demo application that visalizes a set of meta balls with domain twist"<<endl<<endl;
+    cerr << "Usage: " << appname << " [options] xsize [ysize zsize] "<<endl<<endl;
+    cerr << "where: xsize    The number of samples in the x-direction."<<endl;
+    cerr << "       ysize    The number of samples in the y-direction."<<endl;
+    cerr << "       zsize    The number of samples in the z-direction."<<endl;
+    cerr << "Example usage:"<<endl;
+    cerr << "    " << appname << " 64"<< endl;
+    cerr << "    " << appname << " 64 128 64"<< endl;
+    cerr << endl;
+    printOptions();
+}
 
 
 // -----------------------------------------------------------------------------
 void
-init()
+init( int argc, char** argv )
 {
+    if( argc > 1 ) {
+        volume_size_x = atoi( argv[1] );
+    }
+    if( argc > 3 ) {
+        volume_size_y = atoi( argv[2] );
+        volume_size_z = atoi( argv[3] );
+    }
+    else {
+        volume_size_y = volume_size_x;
+        volume_size_z = volume_size_x;
+    }
+
     // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = HPMCcreateConstants( HPMC_TARGET_GL20_GLSL110, HPMC_DEBUG_STDERR );
+    hpmc_c = HPMCcreateConstants( hpmc_target, hpmc_debug );
     hpmc_h = HPMCcreateIsoSurface( hpmc_c );
 
     HPMCsetLatticeSize( hpmc_h,
@@ -148,91 +136,104 @@ init()
                        1.0f );
 
     HPMCsetFieldCustom( hpmc_h,
-                        fetch_code.c_str(),
+                        resources::metaballs_fetch.c_str(),
                         0,
                         GL_FALSE );
 
 
-    // --- shiny traversal vertex shader ---------------------------------------
+    // --- create traversal vertex shader --------------------------------------
+    const char* sources[2];
+    char* traversal_code;
+
     hpmc_th_shiny = HPMCcreateIsoSurfaceRenderer( hpmc_h );
 
-    char *traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shiny );
-    const char* shiny_vsrc[2] =
-    {
-        traversal_code,
-        shiny_vertex_shader.c_str()
-    };
-    shiny_v = glCreateShader( GL_VERTEX_SHADER );
-    glShaderSource( shiny_v, 2, &shiny_vsrc[0], NULL );
+    traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shiny );
+
+    GLuint shiny_v = glCreateShader( GL_VERTEX_SHADER );
+    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+               ? resources::shiny_vs_110.c_str()
+               : resources::shiny_vs_130.c_str();
+    sources[1] = traversal_code;
+    glShaderSource( shiny_v, 2, sources, NULL );
     compileShader( shiny_v, "shiny vertex shader" );
     free( traversal_code );
 
-    const char* shiny_fsrc[1] =
-    {
-        shiny_fragment_shader.c_str()
-    };
-    shiny_f = glCreateShader( GL_FRAGMENT_SHADER );
-    glShaderSource( shiny_f, 1, &shiny_fsrc[0], NULL );
+
+    GLuint shiny_f = glCreateShader( GL_FRAGMENT_SHADER );
+    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+               ? resources::shiny_fs_110.c_str()
+               : resources::shiny_fs_130.c_str();
+    glShaderSource( shiny_f, 1, sources, NULL );
     compileShader( shiny_f, "shiny fragment shader" );
 
     shiny_p = glCreateProgram();
     glAttachShader( shiny_p, shiny_v );
     glAttachShader( shiny_p, shiny_f );
     linkProgram( shiny_p, "shiny program" );
+    shiny_loc_pm = glGetUniformLocation( shiny_p, "PM" );
+    shiny_loc_nm = glGetUniformLocation( shiny_p, "NM" );
+    shiny_loc_twist = glGetUniformLocation( shiny_p, "twist" );
+    shiny_loc_centers = glGetUniformLocation( shiny_p, "centers" );
+    glDeleteShader( shiny_v );
+    glDeleteShader( shiny_f );
 
     // associate the linked program with the traversal handle
     HPMCsetIsoSurfaceRendererProgram( hpmc_th_shiny,
-                                   shiny_p,
-                                   0, 1, 2 );
+                                      shiny_p,
+                                      0, 1, 2 );
 
     // --- flat traversal vertex shader ----------------------------------------
     hpmc_th_flat = HPMCcreateIsoSurfaceRenderer( hpmc_h );
 
     traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shiny );
-    const char* flat_src[2] =
-    {
-        traversal_code,
-        flat_vertex_shader_110.c_str()
-    };
-    flat_v = glCreateShader( GL_VERTEX_SHADER );
-    glShaderSource( flat_v, 2, &flat_src[0], NULL );
+    GLuint flat_v = glCreateShader( GL_VERTEX_SHADER );
+    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+               ? resources::solid_vs_110.c_str()
+               : resources::solid_vs_130.c_str();
+    sources[1] = traversal_code;
+    glShaderSource( flat_v, 2, sources, NULL );
     compileShader( flat_v, "flat vertex shader" );
     free( traversal_code );
 
+    // Fragment shader
+    GLuint flat_f = glCreateShader( GL_FRAGMENT_SHADER );
+    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+               ? resources::solid_fs_110.c_str()
+               : resources::solid_fs_130.c_str();
+    glShaderSource( flat_f, 1, sources, NULL );
+
+    // Program
     flat_p = glCreateProgram();
     glAttachShader( flat_p, flat_v );
+    glAttachShader( flat_p, flat_f );
+    glDeleteShader( flat_v );
+    glDeleteShader( flat_f );
+    if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+        glBindFragDataLocation( flat_p, 0, "fragment" );
+    }
     linkProgram( flat_p, "flat program" );
+    flat_loc_pm = glGetUniformLocation( flat_p, "PM" );
+    flat_loc_color = glGetUniformLocation( flat_p, "color" );
+    flat_loc_twist = glGetUniformLocation( flat_p, "twist" );
+    flat_loc_centers = glGetUniformLocation( flat_p, "centers" );
 
-    // associate the linked program with the traversal handle
+    // Associate program with traversal handle
     HPMCsetIsoSurfaceRendererProgram( hpmc_th_flat,
-                                   flat_p,
-                                   0, 1, 2 );
-
-
+                                      flat_p,
+                                      0, 1, 2 );
 
     glPolygonOffset( 1.0, 1.0 );
+    // uniform location of fetch function uniforms used in HPMC builder prog.
+    builder_p = HPMCgetBuilderProgram( hpmc_h );
+    builder_loc_twist = glGetUniformLocation( builder_p, "twist" );
+    builder_loc_centers = glGetUniformLocation( builder_p, "centers" );
 }
 
 // -----------------------------------------------------------------------------
 void
-render( float t, float dt, float fps )
+render(  float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const GLfloat* PMV, const GLfloat *NM )
 {
-    // --- clear screen and set up view ----------------------------------------
-    glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-
-    glMatrixMode( GL_PROJECTION );
-    glLoadIdentity();
-    glFrustum( -0.1*aspect_x, 0.1*aspect_x, -0.1*aspect_y, 0.1*aspect_y, 0.5, 3.0 );
-
-    glMatrixMode( GL_MODELVIEW );
-    glLoadIdentity();
-    glTranslatef( 0.0f, 0.0f, -2.0f );
-    glRotatef( 20, 1.0, 0.0, 0.0 );
-    glRotatef( 20.0*t, 0.0, 1.0, 0.0 );
-    glTranslatef( -0.5f, -0.5f, -0.5f );
-
-    // --- update metaballs position -------------------------------------------
+    // update metaballs positions
     std::vector<GLfloat> centers( 3*8 );
     for( size_t i=0; i<8; i++ ) {
         centers[3*i+0] = 0.5+0.3*sin( t+sin(0.1*t)*i );
@@ -241,101 +242,81 @@ render( float t, float dt, float fps )
     }
     float twist = 5.0*sin(0.1*t);
 
-    GLuint builder = HPMCgetBuilderProgram( hpmc_h );
+    // Clear screen
+    glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-    glUseProgram( builder );
-    glUniform1f( glGetUniformLocation( builder, "twist" ), twist );
-    glUniform3fv( glGetUniformLocation( builder, "centers" ), 8, &centers[0] );
+    // Build histopyramid
+    glUseProgram( builder_p );
+    glUniform1f( builder_loc_twist, twist );
+    glUniform3fv( builder_loc_centers, 8, &centers[0] );
 
-    glUseProgram( shiny_p );
-    glUniform1f( glGetUniformLocation( shiny_p, "twist" ), twist );
-    glUniform3fv( glGetUniformLocation( shiny_p, "centers" ), 8, &centers[0] );
-
-    glUseProgram( flat_p );
-    glUniform1f( glGetUniformLocation( flat_p, "twist" ), twist );
-    glUniform3fv( glGetUniformLocation( flat_p, "centers" ), 8, &centers[0] );
-
-    glUseProgram( 0 );
-
-    // --- build HistoPyramid --------------------------------------------------
-    GLfloat iso = 10.0f;
     HPMCbuildIsoSurface( hpmc_h, iso );
-
-    // --- render solid surface ------------------------------------------------
+    // Set up view matrices if pre 3.0
     glEnable( GL_DEPTH_TEST );
+    if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+        glMatrixMode( GL_PROJECTION );
+        glLoadMatrixf( P );
+        glMatrixMode( GL_MODELVIEW );
+        glLoadMatrixf( MV );
+    }
 
     if( !wireframe ) {
+        // Solid shaded rendering
+        glUseProgram( shiny_p );
+        glUniform1f( shiny_loc_twist, twist );
+        glUniform3fv( shiny_loc_centers, 8, &centers[0] );
+        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+            glColor3f( 1.0-iso, 0.0, iso );
+        }
+        else {
+            glUniformMatrix4fv( shiny_loc_pm, 1, GL_FALSE, PMV );
+            glUniformMatrix3fv( shiny_loc_nm, 1, GL_FALSE, NM );
+        }
         HPMCextractVertices( hpmc_th_shiny, GL_FALSE );
     }
     else {
-        glColor3f( 0.1, 0.1, 0.5 );
-
+        // Wireframe rendering
+        glUseProgram( flat_p );
+        glUniform1f( glGetUniformLocation( flat_p, "twist" ), twist );
+        glUniform3fv( glGetUniformLocation( flat_p, "centers" ), 8, &centers[0] );
+        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+            glColor3f( 0.2*(1.0-iso), 0.0, 0.2*iso );
+        }
+        else {
+            glUniformMatrix4fv( flat_loc_pm, 1, GL_FALSE, PMV );
+            glUniform4f( flat_loc_color,  0.5f, 0.5f, 1.f, 1.f );
+        }
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glEnable( GL_POLYGON_OFFSET_FILL );
         HPMCextractVertices( hpmc_th_flat, GL_FALSE );
         glDisable( GL_POLYGON_OFFSET_FILL );
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE );
-        glColor3f( 1.0, 1.0, 1.0 );
+        glUseProgram( flat_p );
+        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+            glColor3f( 1.0, 1.0, 1.0 );
+        }
+        else {
+            glUniform4f( flat_loc_color, 1.f, 1.f, 1.f, 1.f );
+        }
         HPMCextractVertices( hpmc_th_flat, GL_FALSE );
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
-
-    // --- render text string --------------------------------------------------
-    static char message[512] = "";
-    if( floor(5.0*(t-dt)) != floor(5.0*(t)) ) {
-        snprintf( message, 512,
-                  "%.1f fps, %dx%dx%d samples, %d mvps, %d triangles, iso=%.2f%s",
-                  fps,
-                  volume_size_x,
-                  volume_size_y,
-                  volume_size_z,
-                  (int)( ((volume_size_x-1)*(volume_size_y-1)*(volume_size_z-1)*fps)/1e6 ),
-                  HPMCacquireNumberOfVertices( hpmc_h )/3,
-                  iso,
-                  wireframe ? " [wireframe]" : "");
-    }
-    glUseProgram( 0 );
-    glMatrixMode( GL_PROJECTION );
-    glLoadIdentity();
-    glMatrixMode( GL_MODELVIEW );
-    glLoadIdentity();
-    glDisable( GL_DEPTH_TEST );
-    glColor3f( 1.0, 1.0, 1.0 );
-    glRasterPos2f( -0.99, 0.95 );
-    for(int i=0; i<255 && message[i] != '\0'; i++) {
-        glutBitmapCharacter( GLUT_BITMAP_8_BY_13, (int)message[i] );
-    }
 }
 
-// -----------------------------------------------------------------------------
-int
-main(int argc, char **argv)
+const std::string
+infoString( float fps )
 {
-    glutInit( &argc, argv );
-    if( argc == 2 ) {
-        volume_size_x = volume_size_y = volume_size_z = atoi( argv[1] );
-    }
-    else if( argc == 4 ) {
-        volume_size_x = atoi( argv[1] );
-        volume_size_y = atoi( argv[2] );
-        volume_size_z = atoi( argv[3] );
-    }
-    else {
-        volume_size_x = 64;
-        volume_size_y = 64;
-        volume_size_z = 64;
-    }
-
-    glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
-    glutInitWindowSize( 1280, 720 );
-    glutCreateWindow( argv[0] );
-    glewInit();
-    glutReshapeFunc( reshape );
-    glutDisplayFunc( display );
-    glutKeyboardFunc( keyboard );
-    glutIdleFunc( idle );
-    init();
-    glutMainLoop();
-    return EXIT_SUCCESS;
+    std::stringstream o;
+    o << std::setprecision(5) << fps << " fps, "
+      << volume_size_x << 'x'
+      << volume_size_y << 'x'
+      << volume_size_z << " samples, "
+      << (int)( ((volume_size_x-1)*(volume_size_y-1)*(volume_size_z-1)*fps)/1e6 )
+      << " MVPS, "
+      << HPMCacquireNumberOfVertices( hpmc_h )/3
+      << " vertices, iso=" << iso
+      << (wireframe?"[wireframe]":"");
+    return o.str();
 }

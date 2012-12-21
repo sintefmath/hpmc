@@ -75,6 +75,17 @@ struct HPMCIsoSurface*          hpmc_h              = NULL;
 struct HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
 struct HPMCIsoSurfaceRenderer*  hpmc_th_shaded      = NULL;
 
+namespace resources {
+    extern const std::string    solid_vs_110;
+    extern const std::string    solid_vs_130;
+    extern const std::string    solid_fs_110;
+    extern const std::string    solid_fs_130;
+    extern const std::string    phong_vs_110;
+    extern const std::string    phong_vs_130;
+    extern const std::string    phong_fs_110;
+    extern const std::string    phong_fs_130;
+}
+
 void
 printHelp( const std::string& appname )
 {

@@ -63,26 +63,17 @@ struct HPMCIsoSurface*          hpmc_h              = NULL;
 struct HPMCIsoSurfaceRenderer*  hpmc_th_shaded      = NULL;
 struct HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
 
-std::string fetch_code =
-        // evaluates the scalar field
-        "float\n"
-        "HPMC_fetch( vec3 p )\n"
-        "{\n"
-        "    p *= 2.0;\n"
-        "    p -= 1.0;\n"
-        "    return 1.0 - 16.0*p.x*p.y*p.z - 4.0*p.x*p.x - 4.0*p.y*p.y - 4.0*p.z*p.z;\n"
-        "}\n"
-        "vec4\n"
-        // evaluates the gradient as well as the scalar field
-        "HPMC_fetchGrad( vec3 p )\n"
-        "{\n"
-        "    p *= 2.0;\n"
-        "    p -= 1.0;\n"
-        "    return vec4( -16.0*p.y*p.z - 8.0*p.x,\n"
-        "                 -16.0*p.x*p.z - 8.0*p.y,\n"
-        "                 -16.0*p.x*p.y - 8.0*p.z,\n"
-        "                 1.0 - 16.0*p.x*p.y*p.z - 4.0*p.x*p.x - 4.0*p.y*p.y - 4.0*p.z*p.z );\n"
-        "}\n";
+namespace resources {
+    extern const std::string    solid_vs_110;
+    extern const std::string    solid_vs_130;
+    extern const std::string    solid_fs_110;
+    extern const std::string    solid_fs_130;
+    extern const std::string    phong_vs_110;
+    extern const std::string    phong_vs_130;
+    extern const std::string    phong_fs_110;
+    extern const std::string    phong_fs_130;
+    extern const std::string    cayley_fetch;
+}
 
 
 void
@@ -139,7 +130,7 @@ init( int argc, char** argv )
                        1.0f );
 
     HPMCsetFieldCustom( hpmc_h,
-                        fetch_code.c_str(),
+                        resources::cayley_fetch.c_str(),
                         0,
                         GL_TRUE );
 
@@ -199,7 +190,7 @@ init( int argc, char** argv )
                ? resources::solid_vs_110.c_str()
                : resources::solid_vs_130.c_str();
     sources[1] = traversal_code;
-        glShaderSource( flat_v, 2, sources, NULL );
+    glShaderSource( flat_v, 2, sources, NULL );
     compileShader( flat_v, "flat vertex shader" );
     free( traversal_code );
 

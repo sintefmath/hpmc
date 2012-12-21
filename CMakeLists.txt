@@ -88,7 +88,14 @@ SET( HPMC_APP_COMMON_GLSL "apps/shaders/phong_fs_110.glsl"
                           "apps/shaders/solid_fs_110.glsl"
                           "apps/shaders/solid_fs_130.glsl"
                           "apps/shaders/solid_vs_110.glsl"
-                          "apps/shaders/solid_vs_130.glsl" )
+                          "apps/shaders/solid_vs_130.glsl"
+                          "apps/shaders/shiny_fs_110.glsl"
+                          "apps/shaders/shiny_fs_130.glsl"
+                          "apps/shaders/shiny_vs_110.glsl"
+                          "apps/shaders/shiny_vs_130.glsl"
+                          "apps/shaders/metaballs_fetch.glsl"
+                          "apps/shaders/cayley_fetch.glsl"
+)
 SOURCE_GROUP( "Apps common shaders" FILES ${HPMC_APP_COMMON_GLSL} )
 SET_SOURCE_FILES_PROPERTIES( ${HPMC_APP_COMMON_GLSL} PROPERTIES HEADER_FILE_ONLY TRUE )
 FOREACH( file ${HPMC_APP_COMMON_GLSL} )
@@ -109,8 +116,8 @@ TARGET_LINK_LIBRARIES( cayley hpmc hpmc_app_common ${GLEW_LIBRARIES} ${OPENGL_LI
 #ADD_EXECUTABLE( transform_feedback "apps/transform_feedback/transform_feedback.cpp" ${HPMC_APP_COMMON_SRC} )
 #TARGET_LINK_LIBRARIES( transform_feedback hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
-#ADD_EXECUTABLE( metaballs "apps/metaballs/metaballs.cpp" ${HPMC_APP_COMMON_SRC} )
-#TARGET_LINK_LIBRARIES( metaballs hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+ADD_EXECUTABLE( metaballs "apps/metaballs/metaballs.cpp" )
+TARGET_LINK_LIBRARIES( metaballs hpmc hpmc_app_common ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
 #ADD_EXECUTABLE( splatting "apps/splatting/splatting.cpp" ${HPMC_APP_COMMON_SRC} )
 #TARGET_LINK_LIBRARIES( splatting hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
