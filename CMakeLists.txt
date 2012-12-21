@@ -4,8 +4,7 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 PROJECT( hpmc )
 
-SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
-        "${hpmc_SOURCE_DIR}")
+SET( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake/Modules )
 
 OPTION( SINTEF_INTERNAL "Compiled internally at SINTEF" OFF )
 OPTION( ENABLE_DEBUG "Enable debug code" ON )
