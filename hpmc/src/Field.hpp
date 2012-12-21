@@ -53,7 +53,7 @@ public:
     GLfloat extentZ() const { return m_extent[2]; }
 
     bool
-    hasGradient() const { return m_gradient; }
+    hasGradient() const { return m_tex_gradient_channels != GL_NONE; }
 
     bool
     isBinary() const { return m_binary; }
@@ -74,12 +74,10 @@ public:
     std::string       m_shader_source;
     /** The texture name of the Texture3D to fetch from (if fetch from Texture3D). */
     GLuint            m_tex;
-    /** True if the texture or the shader function can provide gradients.
-      *
-      * If gradients are provided, they are used to find normal vectors,
-      * it not, forward differences are used.
-      */
-    bool              m_gradient;
+    /** Channel that contains the scalar field. */
+    GLenum            m_tex_field_channel;
+    /** Channels that contain the gradient, or GL_NONE. */
+    GLenum            m_tex_gradient_channels;
 
 protected:
     HPMCConstants*  m_constants;

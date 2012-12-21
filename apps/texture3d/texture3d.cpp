@@ -85,20 +85,22 @@ printHelp( const std::string& appname )
     cerr << "       zsize    The number of samples in the z-direction."<<endl;
     cerr << "       rawfile  Filename of a raw set of bytes describing"<<endl;
     cerr << "                the volume."<<endl<<endl;
-    cerr << "Raw volumes can be found e.g. at http://www.volvis.org."<<endl<<endl;
+    printOptions();
+    cerr << endl;
     cerr << "Example usage:"<<endl;
     cerr << "    " << appname << " 64 64 64 neghip.raw"<< endl;
     cerr << "    " << appname << " 256 256 256 foot.raw"<< endl;
     cerr << "    " << appname << " 256 256 178 BostonTeapot.raw"<< endl;
     cerr << "    " << appname << " 301 324 56 lobster.raw"<< endl;
     cerr << endl;
-    printOptions();
+    cerr << "Raw volumes can be found e.g. at http://www.volvis.org."<<endl;
 }
 
 // -----------------------------------------------------------------------------
 void
 init( int argc, char **argv )
 {
+    //
     if( argc != 5 ) {
         printHelp( argv[0] );
         exit( EXIT_FAILURE );
@@ -123,23 +125,6 @@ init( int argc, char **argv )
 
     // --- upload volume ------------------------------------------------------
 
-    GLint alignment;
-    glGetIntegerv( GL_UNPACK_ALIGNMENT, &alignment );
-    glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );
-    glGenTextures( 1, &volume_tex );
-    glBindTexture( GL_TEXTURE_3D, volume_tex );
-    glTexImage3D( GL_TEXTURE_3D, 0, GL_ALPHA,
-                  volume_size_x, volume_size_y, volume_size_z, 0,
-                  GL_ALPHA, GL_UNSIGNED_BYTE, &dataset[0] );
-    glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP);
-    glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-    glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-    glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_BASE_LEVEL, 0 );
-    glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, 0 );
-    glBindTexture( GL_TEXTURE_3D, 0 );
-    glPixelStorei( GL_UNPACK_ALIGNMENT, alignment );
 
     // --- create HistoPyramid -------------------------------------------------
     hpmc_c = HPMCcreateConstants( hpmc_target, hpmc_debug );
@@ -161,9 +146,30 @@ init( int argc, char **argv )
                        volume_size_y / max_size,
                        volume_size_z / max_size );
 
+    // Setup field
+    GLint alignment;
+    GLenum channel = (hpmc_target < HPMC_TARGET_GL31_GLSL140 ? GL_ALPHA : GL_RED );
+    glGetIntegerv( GL_UNPACK_ALIGNMENT, &alignment );
+    glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );
+    glGenTextures( 1, &volume_tex );
+    glBindTexture( GL_TEXTURE_3D, volume_tex );
+    glTexImage3D( GL_TEXTURE_3D, 0, channel,
+                  volume_size_x, volume_size_y, volume_size_z, 0,
+                  channel, GL_UNSIGNED_BYTE, &dataset[0] );
+    glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP);
+    glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_BASE_LEVEL, 0 );
+    glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, 0 );
+    glBindTexture( GL_TEXTURE_3D, 0 );
+    glPixelStorei( GL_UNPACK_ALIGNMENT, alignment );
     HPMCsetFieldTexture3D( hpmc_h,
                            volume_tex,
-                           GL_FALSE );
+                           channel,
+                           GL_NONE );
+
 
     // --- create traversal vertex shader --------------------------------------
     const char* sources[3];
@@ -274,7 +280,6 @@ init( int argc, char **argv )
     glPolygonOffset( 1.0, 1.0 );
 }
 
-// -----------------------------------------------------------------------------
 void
 render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const GLfloat* PMV, const GLfloat *NM )
 {

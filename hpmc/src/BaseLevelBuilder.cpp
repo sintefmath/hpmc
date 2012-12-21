@@ -196,7 +196,7 @@ HPMCBaseLevelBuilder::extractSource() const
         src << "    p = 0.5*(pa+pb);\n";
     }
     else {
-        if( !m_iso_surface->field().m_gradient ) {
+        if( !m_iso_surface->field().hasGradient() ) {
             //          If we don't have gradient info, we approximate the gradient using forward
             //          differences. The sample at pb is one of the forward samples at pa, so we
             //          save one texture lookup.

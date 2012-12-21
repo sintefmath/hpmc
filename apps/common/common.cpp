@@ -65,7 +65,7 @@ bool                wireframe = false;
 bool                record = false;
 bool                binary = false;
 HPMCTarget          hpmc_target     = HPMC_TARGET_GL20_GLSL110;
-HPMCDebugBehaviour  hpmc_debug      = HPMC_DEBUG_KHR_DEBUG;
+HPMCDebugBehaviour  hpmc_debug      = HPMC_DEBUG_NONE;
 
 // === misc shader sources =====================================================
 

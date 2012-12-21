@@ -446,16 +446,21 @@ void
 HPMCsetFieldAsBinary( struct HPMCIsoSurface*  h );
 
 /** Sets that a Texture3D shall define the scalar field lattice.
-  *
-  * \param h                Pointer to an existing HistoPyramid instance.
-  * \param texture
-  * \param gradient         True if fetch shader provides gradients, otherwise
-  *                         the gradient is approximated using forward differences.
-  */
-void
+ *
+ * \param h         Pointer to an existing HistoPyramid instance.
+ * \param texture   GL name of 3D texture.
+ * \param field     Color channel where field is stored, valid values are GL_RED
+ *                  or GL_ALPHA.
+ * \param gradient  Color channels where gradient is stored, valid values are
+ *                  GL_RGB or GL_NONE (which implies no gradients and gradient
+ *                  is found by HPMC on the fly using forward differences).
+ * \returns         True on success.
+ */
+bool
 HPMCsetFieldTexture3D( struct HPMCIsoSurface*  h,
-                       GLuint                    texture,
-                       GLboolean                 gradient );
+                       GLuint                  texture,
+                       GLenum                  field,
+                       GLenum                  gradient );
 
 /** Sets a custom fetch function for the lattice.
   *

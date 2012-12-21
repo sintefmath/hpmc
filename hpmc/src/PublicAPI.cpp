@@ -157,36 +157,76 @@ HPMCsetFieldAsBinary( struct HPMCIsoSurface*  h )
 }
 
 
-void
+bool
 HPMCsetFieldTexture3D( struct HPMCIsoSurface*  h,
                        GLuint                  texture,
-                       GLboolean               gradient )
+                       GLenum                  field,
+                       GLenum                  gradient )
 {
+    if( h == NULL ) {
+        return false;
+    }
     Logger log( h->constants(), package + ".setFieldTexture3D", true );
+    if( texture == 0 ) {
+        log.errorMessage( "Illegal texture name" );
+        return false;
+    }
+    if( (field != GL_RED) && (field != GL_ALPHA) ) {
+        log.errorMessage( "Illegal field enum" );
+        return false;
+    }
+    if( (gradient != GL_RGB) && (gradient != GL_NONE) ) {
+        log.errorMessage( "Illegal gradient enum" );
+        return false;
+    }
+    if( (gradient == GL_RGB) && (field == GL_RED) ) {
+        log.errorMessage( "field and gradient channels are not distinct" );
+        return false;
+    }
+
     h->field().m_tex = texture;
     log.setObjectLabel( GL_TEXTURE, h->field().m_tex, "field texture 3D" );
 
-    bool grad = ( gradient==GL_TRUE? true : false );
-
-    // significant changes trigger a rebuild of everything
-    if( (h->field().m_mode != HPMC_VOLUME_LAYOUT_TEXTURE_3D) ||
-            (h->field().m_gradient != grad) )
+    if( (h->field().m_mode != HPMC_VOLUME_LAYOUT_TEXTURE_3D ) ||
+        (h->field().m_tex_field_channel != field ) ||
+        (h->field().m_tex_gradient_channels != gradient ) )
     {
         h->field().m_mode = HPMC_VOLUME_LAYOUT_TEXTURE_3D;
-        h->field().m_gradient = grad;
+        h->field().m_tex_field_channel = field;
+        h->field().m_tex_gradient_channels = gradient;
         h->m_hp_build.m_tex_unit_1 = 0;
         h->m_hp_build.m_tex_unit_2 = 1;
         h->taint();
         if( h->constants()->debugBehaviour() != HPMC_DEBUG_NONE ) {
             std::stringstream o;
-            o << "Significant change, rebuilding, mode=TEX3D, grad="
-              << (grad?"yes":"no")
-              << "build.texunits={"
+            o << "field mode=TEX3D";
+            switch( field ) {
+            case GL_RED:
+                o << ", field=RED";
+                break;
+            case GL_ALPHA:
+                o << ", field=ALPHA";
+                break;
+            default:
+                break;
+            }
+            switch( gradient ) {
+            case GL_RGB:
+                o << ", gradient=RGB";
+                break;
+            case GL_NONE:
+                o << ", gradient=NONE";
+                break;
+            default:
+                break;
+            }
+            o << ", build.texunits={"
               << h->m_hp_build.m_tex_unit_1 << ", "
               << h->m_hp_build.m_tex_unit_2 << " }";
             log.debugMessage( o.str() );
         }
     }
+    return true;
 }
 
 
@@ -199,7 +239,9 @@ HPMCsetFieldCustom( struct HPMCIsoSurface*  h,
     Logger log( h->constants(), package + ".setFieldCustom", true );
     h->field().m_mode = HPMC_VOLUME_LAYOUT_CUSTOM;
     h->field().m_shader_source = shader_source;
-    h->field().m_gradient = ( gradient==GL_TRUE? true : false );
+    h->field().m_tex = 0;
+    h->field().m_tex_field_channel = GL_RED;
+    h->field().m_tex_gradient_channels = (gradient==GL_TRUE?GL_RGB:GL_NONE);
     h->m_hp_build.m_tex_unit_1 = builder_texunit;
     h->m_hp_build.m_tex_unit_2 = builder_texunit+1;
     h->taint();
