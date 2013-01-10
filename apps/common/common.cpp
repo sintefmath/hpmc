@@ -27,17 +27,24 @@
 #include <string>
 #include <fstream>
 #include <cmath>
+#include <iterator>
 #include <GL/glew.h>
+
+
 #if defined(__unix) || defined(__APPLE__)
 #include <sys/time.h>
 #include <unistd.h>
 #endif
+
 #ifdef _WIN32
 #include <sys/timeb.h>
 #include <time.h>
 #include <windows.h>
 #define snprintf _snprintf_s
 #endif
+
+
+
 /*
 #ifdef __APPLE__
 #include <glut.h>
