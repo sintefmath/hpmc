@@ -129,11 +129,11 @@ init()
 
     GLuint reduce_110_f = glCreateShader( GL_FRAGMENT_SHADER );
     glShaderSource( reduce_110_f, 1, reduce_110_src_f, NULL );
-    compileShader( base_f, "reduce_110_f" );
+    compileShader( reduce_110_f, "reduce_110_f" );
 
     GLuint reduce_130_f = glCreateShader( GL_FRAGMENT_SHADER );
     glShaderSource( reduce_130_f, 1, reduce_130_src_f, NULL );
-    compileShader( base_f, "reduce_130_f" );
+    compileShader( reduce_130_f, "reduce_130_f" );
 
     base_p = glCreateProgram();
     glAttachShader( base_p, gpgpu_v );
