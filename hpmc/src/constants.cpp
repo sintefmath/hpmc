@@ -102,6 +102,8 @@ HPMCcreateConstants()
 
     glGenTextures( 1, &s->m_edge_decode_tex );
     glBindTexture( GL_TEXTURE_2D, s->m_edge_decode_tex );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0 );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0 );
     glTexImage2D( GL_TEXTURE_2D, 0,
                   GL_RGBA32F_ARB, 16, 256,0,
                   GL_RGBA, GL_FLOAT,
@@ -126,6 +128,8 @@ HPMCcreateConstants()
 
     glGenTextures( 1, &s->m_vertex_count_tex );
     glBindTexture( GL_TEXTURE_1D, s->m_vertex_count_tex );
+    glTexParameteri( GL_TEXTURE_1D, GL_TEXTURE_BASE_LEVEL, 0 );
+    glTexParameteri( GL_TEXTURE_1D, GL_TEXTURE_MAX_LEVEL, 0 );
     glTexImage1D( GL_TEXTURE_1D, 0,
                   GL_ALPHA32F_ARB, 256, 0,
                   GL_ALPHA, GL_FLOAT,
