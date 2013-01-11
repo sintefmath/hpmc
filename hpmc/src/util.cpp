@@ -78,13 +78,14 @@ HPMCcheckFramebufferStatus( HPMCConstants* c, const std::string& file, const int
 #ifdef DEBUG
         string error = "unknown error";
         switch( status ) {
+        HELPER( GL_FRAMEBUFFER_UNDEFINED );
         HELPER( GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT );
         HELPER( GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT );
-        HELPER( GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS );
-        HELPER( GL_FRAMEBUFFER_INCOMPLETE_FORMATS );
         HELPER( GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER );
         HELPER( GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER );
         HELPER( GL_FRAMEBUFFER_UNSUPPORTED );
+        HELPER( GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE );
+        HELPER( GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS );
         }
         cerr << "HPMC error: framebuffer incomplete (" << error << ") in "
              << file << " at line " << line << "." << endl;

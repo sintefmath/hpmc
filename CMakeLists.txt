@@ -5,7 +5,7 @@ endif(COMMAND cmake_policy)
 PROJECT( hpmc )
 
 OPTION( BUILD_TESTS "Build tests that check if platform performs as expected" ON )
-
+OPTION( DEBUG "Create debug build" OFF )
 
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
         "${hpmc_SOURCE_DIR}")
@@ -32,6 +32,10 @@ SET( HPMC_SRC
 )
 #SET( CMAKE_CXX_FLAGS "-pedantic -O2 -DDEBUG ${CMAKE_CXX_FLAGS}" )
 #SET( CMAKE_CXX_FLAGS "-pedantic ${CMAKE_CXX_FLAGS}" )
+
+IF( DEBUG )
+    SET( CMAKE_CXX_FLAGS "-DDEBUG ${CMAKE_CXX_FLAGS}" )
+ENDIF( DEBUG )
 
 ADD_LIBRARY( hpmc STATIC ${HPMC_SRC} )
 TARGET_LINK_LIBRARIES( hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )

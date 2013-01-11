@@ -44,7 +44,8 @@
 #ifdef __APPLE__
 #include <glut.h>
 #else
-#include <GL/glut.h>
+#include <GL/freeglut.h>
+#include <GL/freeglut_ext.h>
 #endif
 #include "hpmc.h"
 #include "../common/common.cpp"
@@ -345,6 +346,10 @@ int
 main(int argc, char **argv)
 {
     glutInit( &argc, argv );
+#ifdef DEBUG
+    glutInitContextFlags( GLUT_DEBUG );
+    glewExperimental = GL_TRUE;
+#endif
     if( argc == 2 ) {
         volume_size_x = volume_size_y = volume_size_z = atoi( argv[1] );
     }
@@ -363,6 +368,7 @@ main(int argc, char **argv)
     glutInitWindowSize( 1280, 720 );
     glutCreateWindow( argv[0] );
     glewInit();
+    setupGLDebug();
     glutReshapeFunc( reshape );
     glutDisplayFunc( display );
     glutKeyboardFunc( keyboard );

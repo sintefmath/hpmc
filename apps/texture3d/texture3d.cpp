@@ -52,7 +52,8 @@
 #ifdef __APPLE__
 #include <glut.h>
 #else
-#include <GL/glut.h>
+#include <GL/freeglut.h>
+#include <GL/freeglut_ext.h>
 #endif
 #include "hpmc.h"
 #include "../common/common.cpp"
@@ -305,6 +306,10 @@ int
 main(int argc, char **argv)
 {
     glutInit( &argc, argv );
+#ifdef DEBUG
+    glutInitContextFlags( GLUT_DEBUG );
+    glewExperimental = GL_TRUE;
+#endif
 
     if( argc != 5 ) {
         cerr << "HPMC demo application that visualizes raw volumes."<<endl<<endl;
@@ -342,6 +347,7 @@ main(int argc, char **argv)
     glutInitWindowSize( 1280, 720 );
     glutCreateWindow( argv[0] );
     glewInit();
+    setupGLDebug();
     glutReshapeFunc( reshape );
     glutDisplayFunc( display );
     glutKeyboardFunc( keyboard );
