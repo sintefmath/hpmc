@@ -4,8 +4,11 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 PROJECT( hpmc )
 
+OPTION( BUILD_TESTS "Build tests that check if platform performs as expected" ON )
+
+
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
-	"${hpmc_SOURCE_DIR}")
+        "${hpmc_SOURCE_DIR}")
 
 INCLUDE_DIRECTORIES(
   "./hpmc/include"
@@ -34,6 +37,11 @@ ADD_LIBRARY( hpmc STATIC ${HPMC_SRC} )
 TARGET_LINK_LIBRARIES( hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
 INCLUDE_DIRECTORIES( ${GLUT_INCLUDE_DIR} ${GLEW_INCLUDE_DIR} )
+
+IF( BUILD_TESTS )
+    ADD_EXECUTABLE( test_simplemipmapbuildup "tests/simplemipmapbuildup.cpp" )
+    TARGET_LINK_LIBRARIES( test_simplemipmapbuildup ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+ENDIF( BUILD_TESTS )
 
 ADD_EXECUTABLE( texture3d "apps/texture3d/texture3d.cpp" )
 TARGET_LINK_LIBRARIES( texture3d hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
