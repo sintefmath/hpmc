@@ -32,6 +32,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <iterator>
 #include <GL/glew.h>
 #if defined(__unix) || defined(__APPLE__)
 #include <sys/time.h>
