@@ -62,18 +62,22 @@ HPMCsetupTexAndFBOs( struct HPMCHistoPyramid* h )
     }
 
     glBindTexture( GL_TEXTURE_2D, h->m_histopyramid.m_tex );
-    glTexImage2D( GL_TEXTURE_2D, 0,
-                  GL_RGBA32F_ARB,
-                  h->m_histopyramid.m_size, h->m_histopyramid.m_size, 0,
-                  GL_RGBA, GL_FLOAT,
-                  NULL );
-    glGenerateMipmapEXT( GL_TEXTURE_2D );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0 );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, h->m_histopyramid.m_size_l2);
+    GLsizei w = h->m_histopyramid.m_size;
+    for( GLsizei i=0; i<=h->m_histopyramid.m_size_l2; i++ ) {
+        glTexImage2D( GL_TEXTURE_2D, i,
+                      GL_RGBA32F_ARB,
+                      w, w, 0,
+                      GL_RGBA, GL_FLOAT,
+                      NULL );
+        w = std::max(1,w/2);
+    }
+    //glGenerateMipmapEXT( GL_TEXTURE_2D );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0 );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, h->m_histopyramid.m_size_l2);
 
     // --- create hp framebuffer objects, one fbo per level --------------------
     if( !h->m_histopyramid.m_fbos.empty() ) {
