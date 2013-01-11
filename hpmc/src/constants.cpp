@@ -61,11 +61,69 @@ HPMCcreateConstants()
         return NULL;
     }
 
+    // Determine GL version
+    GLint gl_major, gl_minor;
+    glGetIntegerv( GL_MAJOR_VERSION, &gl_major );
+    glGetIntegerv( GL_MINOR_VERSION, &gl_minor );
+
+    if( gl_major < 2 ) {
+        // Insufficient GL version
+#ifdef DEBUG
+        cerr << "HPMC error: At least GL version 2.0 is required "
+             << "(system reports version " << gl_major
+             << "." <<gl_minor << ")" << endl;
+#endif
+        return NULL;
+    }
+
     struct HPMCConstants *s = new HPMCConstants;
     s->m_enumerate_vbo = 0;
     s->m_edge_decode_tex = 0;
     s->m_vertex_count_tex = 0;
     s->m_gpgpu_quad_vbo = 0;
+
+    if( gl_major == 2 ) {
+        if( gl_minor == 0 ) {
+            s->m_target = HPMC_TARGET_GL20_GLSL110;
+        }
+        else {
+            s->m_target = HPMC_TARGET_GL21_GLSL120;
+        }
+    }
+    else if( gl_major == 3 ) {
+        if( gl_minor == 0 ) {
+            s->m_target = HPMC_TARGET_GL30_GLSL130;
+        }
+        else if( gl_minor == 1 ) {
+            s->m_target = HPMC_TARGET_GL31_GLSL140;
+        }
+        else if( gl_minor == 2 ) {
+            s->m_target = HPMC_TARGET_GL32_GLSL150;
+        }
+        else {
+            s->m_target = HPMC_TARGET_GL33_GLSL330;
+        }
+    }
+    else if( gl_major == 4 ) {
+        if( gl_minor == 0 ) {
+            s->m_target = HPMC_TARGET_GL40_GLSL400;
+        }
+        else if( gl_minor == 1 ) {
+            s->m_target = HPMC_TARGET_GL41_GLSL410;
+        }
+        else if( gl_minor == 2 ) {
+            s->m_target = HPMC_TARGET_GL42_GLSL420;
+        }
+        else {
+            s->m_target = HPMC_TARGET_GL43_GLSL430;
+        }
+    }
+    else {
+        s->m_target = HPMC_TARGET_GL43_GLSL430;
+    }
+
+
+
 
     // --- store state ---------------------------------------------------------
     glPushClientAttrib( GL_CLIENT_VERTEX_ARRAY_BIT );

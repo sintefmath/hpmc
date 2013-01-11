@@ -49,6 +49,19 @@ enum HPMCVolumeLayout {
     HPMC_VOLUME_LAYOUT_TEXTURE_3D
 };
 
+enum HPMCTarget {
+    HPMC_TARGET_GL20_GLSL110,
+    HPMC_TARGET_GL21_GLSL120,
+    HPMC_TARGET_GL30_GLSL130,
+    HPMC_TARGET_GL31_GLSL140,
+    HPMC_TARGET_GL32_GLSL150,
+    HPMC_TARGET_GL33_GLSL330,
+    HPMC_TARGET_GL40_GLSL400,
+    HPMC_TARGET_GL41_GLSL410,
+    HPMC_TARGET_GL42_GLSL420,
+    HPMC_TARGET_GL43_GLSL430
+};
+
 // -----------------------------------------------------------------------------
 /** Constant data shared by multiple HistoPyramids. */
 struct HPMCConstants
@@ -58,6 +71,7 @@ struct HPMCConstants
     GLuint            m_enumerate_vbo;
     GLsizei           m_enumerate_vbo_n;
     GLuint            m_gpgpu_quad_vbo;
+    HPMCTarget        m_target;
 };
 
 // -----------------------------------------------------------------------------
