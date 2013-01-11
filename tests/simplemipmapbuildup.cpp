@@ -372,6 +372,9 @@ static void APIENTRY debugLogger( GLenum source,
               << std::endl;
 }
 
+void idle() {
+	glutPostRedisplay();
+}
 
 int
 main( int argc, char** argv )
@@ -397,7 +400,7 @@ main( int argc, char** argv )
   //  glutReshapeFunc( reshape );
   glutDisplayFunc( display );
   //glutKeyboardFunc( keyboard );
-  glutIdleFunc( glutPostRedisplay );
+  glutIdleFunc( idle );
   init();
   glutMainLoop();
   return EXIT_SUCCESS;
