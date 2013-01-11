@@ -100,6 +100,14 @@ HPMCfreeHPBuildShaders( struct HPMCHistoPyramid* h )
 bool
 HPMCbuildHPBuildShaders( struct HPMCHistoPyramid* h )
 {
+    if( h == NULL ) {
+        return false;
+    }
+    HPMCHistoPyramid::HistoPyramidBuild& hpb = h->m_hp_build;
+    HPMCHistoPyramid::HistoPyramidBuild::BaseConstruction& base = hpb.m_base;
+    HPMCHistoPyramid::HistoPyramidBuild::FirstReduction& first = hpb.m_first;
+    HPMCHistoPyramid::HistoPyramidBuild::UpperReduction& upper = hpb.m_upper;
+
     if( !HPMCcheckGL( __FILE__, __LINE__ ) ) {
 #ifdef DEBUG
         cerr << "HPMC warning: buildHPBuildShaders called with GL errors." << endl;
@@ -108,11 +116,10 @@ HPMCbuildHPBuildShaders( struct HPMCHistoPyramid* h )
     }
 
     // --- build base level construction shader --------------------------------
-    h->m_hp_build.m_gpgpu_vertex_shader =
-            HPMCcompileShader( HPMCgenerateDefines( h ) +
-                               HPMCgenerateGPGPUVertexPassThroughShader( h ),
-                               GL_VERTEX_SHADER );
-    if( h->m_hp_build.m_gpgpu_vertex_shader == 0 ) {
+    hpb.m_gpgpu_vertex_shader = HPMCcompileShader( HPMCgenerateDefines( h ) +
+                                                   HPMCgenerateGPGPUVertexPassThroughShader( h ),
+                                                   GL_VERTEX_SHADER );
+    if( hpb.m_gpgpu_vertex_shader == 0 ) {
 #ifdef DEBUG
         cerr << "HPMC error: Failed to build base level gpgpu vertex shader." << endl;
 #endif
@@ -120,24 +127,21 @@ HPMCbuildHPBuildShaders( struct HPMCHistoPyramid* h )
     }
 
     // --- build base level construction shader --------------------------------
-    h->m_hp_build.m_base.m_fragment_shader =
-            HPMCcompileShader( HPMCgenerateDefines( h ) +
-                               HPMCgenerateScalarFieldFetch( h ) +
-                               HPMCgenerateBaselevelShader( h ),
-                               GL_FRAGMENT_SHADER );
-    if( h->m_hp_build.m_base.m_fragment_shader == 0 ) {
+    base.m_fragment_shader = HPMCcompileShader( HPMCgenerateDefines( h ) +
+                                                HPMCgenerateScalarFieldFetch( h ) +
+                                                HPMCgenerateBaselevelShader( h ),
+                                                GL_FRAGMENT_SHADER );
+    if( base.m_fragment_shader == 0 ) {
 #ifdef DEBUG
         cerr << "HPMC error: Failed to build base level construction fragment shader." << endl;
 #endif
         return false;
     }
 
-    h->m_hp_build.m_base.m_program = glCreateProgram();
-    glAttachShader( h->m_hp_build.m_base.m_program,
-                    h->m_hp_build.m_gpgpu_vertex_shader );
-    glAttachShader( h->m_hp_build.m_base.m_program,
-                    h->m_hp_build.m_base.m_fragment_shader );
-    if(! HPMClinkProgram( h->m_hp_build.m_base.m_program ) ) {
+    base.m_program = glCreateProgram();
+    glAttachShader( base.m_program, hpb.m_gpgpu_vertex_shader );
+    glAttachShader( base.m_program, base.m_fragment_shader );
+    if(! HPMClinkProgram( base.m_program ) ) {
 #ifdef DEBUG
         cerr << "HPMC error: Failed to link base level construction program." << endl;
 #endif
@@ -145,16 +149,11 @@ HPMCbuildHPBuildShaders( struct HPMCHistoPyramid* h )
     }
 
     // --- configure base level construction program ---------------------------
-    glUseProgram( h->m_hp_build.m_base.m_program );
-    h->m_hp_build.m_base.m_loc_threshold =
-            HPMCgetUniformLocation( h->m_hp_build.m_base.m_program,
-                                    "HPMC_threshold" );
-
-    GLint loc_vertex_count =
-            HPMCgetUniformLocation( h->m_hp_build.m_base.m_program,
-                                    "HPMC_vertex_count" );
+    glUseProgram( base.m_program );
+    base.m_loc_threshold = HPMCgetUniformLocation( base.m_program, "HPMC_threshold" );
+    GLint loc_vertex_count = HPMCgetUniformLocation( base.m_program, "HPMC_vertex_count" );
     if( loc_vertex_count != -1 ) {
-        glUniform1i( loc_vertex_count, h->m_hp_build.m_tex_unit_1 );
+        glUniform1i( loc_vertex_count, hpb.m_tex_unit_1 );
     }
     else {
 #ifdef DEBUG
@@ -164,11 +163,9 @@ HPMCbuildHPBuildShaders( struct HPMCHistoPyramid* h )
     }
 
     if( h->m_fetch.m_mode != HPMC_VOLUME_LAYOUT_CUSTOM ) {
-        GLint loc_field =
-                HPMCgetUniformLocation( h->m_hp_build.m_base.m_program,
-                                        "HPMC_scalarfield" );
+        GLint loc_field = HPMCgetUniformLocation( base.m_program, "HPMC_scalarfield" );
         if( loc_field != -1 ) {
-            glUniform1i( loc_field, h->m_hp_build.m_tex_unit_2 );
+            glUniform1i( loc_field, hpb.m_tex_unit_2 );
         }
         else {
 #ifdef DEBUG
@@ -185,22 +182,19 @@ HPMCbuildHPBuildShaders( struct HPMCHistoPyramid* h )
     }
 
     // --- build first pure reduction pass program -----------------------------
-    h->m_hp_build.m_first.m_fragment_shader =
-            HPMCcompileShader( HPMCgenerateDefines( h ) +
-                               HPMCgenerateReductionShader( h, "floor" ),
-                               GL_FRAGMENT_SHADER );
-    if( h->m_hp_build.m_first.m_fragment_shader == 0 ) {
+    first.m_fragment_shader = HPMCcompileShader( HPMCgenerateDefines( h ) +
+                                                 HPMCgenerateReductionShader( h, "floor" ),
+                                                 GL_FRAGMENT_SHADER );
+    if( first.m_fragment_shader == 0 ) {
 #ifdef DEBUG
         cerr << "HPMC error: Failed to build first reduction fragment shader." << endl;
 #endif
         return false;
     }
-    h->m_hp_build.m_first.m_program = glCreateProgram();
-    glAttachShader( h->m_hp_build.m_first.m_program,
-                    h->m_hp_build.m_gpgpu_vertex_shader );
-    glAttachShader( h->m_hp_build.m_first.m_program,
-                    h->m_hp_build.m_first.m_fragment_shader );
-    if(! HPMClinkProgram( h->m_hp_build.m_first.m_program ) ) {
+    first.m_program = glCreateProgram();
+    glAttachShader( first.m_program, hpb.m_gpgpu_vertex_shader );
+    glAttachShader( first.m_program, first.m_fragment_shader );
+    if(! HPMClinkProgram( first.m_program ) ) {
 #ifdef DEBUG
         cerr << "HPMC error: Failed to link first reduction program." << endl;
 #endif
@@ -208,14 +202,11 @@ HPMCbuildHPBuildShaders( struct HPMCHistoPyramid* h )
     }
 
     // --- configure first pure reduction pass program -------------------------
-    glUseProgram( h->m_hp_build.m_first.m_program );
-    h->m_hp_build.m_first.m_loc_delta =
-            HPMCgetUniformLocation( h->m_hp_build.m_first.m_program,
-                                    "HPMC_delta" );
-    GLint fr_hp_loc =
-            HPMCgetUniformLocation( h->m_hp_build.m_first.m_program,
-                                    "HPMC_histopyramid" );
-    glUniform1i( fr_hp_loc, h->m_hp_build.m_tex_unit_1 );
+    glUseProgram( first.m_program );
+    first.m_loc_src_level = glGetUniformLocation( first.m_program, "HPMC_src_level" );
+    first.m_loc_delta = glGetUniformLocation( first.m_program, "HPMC_delta" );
+    GLint fr_hp_loc = HPMCgetUniformLocation( first.m_program, "HPMC_histopyramid" );
+    glUniform1i( fr_hp_loc, hpb.m_tex_unit_1 );
 
     if( !HPMCcheckGL( __FILE__, __LINE__ ) ) {
 #ifdef DEBUG
@@ -225,23 +216,20 @@ HPMCbuildHPBuildShaders( struct HPMCHistoPyramid* h )
     }
 
     // --- build upper levels reduction pass program ---------------------------
-    h->m_hp_build.m_upper.m_fragment_shader =
-            HPMCcompileShader( HPMCgenerateDefines( h ) +
-                               HPMCgenerateReductionShader( h ),
-                               GL_FRAGMENT_SHADER );
-    if( h->m_hp_build.m_upper.m_fragment_shader == 0 ) {
+    upper.m_fragment_shader =  HPMCcompileShader( HPMCgenerateDefines( h ) +
+                                                  HPMCgenerateReductionShader( h ),
+                                                  GL_FRAGMENT_SHADER );
+    if( upper.m_fragment_shader == 0 ) {
 #ifdef DEBUG
         cerr << "HPMC error: Failed to build upper levels reduction fragment shader." << endl;
 #endif
         return false;
     }
 
-    h->m_hp_build.m_upper.m_program = glCreateProgram();
-    glAttachShader( h->m_hp_build.m_upper.m_program,
-                    h->m_hp_build.m_gpgpu_vertex_shader );
-    glAttachShader( h->m_hp_build.m_upper.m_program,
-                    h->m_hp_build.m_upper.m_fragment_shader );
-    if(! HPMClinkProgram( h->m_hp_build.m_upper.m_program ) ) {
+    upper.m_program = glCreateProgram();
+    glAttachShader( upper.m_program, hpb.m_gpgpu_vertex_shader );
+    glAttachShader( upper.m_program, upper.m_fragment_shader );
+    if(! HPMClinkProgram( upper.m_program ) ) {
 #ifdef DEBUG
         cerr << "HPMC error: Failed to link upper levels reduction program." << endl;
 #endif
@@ -250,15 +238,11 @@ HPMCbuildHPBuildShaders( struct HPMCHistoPyramid* h )
 
     // --- configure upper levels reduction pass program -----------------------
     glUseProgram( h->m_hp_build.m_upper.m_program );
-    h->m_hp_build.m_upper.m_loc_delta =
-            HPMCgetUniformLocation( h->m_hp_build.m_upper.m_program,
-                                    "HPMC_delta" );
-
-    GLint ur_hp_loc =
-            HPMCgetUniformLocation( h->m_hp_build.m_upper.m_program,
-                                    "HPMC_histopyramid" );
+    upper.m_loc_delta = glGetUniformLocation( upper.m_program, "HPMC_delta" );
+    upper.m_loc_src_level = glGetUniformLocation( upper.m_program, "HPMC_src_level" );
+    GLint ur_hp_loc = HPMCgetUniformLocation( upper.m_program, "HPMC_histopyramid" );
     if( ur_hp_loc != -1 ) {
-        glUniform1i( ur_hp_loc, h->m_hp_build.m_tex_unit_1 );
+        glUniform1i( ur_hp_loc, hpb.m_tex_unit_1 );
     }
     else {
 #ifdef DEBUG

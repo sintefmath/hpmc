@@ -178,6 +178,7 @@ struct HPMCHistoPyramid
             GLuint            m_fragment_shader;
             GLuint            m_program;
             GLint             m_loc_delta;
+            GLint             m_loc_src_level;
         }
         m_first;
 
@@ -186,6 +187,7 @@ struct HPMCHistoPyramid
             GLuint            m_fragment_shader;
             GLuint            m_program;
             GLint             m_loc_delta;
+            GLint             m_loc_src_level;
         }
         m_upper;
 

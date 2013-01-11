@@ -66,6 +66,10 @@ HPMCcreateConstants()
     glGetIntegerv( GL_MAJOR_VERSION, &gl_major );
     glGetIntegerv( GL_MINOR_VERSION, &gl_minor );
 
+//    gl_major = 2;
+//    gl_minor = 0;
+
+
     if( gl_major < 2 ) {
         // Insufficient GL version
 #ifdef DEBUG
@@ -81,6 +85,7 @@ HPMCcreateConstants()
     s->m_edge_decode_tex = 0;
     s->m_vertex_count_tex = 0;
     s->m_gpgpu_quad_vbo = 0;
+
 
     if( gl_major == 2 ) {
         if( gl_minor == 0 ) {
