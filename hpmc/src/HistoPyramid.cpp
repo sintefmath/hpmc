@@ -300,7 +300,7 @@ HPMCHistoPyramid::downTraversalSource() const
     HPMCTarget target = m_constants->target();
     std::stringstream src;
 
-    std::string texture2DLod = (target < HPMC_TARGET_GL30_GLSL130?"texture2DLod":"texture");
+    std::string texture2DLod = (target < HPMC_TARGET_GL30_GLSL130?"texture2DLod":"textureLod");
 
 
     //        Start traversal in the center of the top element texel.
