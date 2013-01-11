@@ -220,8 +220,12 @@ HPMCbuildHistopyramid( struct   HPMCHistoPyramid* h,
                    reinterpret_cast<GLint*>(&old_pbo) );
     glGetIntegerv( GL_CURRENT_PROGRAM,
                    reinterpret_cast<GLint*>(&old_prog) );
-    glGetIntegerv( GL_FRAMEBUFFER_BINDING_EXT,
-                   reinterpret_cast<GLint*>(&old_fbo) );
+    if( h->m_constants->m_target < HPMC_TARGET_GL30_GLSL130 ) {
+        glGetIntegerv( GL_FRAMEBUFFER_BINDING_EXT, reinterpret_cast<GLint*>(&old_fbo) );
+    }
+    else {
+        glGetIntegerv( GL_FRAMEBUFFER_BINDING, reinterpret_cast<GLint*>(&old_fbo) );
+    }
 
     // --- if HP is reconfigured, setup shaders and fbo's ----------------------
     if( h->m_tainted ) {
@@ -237,7 +241,12 @@ HPMCbuildHistopyramid( struct   HPMCHistoPyramid* h,
     }
 
     // --- restore state -------------------------------------------------------
-    glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, old_fbo );
+    if( h->m_constants->m_target < HPMC_TARGET_GL30_GLSL130 ) {
+        glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, old_fbo );
+    }
+    else {
+        glBindFramebuffer( GL_FRAMEBUFFER, old_fbo );
+    }
     glUseProgram( old_prog );
     glBindBuffer( GL_PIXEL_PACK_BUFFER, old_pbo );
     glPopAttrib();

@@ -85,7 +85,12 @@ HPMCtriggerHistopyramidBuildPasses( struct HPMCHistoPyramid* h )
     glUniform1f( base.m_loc_threshold, h->m_threshold );
 
     // And trigger computation.
-    glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, hp.m_fbos[0] );
+    if( h->m_constants->m_target < HPMC_TARGET_GL30_GLSL130 ) {
+        glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, hp.m_fbos[0] );
+    }
+    else {
+        glBindFramebuffer( GL_FRAMEBUFFER, hp.m_fbos[0] );
+    }
     glViewport( 0, 0, hp.m_size, hp.m_size );
     HPMCrenderGPGPUQuad( h );
 
@@ -106,13 +111,12 @@ HPMCtriggerHistopyramidBuildPasses( struct HPMCHistoPyramid* h )
     // distance between texels in base layer of HP
     if( h->m_constants->m_target < HPMC_TARGET_GL30_GLSL130 ) {
         glUniform2f( first.m_loc_delta, -0.5f/hp.m_size, 0.5f/hp.m_size );
+        glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, h->m_histopyramid.m_fbos[1] );
     }
     else {
+        glBindFramebuffer( GL_FRAMEBUFFER, h->m_histopyramid.m_fbos[1] );
         glUniform1i( first.m_loc_src_level, 0 );
     }
-
-    // trigger
-    glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, h->m_histopyramid.m_fbos[1] );
     glViewport( 0, 0, hp.m_size/2, hp.m_size/2 );
     HPMCrenderGPGPUQuad( h );
 
@@ -144,7 +148,7 @@ HPMCtriggerHistopyramidBuildPasses( struct HPMCHistoPyramid* h )
     else {
         for(GLsizei m=2; m<=h->m_histopyramid.m_size_l2; m++) {
             glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, m-1 );
-            glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, h->m_histopyramid.m_fbos[m] );
+            glBindFramebuffer( GL_FRAMEBUFFER, h->m_histopyramid.m_fbos[m] );
             glViewport( 0, 0, 1<<(hp.m_size_l2-m), 1<<(hp.m_size_l2-m) );
             glUniform1i( upper.m_loc_src_level, m-1 );
             HPMCrenderGPGPUQuad( h );

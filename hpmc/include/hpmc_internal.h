@@ -255,7 +255,7 @@ HPMCbuildHPBuildShaders( struct HPMCHistoPyramid* h );
 
 
 bool
-HPMCcheckFramebufferStatus( const std::string& file, const int line );
+HPMCcheckFramebufferStatus( HPMCConstants* c, const std::string& file, const int line );
 
 bool
 HPMCcheckGL( const std::string& file, const int line );

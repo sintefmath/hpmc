@@ -89,14 +89,25 @@ HPMCsetupTexAndFBOs( struct HPMCHistoPyramid* h )
                           &h->m_histopyramid.m_fbos[0] );
 
     for( GLuint m=0; m<h->m_histopyramid.m_fbos.size(); m++) {
-        glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, h->m_histopyramid.m_fbos[m] );
-        glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT,
+        if( h->m_constants->m_target < HPMC_TARGET_GL30_GLSL130 ) {
+            glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, h->m_histopyramid.m_fbos[m] );
+            glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT,
                                    GL_COLOR_ATTACHMENT0_EXT,
                                    GL_TEXTURE_2D,
                                    h->m_histopyramid.m_tex,
                                    m );
-        glDrawBuffer( GL_COLOR_ATTACHMENT0_EXT );
-        if( !HPMCcheckFramebufferStatus( __FILE__, __LINE__ ) ) {
+            glDrawBuffer( GL_COLOR_ATTACHMENT0_EXT );
+        }
+        else {
+            glBindFramebuffer( GL_FRAMEBUFFER, h->m_histopyramid.m_fbos[m] );
+            glFramebufferTexture2D( GL_FRAMEBUFFER,
+                                   GL_COLOR_ATTACHMENT0,
+                                   GL_TEXTURE_2D,
+                                   h->m_histopyramid.m_tex,
+                                   m );
+            glDrawBuffer( GL_COLOR_ATTACHMENT0 );
+        }
+        if( !HPMCcheckFramebufferStatus( h->m_constants, __FILE__, __LINE__ ) ) {
 #ifdef DEBUG
             cerr << "HPMC error: Framebuffer for HP level " << m << " incomplete." << endl;
 #endif

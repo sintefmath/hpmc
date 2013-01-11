@@ -79,6 +79,15 @@ HPMCcreateConstants()
 #endif
         return NULL;
     }
+    else if( gl_major < 3 ) {
+        if( !GLEW_EXT_framebuffer_object ) {
+#ifdef DEBUG
+            cerr << "GL version less than 3.0 and EXT_framebuffer_object is missing." << std::endl;
+            return NULL;
+#endif
+        }
+
+    }
 
     struct HPMCConstants *s = new HPMCConstants;
     s->m_enumerate_vbo = 0;
