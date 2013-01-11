@@ -69,16 +69,16 @@ struct HPMCIsoSurfaceRenderer*  hpmc_th_shiny       = NULL;
 struct HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
 
 namespace resources {
-    extern const std::string    solid_vs_110;
-    extern const std::string    solid_vs_130;
-    extern const std::string    solid_fs_110;
-    extern const std::string    solid_fs_130;
-    extern const std::string    shiny_vs_110;
-    extern const std::string    shiny_vs_130;
-    extern const std::string    shiny_fs_110;
-    extern const std::string    shiny_fs_130;
-    extern const std::string    cayley_fetch;
-    extern const std::string    metaballs_fetch;
+    extern std::string    solid_vs_110;
+    extern std::string    solid_vs_130;
+    extern std::string    solid_fs_130;
+    extern std::string    solid_fs_110;
+    extern std::string    shiny_vs_110;
+    extern std::string    shiny_vs_130;
+    extern std::string    shiny_fs_110;
+    extern std::string    shiny_fs_130;
+    extern std::string    cayley_fetch;
+    extern std::string    metaballs_fetch;
 }
 
 // -----------------------------------------------------------------------------

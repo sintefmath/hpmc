@@ -25,9 +25,9 @@ Logger::Logger( const HPMCConstants* constants, const std::string& where, bool f
         }
     }
     else if( debug == HPMC_DEBUG_KHR_DEBUG_VERBOSE ) {
-        glPushDebugGroup( GL_DEBUG_SOURCE_THIRD_PARTY,
+       /* glPushDebugGroup( GL_DEBUG_SOURCE_THIRD_PARTY,
                           0,
-                          m_where.length()+1, m_where.c_str() );
+                          m_where.length()+1, m_where.c_str() );*/
     }
 }
 
@@ -46,7 +46,7 @@ Logger::~Logger()
         }
     }
     else if( debug == HPMC_DEBUG_KHR_DEBUG_VERBOSE ) {
-        glPopDebugGroup();
+        //glPopDebugGroup();
     }
 }
 
