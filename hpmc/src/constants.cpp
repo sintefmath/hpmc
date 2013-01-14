@@ -86,6 +86,12 @@ HPMCcreateConstants()
             return NULL;
 #endif
         }
+        if( !GLEW_ARB_color_buffer_float ) {
+#ifdef DEBUG
+            cerr << "GL version less than 3.0 and ARB_color_buffer_float is missing." << std::endl;
+            return NULL;
+#endif
+        }
 
     }
 

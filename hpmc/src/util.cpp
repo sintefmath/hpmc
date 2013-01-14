@@ -46,53 +46,6 @@ using std::endl;
 
 // -----------------------------------------------------------------------------
 #define HELPER(a) case a: error = #a; break
-bool
-HPMCcheckFramebufferStatus( HPMCConstants* c, const std::string& file, const int line )
-{
-    if( c->m_target < HPMC_TARGET_GL30_GLSL130 ) {
-        GLenum status = glCheckFramebufferStatusEXT( GL_FRAMEBUFFER_EXT );
-        if( status == GL_FRAMEBUFFER_COMPLETE_EXT ) {
-            return true;
-        }
-
-#ifdef DEBUG
-        string error = "unknown error";
-        switch( status ) {
-        HELPER( GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT );
-        HELPER( GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT );
-        HELPER( GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT );
-        HELPER( GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT );
-        HELPER( GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT );
-        HELPER( GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT );
-        HELPER( GL_FRAMEBUFFER_UNSUPPORTED_EXT );
-        }
-        cerr << "HPMC error: framebuffer incomplete (" << error << ") in "
-             << file << " at line " << line << "." << endl;
-#endif
-    }
-    else {
-        GLenum status = glCheckFramebufferStatus( GL_FRAMEBUFFER );
-        if( status == GL_FRAMEBUFFER_COMPLETE ) {
-            return true;
-        }
-#ifdef DEBUG
-        string error = "unknown error";
-        switch( status ) {
-        HELPER( GL_FRAMEBUFFER_UNDEFINED );
-        HELPER( GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT );
-        HELPER( GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT );
-        HELPER( GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER );
-        HELPER( GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER );
-        HELPER( GL_FRAMEBUFFER_UNSUPPORTED );
-        HELPER( GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE );
-        HELPER( GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS );
-        }
-        cerr << "HPMC error: framebuffer incomplete (" << error << ") in "
-             << file << " at line " << line << "." << endl;
-#endif
-    }
-    return false;
-}
 
 // -----------------------------------------------------------------------------
 bool

@@ -48,6 +48,12 @@ using std::endl;
 bool
 HPMCsetupTexAndFBOs( struct HPMCHistoPyramid* h )
 {
+    if( h == NULL ) {
+#ifdef DEBUG
+        std::cerr << "HPMC error: setupTexAndFBOs called with NULL pointer." << std::endl;
+#endif
+        return false;
+    }
     // --- if errors on state, we fail -----------------------------------------
     if( !HPMCcheckGL( __FILE__, __LINE__ ) ) {
 #ifdef DEBUG
@@ -55,74 +61,175 @@ HPMCsetupTexAndFBOs( struct HPMCHistoPyramid* h )
 #endif
         return false;
     }
+    HPMCTarget target = h->m_constants->m_target;
+    HPMCHistoPyramid::HistoPyramid& hp = h->m_histopyramid;
 
     // --- create hp texture ---------------------------------------------------
     if( h->m_histopyramid.m_tex == 0 ) {
         glGenTextures( 1, &h->m_histopyramid.m_tex );
     }
 
-    glBindTexture( GL_TEXTURE_2D, h->m_histopyramid.m_tex );
+    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+    glBindTexture( GL_TEXTURE_2D, hp.m_tex );
+    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0 );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, h->m_histopyramid.m_size_l2);
-    GLsizei w = h->m_histopyramid.m_size;
+    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, hp.m_size_l2);
+    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+    GLsizei w = hp.m_size;
+    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     for( GLsizei i=0; i<=h->m_histopyramid.m_size_l2; i++ ) {
-        glTexImage2D( GL_TEXTURE_2D, i,
-                      GL_RGBA32F_ARB,
-                      w, w, 0,
-                      GL_RGBA, GL_FLOAT,
-                      NULL );
-        w = std::max(1,w/2);
-    }
-    //glGenerateMipmapEXT( GL_TEXTURE_2D );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-
-    // --- create hp framebuffer objects, one fbo per level --------------------
-    if( !h->m_histopyramid.m_fbos.empty() ) {
-        glDeleteFramebuffersEXT( static_cast<GLsizei>( h->m_histopyramid.m_fbos.size() ),
-                                 &h->m_histopyramid.m_fbos[0] );
-    }
-    h->m_histopyramid.m_fbos.resize( h->m_histopyramid.m_size_l2+1 );
-    glGenFramebuffersEXT( static_cast<GLsizei>( h->m_histopyramid.m_fbos.size() ),
-                          &h->m_histopyramid.m_fbos[0] );
-
-    for( GLuint m=0; m<h->m_histopyramid.m_fbos.size(); m++) {
-        if( h->m_constants->m_target < HPMC_TARGET_GL30_GLSL130 ) {
-            glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, h->m_histopyramid.m_fbos[m] );
-            glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT,
-                                   GL_COLOR_ATTACHMENT0_EXT,
-                                   GL_TEXTURE_2D,
-                                   h->m_histopyramid.m_tex,
-                                   m );
-            glDrawBuffer( GL_COLOR_ATTACHMENT0_EXT );
+        if(!HPMCcheckGL( __FILE__, __LINE__) ) { std::cerr << "i=" << i <<std::endl; return false; }
+        if( target < HPMC_TARGET_GL30_GLSL130 ) {
+            glTexImage2D( GL_TEXTURE_2D, i,
+                          GL_RGBA32F_ARB,
+                          w, w, 0,
+                          GL_RGBA, GL_FLOAT,
+                          NULL );
         }
         else {
-            glBindFramebuffer( GL_FRAMEBUFFER, h->m_histopyramid.m_fbos[m] );
-            glFramebufferTexture2D( GL_FRAMEBUFFER,
-                                   GL_COLOR_ATTACHMENT0,
-                                   GL_TEXTURE_2D,
-                                   h->m_histopyramid.m_tex,
-                                   m );
-            glDrawBuffer( GL_COLOR_ATTACHMENT0 );
+            glTexImage2D( GL_TEXTURE_2D, i,
+                          GL_RGBA32F,
+                          w, w, 0,
+                          GL_RGBA, GL_FLOAT,
+                          NULL );
         }
-        if( !HPMCcheckFramebufferStatus( h->m_constants, __FILE__, __LINE__ ) ) {
+        w = std::max(1,w/2);
+    }
+    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+    //glGenerateMipmapEXT( GL_TEXTURE_2D );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST );
+    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+
+    // --- create hp framebuffer objects, one fbo per level --------------------
+    if( target < HPMC_TARGET_GL30_GLSL130 ) {   // Pre GL 3.0 path
+        if( !hp.m_fbos.empty() ) {
+            glDeleteFramebuffersEXT( hp.m_fbos.size(), hp.m_fbos.data() );
+        }
+        hp.m_fbos.resize( hp.m_size_l2+1 );
+        glGenFramebuffersEXT( hp.m_fbos.size(), hp.m_fbos.data() );
+
+        for( GLuint m=0; m<hp.m_fbos.size(); m++) {
+            glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, hp.m_fbos[m] );
+            glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
+                                       GL_TEXTURE_2D, hp.m_tex, m );
+            glDrawBuffer( GL_COLOR_ATTACHMENT0_EXT );
+            GLenum status = glCheckFramebufferStatusEXT( GL_FRAMEBUFFER_EXT );
+            if( status != GL_FRAMEBUFFER_COMPLETE_EXT ) {
 #ifdef DEBUG
-            cerr << "HPMC error: Framebuffer for HP level " << m << " incomplete." << endl;
+                std::string error;
+                switch( status ) {
+                case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT:
+                    error = "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT";
+                    break;
+                case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT:
+                    error = "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT";
+                    break;
+                case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
+                    error = "GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT";
+                    break;
+                case GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
+                    error = "GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT";
+                    break;
+                case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT:
+                    error = "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT";
+                    break;
+                case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT:
+                    error = "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT";
+                    break;
+                case GL_FRAMEBUFFER_UNSUPPORTED_EXT:
+                    error = "GL_FRAMEBUFFER_UNSUPPORTED_EXT";
+                    break;
+                default:
+                    error = "unknown error";
+                    break;
+                }
+                std::cerr << "HPMC error: " << error << "(" << __FILE__ << "@" << __LINE__<< ")" << std::endl;
 #endif
-            return false;
+                return false;
+            }
+        }
+    }
+    else {
+        // GL 3.0 and up, doesn't use EXT_framebuffer_object
+        if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+        if( !hp.m_fbos.empty() ) {
+            glDeleteFramebuffers( hp.m_fbos.size(), hp.m_fbos.data() );
+        }
+        if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+        hp.m_fbos.resize( hp.m_size_l2+1 );
+        glGenFramebuffers( hp.m_fbos.size(), hp.m_fbos.data() );
+        if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+
+        for( GLuint m=0; m<hp.m_fbos.size(); m++) {
+            if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+            glBindFramebuffer( GL_FRAMEBUFFER, hp.m_fbos[m] );
+            if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+            glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                    GL_TEXTURE_2D, hp.m_tex, m );
+            if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+            glDrawBuffer( GL_COLOR_ATTACHMENT0 );
+            if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+            GLenum status = glCheckFramebufferStatus( GL_FRAMEBUFFER );
+            if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
+            if( status != GL_FRAMEBUFFER_COMPLETE ) {
+#ifdef DEBUG
+                std::string error;
+                switch( status ) {
+                case GL_FRAMEBUFFER_UNDEFINED:
+                    error = "GL_FRAMEBUFFER_UNDEFINED";
+                    break;
+                case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+                    error = "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
+                    break;
+                case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+                    error = "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
+                    break;
+                case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+                    error = "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER";
+                    break;
+                case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+                    error = "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER";
+                    break;
+                case GL_FRAMEBUFFER_UNSUPPORTED:
+                    error = "GL_FRAMEBUFFER_UNSUPPORTED";
+                    break;
+                case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+                    error = "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE";
+                    break;
+                case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
+                    error = "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS";
+                    break;
+                default:
+                    error = "unknown error";
+                    break;
+                }
+                std::cerr << "HPMC error: " << error << "(" << __FILE__ << "@" << __LINE__<< ")" << std::endl;
+                return false;
+#endif
+            }
         }
     }
 
     // --- setup pbo to for async readback of top element ----------------------
+    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     glGenBuffers( 1, &h->m_histopyramid.m_top_pbo );
+    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     glBindBuffer( GL_PIXEL_PACK_BUFFER, h->m_histopyramid.m_top_pbo );
+    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     glBufferData( GL_PIXEL_PACK_BUFFER,
                   sizeof(GLfloat)*4,
                   NULL,
                   GL_DYNAMIC_READ );
+    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     glBindBuffer( GL_PIXEL_PACK_BUFFER, 0 );
+    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
 
     // --- if we have created errors, we fail ----------------------------------
     if( !HPMCcheckGL( __FILE__, __LINE__ ) ) {
