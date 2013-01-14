@@ -69,17 +69,11 @@ HPMCsetupTexAndFBOs( struct HPMCHistoPyramid* h )
         glGenTextures( 1, &h->m_histopyramid.m_tex );
     }
 
-    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     glBindTexture( GL_TEXTURE_2D, hp.m_tex );
-    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0 );
-    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, hp.m_size_l2);
-    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     GLsizei w = hp.m_size;
-    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     for( GLsizei i=0; i<=h->m_histopyramid.m_size_l2; i++ ) {
-        if(!HPMCcheckGL( __FILE__, __LINE__) ) { std::cerr << "i=" << i <<std::endl; return false; }
         if( target < HPMC_TARGET_GL30_GLSL130 ) {
             glTexImage2D( GL_TEXTURE_2D, i,
                           GL_RGBA32F_ARB,
@@ -96,16 +90,11 @@ HPMCsetupTexAndFBOs( struct HPMCHistoPyramid* h )
         }
         w = std::max(1,w/2);
     }
-    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     //glGenerateMipmapEXT( GL_TEXTURE_2D );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST );
-    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
 
     // --- create hp framebuffer objects, one fbo per level --------------------
     if( target < HPMC_TARGET_GL30_GLSL130 ) {   // Pre GL 3.0 path
@@ -158,26 +147,17 @@ HPMCsetupTexAndFBOs( struct HPMCHistoPyramid* h )
     }
     else {
         // GL 3.0 and up, doesn't use EXT_framebuffer_object
-        if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
         if( !hp.m_fbos.empty() ) {
             glDeleteFramebuffers( hp.m_fbos.size(), hp.m_fbos.data() );
         }
-        if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
         hp.m_fbos.resize( hp.m_size_l2+1 );
         glGenFramebuffers( hp.m_fbos.size(), hp.m_fbos.data() );
-        if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
-
         for( GLuint m=0; m<hp.m_fbos.size(); m++) {
-            if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
             glBindFramebuffer( GL_FRAMEBUFFER, hp.m_fbos[m] );
-            if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
             glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                     GL_TEXTURE_2D, hp.m_tex, m );
-            if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
             glDrawBuffer( GL_COLOR_ATTACHMENT0 );
-            if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
             GLenum status = glCheckFramebufferStatus( GL_FRAMEBUFFER );
-            if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
             if( status != GL_FRAMEBUFFER_COMPLETE ) {
 #ifdef DEBUG
                 std::string error;
@@ -218,18 +198,13 @@ HPMCsetupTexAndFBOs( struct HPMCHistoPyramid* h )
     }
 
     // --- setup pbo to for async readback of top element ----------------------
-    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     glGenBuffers( 1, &h->m_histopyramid.m_top_pbo );
-    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     glBindBuffer( GL_PIXEL_PACK_BUFFER, h->m_histopyramid.m_top_pbo );
-    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     glBufferData( GL_PIXEL_PACK_BUFFER,
                   sizeof(GLfloat)*4,
                   NULL,
                   GL_DYNAMIC_READ );
-    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
     glBindBuffer( GL_PIXEL_PACK_BUFFER, 0 );
-    if(!HPMCcheckGL( __FILE__, __LINE__) ) { return false; }
 
     // --- if we have created errors, we fail ----------------------------------
     if( !HPMCcheckGL( __FILE__, __LINE__ ) ) {
