@@ -1,4 +1,4 @@
-#version 130
+#version 140
 uniform sampler1D gauss;
 varying in vec3 velocity;
 varying in vec3 param_pos;
