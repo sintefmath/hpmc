@@ -141,92 +141,97 @@ init( int argc, char** argv )
                         GL_FALSE );
 
 
-    // --- create traversal vertex shader --------------------------------------
-    const char* sources[2];
-    char* traversal_code;
+    // --- shiny shaded render pipeline ----------------------------------------
+    {
+        hpmc_th_shiny = HPMCcreateIsoSurfaceRenderer( hpmc_h );
+        char* traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shiny );
 
-    hpmc_th_shiny = HPMCcreateIsoSurfaceRenderer( hpmc_h );
+        const GLchar* vs_src[2] = {
+            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            ? resources::shiny_vs_110.c_str()
+            : resources::shiny_vs_130.c_str(),
+            traversal_code
+        };
+        const GLchar* fs_src[1] = {
+            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            ? resources::shiny_fs_110.c_str()
+            : resources::shiny_fs_130.c_str()
+        };
 
-    traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shiny );
+        GLuint vs = glCreateShader( GL_VERTEX_SHADER );
+        glShaderSource( vs, 2, vs_src, NULL );
+        compileShader( vs, "shiny vertex shader" );
 
-    GLuint shiny_v = glCreateShader( GL_VERTEX_SHADER );
-    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
-               ? resources::shiny_vs_110.c_str()
-               : resources::shiny_vs_130.c_str();
-    sources[1] = traversal_code;
-    glShaderSource( shiny_v, 2, sources, NULL );
-    compileShader( shiny_v, "shiny vertex shader" );
-    free( traversal_code );
+        GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
+        glShaderSource( fs, 1, fs_src, NULL );
+        compileShader( fs, "shiny fragment shader" );
 
+        shiny_p = glCreateProgram();
+        glAttachShader( shiny_p, vs );
+        glAttachShader( shiny_p, fs );
+        linkProgram( shiny_p, "shiny program" );
+        shiny_loc_pm = glGetUniformLocation( shiny_p, "PM" );
+        shiny_loc_nm = glGetUniformLocation( shiny_p, "NM" );
+        shiny_loc_twist = glGetUniformLocation( shiny_p, "twist" );
+        shiny_loc_centers = glGetUniformLocation( shiny_p, "centers" );
 
-    GLuint shiny_f = glCreateShader( GL_FRAGMENT_SHADER );
-    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
-               ? resources::shiny_fs_110.c_str()
-               : resources::shiny_fs_130.c_str();
-    glShaderSource( shiny_f, 1, sources, NULL );
-    compileShader( shiny_f, "shiny fragment shader" );
+        HPMCsetIsoSurfaceRendererProgram( hpmc_th_shiny, shiny_p, 0, 1, 2 );
 
-    shiny_p = glCreateProgram();
-    glAttachShader( shiny_p, shiny_v );
-    glAttachShader( shiny_p, shiny_f );
-    linkProgram( shiny_p, "shiny program" );
-    shiny_loc_pm = glGetUniformLocation( shiny_p, "PM" );
-    shiny_loc_nm = glGetUniformLocation( shiny_p, "NM" );
-    shiny_loc_twist = glGetUniformLocation( shiny_p, "twist" );
-    shiny_loc_centers = glGetUniformLocation( shiny_p, "centers" );
-    glDeleteShader( shiny_v );
-    glDeleteShader( shiny_f );
-
-    // associate the linked program with the traversal handle
-    HPMCsetIsoSurfaceRendererProgram( hpmc_th_shiny,
-                                      shiny_p,
-                                      0, 1, 2 );
-
-    // --- flat traversal vertex shader ----------------------------------------
-    hpmc_th_flat = HPMCcreateIsoSurfaceRenderer( hpmc_h );
-
-    traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shiny );
-    GLuint flat_v = glCreateShader( GL_VERTEX_SHADER );
-    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
-               ? resources::solid_vs_110.c_str()
-               : resources::solid_vs_130.c_str();
-    sources[1] = traversal_code;
-    glShaderSource( flat_v, 2, sources, NULL );
-    compileShader( flat_v, "flat vertex shader" );
-    free( traversal_code );
-
-    // Fragment shader
-    GLuint flat_f = glCreateShader( GL_FRAGMENT_SHADER );
-    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
-               ? resources::solid_fs_110.c_str()
-               : resources::solid_fs_130.c_str();
-    glShaderSource( flat_f, 1, sources, NULL );
-
-    // Program
-    flat_p = glCreateProgram();
-    glAttachShader( flat_p, flat_v );
-    glAttachShader( flat_p, flat_f );
-    glDeleteShader( flat_v );
-    glDeleteShader( flat_f );
-    if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
-        glBindFragDataLocation( flat_p, 0, "fragment" );
+        glDeleteShader( vs );
+        glDeleteShader( fs );
+        free( traversal_code );
     }
-    linkProgram( flat_p, "flat program" );
-    flat_loc_pm = glGetUniformLocation( flat_p, "PM" );
-    flat_loc_color = glGetUniformLocation( flat_p, "color" );
-    flat_loc_twist = glGetUniformLocation( flat_p, "twist" );
-    flat_loc_centers = glGetUniformLocation( flat_p, "centers" );
+    // --- flat-shaded render pipeline -----------------------------------------
+    {
+        hpmc_th_flat = HPMCcreateIsoSurfaceRenderer( hpmc_h );
+        char* traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shiny );
 
-    // Associate program with traversal handle
-    HPMCsetIsoSurfaceRendererProgram( hpmc_th_flat,
-                                      flat_p,
-                                      0, 1, 2 );
+        const GLchar* vs_src[2] = {
+            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            ? resources::solid_vs_110.c_str()
+            : resources::solid_vs_130.c_str(),
+            traversal_code
+        };
+        const GLchar* fs_src[1] = {
+            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            ? resources::solid_fs_110.c_str()
+            : resources::solid_fs_130.c_str()
+        };
 
+        GLuint vs = glCreateShader( GL_VERTEX_SHADER );
+        glShaderSource( vs, 2, vs_src, NULL );
+        compileShader( vs, "flat vertex shader" );
+
+        GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
+        glShaderSource( fs, 1, fs_src, NULL );
+        compileShader( fs, "flat fragment shader" );
+
+        // Program
+        flat_p = glCreateProgram();
+        glAttachShader( flat_p, vs );
+        glAttachShader( flat_p, fs );
+        if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+            glBindFragDataLocation( flat_p, 0, "fragment" );
+        }
+        linkProgram( flat_p, "flat program" );
+        flat_loc_pm = glGetUniformLocation( flat_p, "PM" );
+        flat_loc_color = glGetUniformLocation( flat_p, "color" );
+        flat_loc_twist = glGetUniformLocation( flat_p, "twist" );
+        flat_loc_centers = glGetUniformLocation( flat_p, "centers" );
+
+        HPMCsetIsoSurfaceRendererProgram( hpmc_th_flat, flat_p, 0, 1, 2 );
+
+        glDeleteShader( vs );
+        glDeleteShader( fs );
+        free( traversal_code );
+    }
+    // --- configure builder program of HPMC -----------------------------------
+    {
+        builder_p = HPMCgetBuilderProgram( hpmc_h );
+        builder_loc_twist = glGetUniformLocation( builder_p, "twist" );
+        builder_loc_centers = glGetUniformLocation( builder_p, "centers" );
+    }
     glPolygonOffset( 1.0, 1.0 );
-    // uniform location of fetch function uniforms used in HPMC builder prog.
-    builder_p = HPMCgetBuilderProgram( hpmc_h );
-    builder_loc_twist = glGetUniformLocation( builder_p, "twist" );
-    builder_loc_centers = glGetUniformLocation( builder_p, "centers" );
 }
 
 // -----------------------------------------------------------------------------
