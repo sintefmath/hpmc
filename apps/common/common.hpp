@@ -28,7 +28,15 @@
 
 // === Prototypes for functions provided by the individual app =================
 void
-render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const GLfloat* PM, const GLfloat *NM );
+render( float t,
+        float dt,
+        float fps,
+        const GLfloat* P,       // 4x4 projection matrix
+        const GLfloat* MV,      // 4x4 modelview matrix
+        const GLfloat* PM,      // 4x4 projection * modelview matrix
+        const GLfloat *NM,      // 3x3 normal matrix
+        const GLfloat* MV_inv   // 4x4 modelview inverse matrix
+        );
 
 void
 init( int argc, char** argv );

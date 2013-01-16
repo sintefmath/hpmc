@@ -231,7 +231,14 @@ init( int argc, char** argv )
 
 // -----------------------------------------------------------------------------
 void
-render(  float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const GLfloat* PMV, const GLfloat *NM )
+render( float t,
+        float dt,
+        float fps,
+        const GLfloat* P,
+        const GLfloat* MV,
+        const GLfloat* PM,
+        const GLfloat *NM,
+        const GLfloat* MV_inv )
 {
     // update metaballs positions
     std::vector<GLfloat> centers( 3*8 );
@@ -270,7 +277,7 @@ render(  float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, cons
             glColor3f( 1.0-iso, 0.0, iso );
         }
         else {
-            glUniformMatrix4fv( shiny_loc_pm, 1, GL_FALSE, PMV );
+            glUniformMatrix4fv( shiny_loc_pm, 1, GL_FALSE, PM );
             glUniformMatrix3fv( shiny_loc_nm, 1, GL_FALSE, NM );
         }
         HPMCextractVertices( hpmc_th_shiny, GL_FALSE );
@@ -284,7 +291,7 @@ render(  float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, cons
             glColor3f( 0.2*(1.0-iso), 0.0, 0.2*iso );
         }
         else {
-            glUniformMatrix4fv( flat_loc_pm, 1, GL_FALSE, PMV );
+            glUniformMatrix4fv( flat_loc_pm, 1, GL_FALSE, PM );
             glUniform4f( flat_loc_color,  0.5f, 0.5f, 1.f, 1.f );
         }
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

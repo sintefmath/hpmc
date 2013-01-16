@@ -365,7 +365,10 @@ display()
     GLfloat NM[9];
     GLfloat T[16];
 
+    GLfloat MVi[16];
+
     frustum( P,  -0.2*aspect_x, 0.2*aspect_x, -0.2*aspect_y, 0.2*aspect_y, 0.5, 3.0 );
+
     translate( MV, 0.f, 0.f, -2.f );
     rotX( T, 20.f );
     rightMulAssign( MV, T );
@@ -374,6 +377,15 @@ display()
     translate( T, -0.5f, -0.5f, -0.5f );
     rightMulAssign( MV, T );
     extractUpperLeft3x3( NM, MV );
+
+    translate( MVi, 0.5f, 0.5f, 0.5f );
+    rotY( T, -20.f*t );
+    rightMulAssign( MVi, T );
+    rotX( T, -20.f );
+    rightMulAssign( MVi, T );
+    translate( T, 0.f, 0.f, 2.f );
+    rightMulAssign( MVi, T );
+
 
     memcpy( PMV, P, sizeof(GLfloat)*16 );
     rightMulAssign( PMV, MV );
@@ -414,7 +426,7 @@ display()
         render( t, dt, fps );
     }
 #else
-    render( t, dt, fps, P, MV, PMV, NM );
+    render( t, dt, fps, P, MV, PMV, NM, MVi );
 #endif
 
     static std::string message = "";

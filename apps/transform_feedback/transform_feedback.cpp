@@ -410,7 +410,14 @@ init( int argc, char** argv )
 
 // -----------------------------------------------------------------------------
 void
-render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const GLfloat* PMV, const GLfloat *NM )
+render( float t,
+        float dt,
+        float fps,
+        const GLfloat* P,
+        const GLfloat* MV,
+        const GLfloat* PM,
+        const GLfloat *NM,
+        const GLfloat* MV_inv )
 {
     // --- build HistoPyramid --------------------------------------------------
     float iso = sin(t);
@@ -437,7 +444,7 @@ render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const
             glColor3f( 1.0-iso, 0.0, iso );
         }
         else {
-            glUniformMatrix4fv( shaded_loc_pm, 1, GL_FALSE, PMV );
+            glUniformMatrix4fv( shaded_loc_pm, 1, GL_FALSE, PM );
             glUniformMatrix3fv( shaded_loc_nm, 1, GL_FALSE, NM );
             glUniform4f( shaded_loc_color,  1.0-iso, 0.0, iso, 1.f );
         }
@@ -462,7 +469,7 @@ render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const
             glColor3f( 0.2*(1.0-iso), 0.0, 0.2*iso );
         }
         else {
-            glUniformMatrix4fv( flat_loc_pm, 1, GL_FALSE, PMV );
+            glUniformMatrix4fv( flat_loc_pm, 1, GL_FALSE, PM );
             glUniform4f( flat_loc_color,  1.0-iso, 0.0, iso, 1.f );
         }
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -509,7 +516,7 @@ render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const
         }
         else {
             glUniform4f( plain_loc_color, 1.f, 1.f, 1.f, 1.f );
-            glUniformMatrix4fv( plain_loc_pm, 1, GL_FALSE, PMV );
+            glUniformMatrix4fv( plain_loc_pm, 1, GL_FALSE, PM );
             glBindVertexArray( vao );
             glDrawArrays( GL_TRIANGLES, 0, N );
             glBindVertexArray( 0 );
