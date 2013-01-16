@@ -54,18 +54,12 @@
 // This example implements paths for both the NV and EXT extensions (determined
 // by a runtime check), and should run on both NVIDIA and AMD/ATI hardware.
 
-#include <cstdlib>
-#include <cstdio>
 #include <cmath>
+#include <cstdio>
 #include <iostream>
+#include <iomanip>
 #include <vector>
-#include <GL/glew.h>
-#ifdef __APPLE__
-#include <glut.h>
-#else
-#include <GL/glut.h>
-#endif
-#include "hpmc.h"
+#include <sstream>
 #include "../common/common.hpp"
 
 using std::cerr;
@@ -73,128 +67,147 @@ using std::endl;
 using std::vector;
 using std::string;
 
-bool use_ext; // use EXT extension instead of NV extension
 
-int volume_size_x;
-int volume_size_y;
-int volume_size_z;
+enum TransformFeedbackExtensions
+{
+    USE_EXT,
+    USE_NV,
+    USE_CORE
+}                               extension           = USE_CORE;
+int                             volume_size_x       = 64;
+int                             volume_size_y       = 64;
+int                             volume_size_z       = 64;
+float                           iso                 = 0.5f;
+GLuint                          shaded_p            = 0;
+GLint                           shaded_loc_pm       = -1;
+GLint                           shaded_loc_nm       = -1;
+GLint                           shaded_loc_color    = -1;
+GLuint                          flat_p              = 0;
+GLint                           flat_loc_pm         = -1;
+GLint                           flat_loc_color      = -1;
+GLuint                          plain_p              = 0;
+GLint                           plain_loc_pm         = -1;
+GLint                           plain_loc_color      = -1;
+GLuint                          mc_tri_vbo          = 0;
+GLsizei                         mc_tri_vbo_N        = 0;
+GLuint                          vao                 = 0;
+struct HPMCConstants*           hpmc_c              = NULL;
+struct HPMCIsoSurface*          hpmc_h              = NULL;
+struct HPMCIsoSurfaceRenderer*  hpmc_th_shaded      = NULL;
+struct HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
 
-
-GLuint mc_tri_vbo;
-GLsizei mc_tri_vbo_N;
-
-struct HPMCConstants* hpmc_c;
-struct HPMCIsoSurface* hpmc_h;
-struct HPMCIsoSurfaceRenderer* hpmc_th;
-
-// -----------------------------------------------------------------------------
-std::string fetch_code =
-        // evaluates the scalar field
-        "float\n"
-        "HPMC_fetch( vec3 p )\n"
-        "{\n"
-        "    p *= 2.0;\n"
-        "    p -= 1.0;\n"
-        "    return 1.0 - 16.0*p.x*p.y*p.z - 4.0*p.x*p.x - 4.0*p.y*p.y - 4.0*p.z*p.z;\n"
-        "}\n"
-        "vec4\n"
-        // evaluates the gradient as well as the scalar field
-        "HPMC_fetchGrad( vec3 p )\n"
-        "{\n"
-        "    p *= 2.0;\n"
-        "    p -= 1.0;\n"
-        "    return vec4( -16.0*p.y*p.z - 8.0*p.x,\n"
-        "                 -16.0*p.x*p.z - 8.0*p.y,\n"
-        "                 -16.0*p.x*p.y - 8.0*p.z,\n"
-        "                 1.0 - 16.0*p.x*p.y*p.z - 4.0*p.x*p.x - 4.0*p.y*p.y - 4.0*p.z*p.z );\n"
-        "}\n";
-
-// -----------------------------------------------------------------------------
-GLuint shaded_v;
-GLuint shaded_f;
-GLuint shaded_p;
-struct HPMCIsoSurfaceRenderer* hpmc_th_flat;
-std::string shaded_vertex_shader_110 =
-        "varying vec3 normal;\n"
-        "void\n"
-        "main()\n"
-        "{\n"
-        "    vec3 p, n;\n"
-        "    extractVertex( p, n );\n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * vec4( p, 1.0 );\n"
-        "    normal = gl_NormalMatrix * n;\n"
-        "    gl_FrontColor = gl_Color;\n"
-        "}\n";
-std::string shaded_fragment_shader_110 =
-        "varying vec3 normal;\n"
-        "void\n"
-        "main()\n"
-        "{\n"
-        "    const vec3 v = vec3( 0.0, 0.0, 1.0 );\n"
-        "    vec3 l = normalize( vec3( 1.0, 1.0, 1.0 ) );\n"
-        "    vec3 h = normalize( v+l );\n"
-        "    vec3 n = normalize( normal );\n"
-        "    float diff = max( 0.1, dot( n, l ) );\n"
-        "    float spec = pow( max( 0.0, dot(n, h)), 20.0);\n"
-        "    gl_FragColor = diff * gl_Color +\n"
-        "                   spec * vec4(1.0);\n"
-        "}\n";
-
-// -----------------------------------------------------------------------------
-GLuint flat_v;
-GLuint flat_f;
-GLuint flat_p;
-struct HPMCIsoSurfaceRenderer* hpmc_th_shaded;
-std::string flat_vertex_shader_110 =
-        "varying vec3 normal;\n"
-        "varying vec3 position;\n"
-        "void\n"
-        "main()\n"
-        "{\n"
-        "    vec3 p, n;\n"
-        "    extractVertex( p, n );\n"
-        //   store in object coords as we use std. opengl for rendering the
-        //   wireframe, which does the transform
-        "    normal = n;\n"
-        "    position = p;\n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * vec4( p, 1.0 );\n"
-        "    gl_FrontColor = gl_Color;\n"
-        "}\n";
-std::string flat_fragment_shader_110 =
-        "void\n"
-        "main()\n"
-        "{\n"
-        "    gl_FragColor = gl_Color;\n"
-        "}\n";
+namespace resources {
+    extern std::string plain_vs_110;
+    extern std::string plain_vs_130;
+    extern std::string solid_vs_110;
+    extern std::string solid_vs_130;
+    extern std::string solid_fs_110;
+    extern std::string solid_fs_130;
+    extern std::string phong_vs_110;
+    extern std::string phong_vs_130;
+    extern std::string phong_fs_110;
+    extern std::string phong_fs_130;
+    extern std::string cayley_fetch;
+}
 
 void
-init()
+printHelp( const std::string& appname )
 {
-    // --- check for availability of transform feedback ------------------------
-    if( GLEW_NV_transform_feedback ) {
-        cerr << "Using GL_NV_transform_feedback extension." << endl;
-        use_ext = false;
+    cerr << "HPMC demo application that visualizes 1-16xyz-4x^2-4y^2-4z^2=iso."<<endl<<endl;
+    cerr << "Usage: " << appname << " [options] xsize [ysize zsize] "<<endl<<endl;
+    cerr << "where: xsize    The number of samples in the x-direction."<<endl;
+    cerr << "       ysize    The number of samples in the y-direction."<<endl;
+    cerr << "       zsize    The number of samples in the z-direction."<<endl;
+    cerr << "Example usage:"<<endl;
+    cerr << "    " << appname << " 64"<< endl;
+    cerr << "    " << appname << " 64 128 64"<< endl;
+    cerr << endl;
+    cerr << "Options specific for this app:" << std::endl;
+    cerr << "    --ext   Use EXT_transform_feedback extension" << std::endl;
+    cerr << "    --nv    Use NV_transform_feedback extension" << std::endl;
+    cerr << "    --core  Use 3.0 and up core transform feedback" << std::endl;
+    cerr << endl;
+    printOptions();
+}
+
+void
+init( int argc, char** argv )
+{
+    // handle command line options specific for this app
+    for( int i=1; i<argc; ) {
+        int eat = 0;
+        std::string arg( argv[i] );
+        if( arg == "--ext" ) {
+            extension = USE_EXT;
+            eat = 1;
+        }
+        else if( arg == "--nv" ) {
+            extension = USE_NV;
+            eat = 1;
+        }
+        else if( arg == "--core" ) {
+            extension = USE_CORE;
+            eat = 1;
+        }
+        if( eat ) {
+            argc = argc - eat;
+            for( int k=i; k<argc; k++ ) {
+                argv[k] = argv[k+eat];
+            }
+        }
+        else {
+            i++;
+        }
     }
-#ifdef GL_EXT_transform_feedback
-    else if( GLEW_EXT_transform_feedback ) {
-        cerr << "Using GL_EXT_transform_feedback extension." << endl;
-        use_ext = true;
+
+    if( argc > 1 ) {
+        volume_size_x = atoi( argv[1] );
+    }
+    if( argc > 3 ) {
+        volume_size_y = atoi( argv[2] );
+        volume_size_z = atoi( argv[3] );
     }
     else {
-        cerr << "Neither GL_NV_transform_feedback nor "
-             << "GL_EXT_transform_feedback extensions present, exiting." << endl;
+        volume_size_y = volume_size_x;
+        volume_size_z = volume_size_x;
+    }
+    if( volume_size_x < 4 ) {
+        cerr << "Volume size x < 4" << endl;
         exit( EXIT_FAILURE );
     }
-#else
-    else {
-        cerr << "Note: Compiled with old GLEW that doesn't have GL_EXT_transform_feedback defined." << endl;
-        cerr << "GL_NV_transform_feedback extension missing, exiting." << endl;
+    if( volume_size_y < 4 ) {
+        cerr << "Volume size y < 4" << endl;
         exit( EXIT_FAILURE );
     }
-#endif
+    if( volume_size_z < 4 ) {
+        cerr << "Volume size z < 4" << endl;
+        exit( EXIT_FAILURE );
+    }
+
+    switch( extension ) {
+    case USE_EXT:
+        if( !GLEW_EXT_transform_feedback ) {
+            cerr << "Missing EXT_transform_feedback." << endl;
+            exit( EXIT_FAILURE );
+        }
+        break;
+    case USE_NV:
+        if( !GLEW_NV_transform_feedback ) {
+            cerr << "Missing NV_transform_feedback." << endl;
+            exit( EXIT_FAILURE );
+        }
+        break;
+    case USE_CORE:
+        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+            cerr << "Insufficient target for core transform feedback." << endl;
+            exit( EXIT_FAILURE );
+        }
+        break;
+    }
+
 
     // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = HPMCcreateConstants( HPMC_TARGET_GL20_GLSL110, HPMC_DEBUG_STDERR );
+    hpmc_c = HPMCcreateConstants( hpmc_target, hpmc_debug );
     hpmc_h = HPMCcreateIsoSurface( hpmc_c );
 
     HPMCsetLatticeSize( hpmc_h,
@@ -213,174 +226,226 @@ init()
                        1.0f );
 
     HPMCsetFieldCustom( hpmc_h,
-                        fetch_code.c_str(),
+                        resources::cayley_fetch.c_str(),
                         0,
                         GL_TRUE );
 
 
+    // === Build shader programs ===============================================
+    const char* sources[2];
+    char* traversal_code;
 
-     // --- create traversal vertex shader --------------------------------------
+    // --- Phong-shaded on-the-fly traversal -----------------------------------
+
     hpmc_th_shaded = HPMCcreateIsoSurfaceRenderer( hpmc_h );
 
-    char *traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shaded );
-    const char* shaded_vsrc[2] =
-    {
-        traversal_code,
-        shaded_vertex_shader_110.c_str()
-    };
-    shaded_v = glCreateShader( GL_VERTEX_SHADER );
-    glShaderSource( shaded_v, 2, &shaded_vsrc[0], NULL );
+    // Vertex shader
+    traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shaded );
+    GLuint shaded_v = glCreateShader( GL_VERTEX_SHADER );
+    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+            ? resources::phong_vs_110.c_str()
+            : resources::phong_vs_130.c_str();
+    sources[1] = traversal_code;
+    glShaderSource( shaded_v, 2, sources, NULL );
     compileShader( shaded_v, "shaded vertex shader" );
     free( traversal_code );
 
-    const char* shaded_fsrc[1] =
-    {
-        shaded_fragment_shader_110.c_str()
-    };
-    shaded_f = glCreateShader( GL_FRAGMENT_SHADER );
-    glShaderSource( shaded_f, 1, &shaded_fsrc[0], NULL );
+    // Fragment shader
+    GLuint shaded_f = glCreateShader( GL_FRAGMENT_SHADER );
+    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+            ? resources::phong_fs_110.c_str()
+            : resources::phong_fs_130.c_str();
+    glShaderSource( shaded_f, 1, sources, NULL );
     compileShader( shaded_f, "shaded fragment shader" );
 
-    // link program
+    // Program
     shaded_p = glCreateProgram();
     glAttachShader( shaded_p, shaded_v );
     glAttachShader( shaded_p, shaded_f );
+    glDeleteShader( shaded_v );
+    glDeleteShader( shaded_f );
+    if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+        glBindFragDataLocation( shaded_p, 0, "fragment" );
+    }
     linkProgram( shaded_p, "shaded program" );
+    shaded_loc_pm = glGetUniformLocation( shaded_p, "PM" );
+    shaded_loc_nm = glGetUniformLocation( shaded_p, "NM" );
+    shaded_loc_color = glGetUniformLocation( shaded_p, "color" );
 
-    // associate program with traversal handle
+    // Associate program with traversal handle
     HPMCsetIsoSurfaceRendererProgram( hpmc_th_shaded,
-                                   shaded_p,
-                                   0, 1, 2 );
+                                      shaded_p,
+                                      0, 1, 2 );
 
-
+    // --- Flat-shaded on-the-fly traversal ------------------------------------
     hpmc_th_flat = HPMCcreateIsoSurfaceRenderer( hpmc_h );
 
+    // Vertex shader
     traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_flat );
-    const char* flat_src[2] =
-    {
-        traversal_code,
-        flat_vertex_shader_110.c_str()
-    };
-    flat_v = glCreateShader( GL_VERTEX_SHADER );
-    glShaderSource( flat_v, 2, &flat_src[0], NULL );
+    GLuint flat_v = glCreateShader( GL_VERTEX_SHADER );
+    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+            ? resources::solid_vs_110.c_str()
+            : resources::solid_vs_130.c_str();
+    sources[1] = traversal_code;
+    glShaderSource( flat_v, 2, sources, NULL );
     compileShader( flat_v, "flat vertex shader" );
     free( traversal_code );
 
-    const char* flat_fsrc[1] =
-    {
-        flat_fragment_shader_110.c_str()
-    };
-    flat_f = glCreateShader( GL_FRAGMENT_SHADER );
-    glShaderSource( flat_f, 1, &flat_fsrc[0], NULL );
+    // Fragment shader
+    GLuint flat_f = glCreateShader( GL_FRAGMENT_SHADER );
+    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+            ? resources::solid_fs_110.c_str()
+            : resources::solid_fs_130.c_str();
+    glShaderSource( flat_f, 1, sources, NULL );
     compileShader( flat_f, "flat fragment shader" );
 
-    // link program
+    // Program
     flat_p = glCreateProgram();
     glAttachShader( flat_p, flat_v );
     glAttachShader( flat_p, flat_f );
-
-    // varyings that we record
-    const char* flat_varying_names[2] =
-    {
-        "normal",
-        "position"
-    };
-
+    glDeleteShader( flat_v );
+    glDeleteShader( flat_f );
+    if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+        glBindFragDataLocation( flat_p, 0, "fragment" );
+    }
     // When using the EXT extension (or 3.0 core), we can directly tag varyings
     // for feedback by name before linkage. The NV extension requires that we
     // first tag the varyings as active, link the program, determine the
     // varying locations of the varyings that shall be fed back, and then ship
     // this to GL.
-    if( use_ext ) {
-#ifdef GL_EXT_transform_feedback
-        glTransformFeedbackVaryingsEXT( flat_p,
-                                        2,
-                                        &flat_varying_names[0],
-                                        GL_INTERLEAVED_ATTRIBS_EXT );
-#endif
-    }
-    else {
+    const char* flat_varying_names[2] = {
+        "position"
+    };
+    switch( extension ) {
+    case USE_EXT:
+        glTransformFeedbackVaryingsEXT( flat_p, 1, flat_varying_names, GL_INTERLEAVED_ATTRIBS_EXT );
+        break;
+    case USE_NV:
         // tag the varyings we will record as active (so they don't get
         // optimized away).
-        for( int i=0; i<2; i++) {
-            glActiveVaryingNV( flat_p,
-                               flat_varying_names[i] );
+        for(int i=0; i<1; i++ ) {
+            glActiveVaryingNV( flat_p, flat_varying_names[i] );
         }
+        break;
+    case USE_CORE:
+        glTransformFeedbackVaryings( flat_p, 1, flat_varying_names, GL_INTERLEAVED_ATTRIBS );
+        break;
     }
-
     linkProgram( flat_p, "flat program" );
-
-    if( !use_ext ) {
-        // determine the location of the varyings, and ship to GL.
-        GLint varying_locs[2];
-        for(int i=0; i<2; i++) {
-            varying_locs[i] = glGetVaryingLocationNV( flat_p,
-                                                      flat_varying_names[i] );
+    if( extension == USE_NV ) {
+        GLint varying_locs[1];
+        for(int i=0; i<1; i++) {
+            varying_locs[i] = glGetVaryingLocationNV( flat_p, flat_varying_names[i] );
         }
-        glTransformFeedbackVaryingsNV( flat_p,
-                                     2,
-                                     &varying_locs[0],
-                                     GL_INTERLEAVED_ATTRIBS );
+        glTransformFeedbackVaryingsNV( flat_p, 1, varying_locs,  GL_INTERLEAVED_ATTRIBS );
     }
 
+    flat_loc_pm = glGetUniformLocation( flat_p, "PM" );
+    flat_loc_color = glGetUniformLocation( flat_p, "color" );
 
-    // associate program with traversal handle
+    // Associate program with traversal handle
     HPMCsetIsoSurfaceRendererProgram( hpmc_th_flat,
-                                   flat_p,
-                                   0, 1, 2 );
+                                      flat_p,
+                                      0, 1, 2 );
+
+    // --- plain rendering of a VBO --------------------------------------------
+    // Vertex shader
+    GLuint plain_v = glCreateShader( GL_VERTEX_SHADER );
+    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+               ? resources::plain_vs_110.c_str()
+               : resources::plain_vs_130.c_str();
+    glShaderSource( plain_v, 1, sources, NULL );
+    compileShader( plain_v, "plain vertex shader" );
+
+    // Fragment shader
+    GLuint plain_f = glCreateShader( GL_FRAGMENT_SHADER );
+    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+               ? resources::solid_fs_110.c_str()
+               : resources::solid_fs_130.c_str();
+    glShaderSource( plain_f, 1, sources, NULL );
+    compileShader( plain_v, "plain fragment shader" );
+
+    // Program
+    plain_p = glCreateProgram();
+    glAttachShader( plain_p, plain_v );
+    glAttachShader( plain_p, plain_f );
+    glDeleteShader( plain_v );
+    glDeleteShader( plain_f );
+    if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+        glBindFragDataLocation( plain_p, 0, "fragment" );
+        glBindAttribLocation( plain_p, 0, "position" );
+    }
+    linkProgram( plain_p, "plain program" );
+    plain_loc_pm = glGetUniformLocation( plain_p, "PM" );
+    plain_loc_color = glGetUniformLocation( plain_p, "color" );
+
+
+    glPolygonOffset( 1.0, 1.0 );
 
     // --- set up buffer for feedback of MC triangles --------------------------
     glGenBuffers( 1, &mc_tri_vbo );
     glBindBuffer( GL_ARRAY_BUFFER, mc_tri_vbo );
     mc_tri_vbo_N = 3*1000;
     glBufferData( GL_ARRAY_BUFFER,
-                  (3+3)*mc_tri_vbo_N * sizeof(GLfloat),
+                  3*mc_tri_vbo_N * sizeof(GLfloat),
                   NULL,
                   GL_DYNAMIC_COPY );
     glBindBuffer( GL_ARRAY_BUFFER, 0 );
+
+    // If >= 3.0, set up vertex attrib array
+    if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+        glGenVertexArrays( 1, &vao );
+        glBindVertexArray( vao );
+
+        glBindBuffer( GL_ARRAY_BUFFER, mc_tri_vbo );
+        glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 0, NULL );
+        glEnableVertexAttribArray(0);
+        glBindBuffer( GL_ARRAY_BUFFER, 0 );
+
+        glBindVertexArray( 0 );
+    }
 
     glPolygonOffset( 1.0, 1.0 );
 }
 
 // -----------------------------------------------------------------------------
 void
-render( float t, float dt, float fps )
+render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const GLfloat* PMV, const GLfloat *NM )
 {
-    ASSERT_GL;
-
-
-    // --- clear screen and set up view ----------------------------------------
-    glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-
-    glMatrixMode( GL_PROJECTION );
-    glLoadIdentity();
-    glFrustum( -0.2*aspect_x, 0.2*aspect_x, -0.2*aspect_y, 0.2*aspect_y, 0.5, 3.0 );
-
-    glMatrixMode( GL_MODELVIEW );
-    glLoadIdentity();
-    glTranslatef( 0.0f, 0.0f, -2.0f );
-    glRotatef( 20, 1.0, 0.0, 0.0 );
-    glRotatef( 20.0*t, 0.0, 1.0, 0.0 );
-    glTranslatef( -0.5f, -0.5f, -0.5f );
-
     // --- build HistoPyramid --------------------------------------------------
     float iso = sin(t);
     HPMCbuildIsoSurface( hpmc_h, iso );
 
-    // --- render solid surface ------------------------------------------------
-    glColor3f( 0.5, 0.5, 0.5 );
+    // --- clear screen and set up view ----------------------------------------
+    glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glEnable( GL_DEPTH_TEST );
+    if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+        glMatrixMode( GL_PROJECTION );
+        glLoadMatrixf( P );
+        glMatrixMode( GL_MODELVIEW );
+        glLoadMatrixf( MV );
+    }
+
+    // --- render solid surface ------------------------------------------------
 
     // if wireframe, do transform feedback capture
-    GLsizei N = HPMCacquireNumberOfVertices( hpmc_h );
     if(!wireframe) {
-        // render normally
-        glColor3f( 1.0-iso, 0.0, iso );
+        // Solid shaded rendering
+        glUseProgram( shaded_p );
+        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+            glColor3f( 1.0-iso, 0.0, iso );
+        }
+        else {
+            glUniformMatrix4fv( shaded_loc_pm, 1, GL_FALSE, PMV );
+            glUniformMatrix3fv( shaded_loc_nm, 1, GL_FALSE, NM );
+            glUniform4f( shaded_loc_color,  1.0-iso, 0.0, iso, 1.f );
+        }
         HPMCextractVertices( hpmc_th_shaded, GL_FALSE );
     }
     else {
         // resize buffer if needed
+        GLsizei N = HPMCacquireNumberOfVertices( hpmc_h );
         if( mc_tri_vbo_N < N ) {
             mc_tri_vbo_N = static_cast<GLsizei>( 1.1f*static_cast<float>(N) );
             cerr << "resizing mc_tri_vbo to hold " << mc_tri_vbo_N << " vertices." << endl;
@@ -392,93 +457,80 @@ render( float t, float dt, float fps )
             glBindBuffer( GL_ARRAY_BUFFER, 0 );
         }
 
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        glColor3f(0.1, 0.1, 0.2 );
-        glEnable( GL_POLYGON_OFFSET_FILL );
-        if( use_ext ) {
-#ifdef GL_EXT_transform_feedback
-            glBindBufferBaseEXT( GL_TRANSFORM_FEEDBACK_BUFFER_EXT,
-                                 0, mc_tri_vbo );
-            HPMCextractVerticesTransformFeedbackEXT( hpmc_th_flat, GL_FALSE );
-            glFlush(); // on ATI catalyst 9.10, this is needed to avoid some artefacts
-#endif
+        glUseProgram( flat_p );
+        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+            glColor3f( 0.2*(1.0-iso), 0.0, 0.2*iso );
         }
         else {
-            glBindBufferBaseNV( GL_TRANSFORM_FEEDBACK_BUFFER_NV,
-                                0, mc_tri_vbo );
+            glUniformMatrix4fv( flat_loc_pm, 1, GL_FALSE, PMV );
+            glUniform4f( flat_loc_color,  1.0-iso, 0.0, iso, 1.f );
+        }
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        glEnable( GL_POLYGON_OFFSET_FILL );
+        switch( extension ) {
+        case USE_EXT:
+            glBindBufferBaseEXT( GL_TRANSFORM_FEEDBACK_BUFFER_EXT, 0, mc_tri_vbo );
+            HPMCextractVerticesTransformFeedbackEXT( hpmc_th_flat, GL_FALSE );
+            //glFlush(); // on ATI catalyst 9.10, this is needed to avoid some artefacts
+            break;
+        case USE_NV:
+            glBindBufferBaseNV( GL_TRANSFORM_FEEDBACK_BUFFER_NV, 0, mc_tri_vbo );
             HPMCextractVerticesTransformFeedbackNV( hpmc_th_flat, GL_FALSE );
+            break;
+        case USE_CORE:
+            glBindBufferBase( GL_TRANSFORM_FEEDBACK_BUFFER, 0, mc_tri_vbo );
+            HPMCextractVerticesTransformFeedback( hpmc_th_flat, GL_FALSE );
+            break;
+        }
+        switch( extension ) {
+        case USE_EXT:
+            glBindBufferBaseEXT( GL_TRANSFORM_FEEDBACK_BUFFER_EXT, 0, 0 );
+            break;
+        case USE_NV:
+            glBindBufferBaseNV( GL_TRANSFORM_FEEDBACK_BUFFER_NV, 0, 0 );
+            break;
+        case USE_CORE:
+            glBindBufferBase( GL_TRANSFORM_FEEDBACK_BUFFER, 0, 0 );
+            break;
         }
         glDisable( GL_POLYGON_OFFSET_FILL );
 
         // --- render wireframe ------------------------------------------------
-        glUseProgram( 0 );
-        glColor3f( 1.0, 1.0, 1.0 );
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE );
+        glUseProgram( plain_p );
+        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+            glPushClientAttrib( GL_CLIENT_VERTEX_ARRAY_BIT );
+            glColor3f( 1.0, 1.0, 1.0 );
+            glBindBuffer( GL_ARRAY_BUFFER, mc_tri_vbo );
+            glInterleavedArrays( GL_V3F, 0, NULL );
+            glDrawArrays( GL_TRIANGLES, 0, N );
+            glBindBuffer( GL_ARRAY_BUFFER, 0 );
+            glPopClientAttrib();
+        }
+        else {
+            glUniform4f( plain_loc_color, 1.f, 1.f, 1.f, 1.f );
+            glUniformMatrix4fv( plain_loc_pm, 1, GL_FALSE, PMV );
+            glBindVertexArray( vao );
+            glDrawArrays( GL_TRIANGLES, 0, N );
+            glBindVertexArray( 0 );
+        }
 
-        glBindBuffer( GL_ARRAY_BUFFER, mc_tri_vbo );
-        glPushClientAttrib( GL_CLIENT_VERTEX_ARRAY_BIT );
-        glInterleavedArrays( GL_N3F_V3F, 0, NULL );
-        glDrawArrays( GL_TRIANGLES, 0, N );
-        glPopClientAttrib();
-        glBindBuffer( GL_ARRAY_BUFFER, 0 );
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL );
-    }
-    ASSERT_GL;
-
-    // --- render text string --------------------------------------------------
-    static char message[512] = "";
-    if( floor(5.0*(t-dt)) != floor(5.0*(t)) ) {
-        snprintf( message, 512,
-                  "%.1f fps, %dx%dx%d samples, %d mvps, %d triangles, iso=%.2f%s",
-                  fps,
-                  volume_size_x,
-                  volume_size_y,
-                  volume_size_z,
-                  (int)( ((volume_size_x-1)*(volume_size_y-1)*(volume_size_z-1)*fps)/1e6 ),
-                  N/3,
-                  iso,
-                  wireframe ? " [wireframe]" : "");
-    }
-    glUseProgram( 0 );
-    glMatrixMode( GL_PROJECTION );
-    glLoadIdentity();
-    glMatrixMode( GL_MODELVIEW );
-    glLoadIdentity();
-    glDisable( GL_DEPTH_TEST );
-    glColor3f( 1.0, 1.0, 1.0 );
-    glRasterPos2f( -0.99, 0.95 );
-    for(int i=0; i<255 && message[i] != '\0'; i++) {
-        glutBitmapCharacter( GLUT_BITMAP_8_BY_13, (int)message[i] );
     }
 }
 
-// -----------------------------------------------------------------------------
-int
-main(int argc, char **argv)
+const std::string
+infoString( float fps )
 {
-    glutInit( &argc, argv );
-    if( argc == 2 ) {
-        volume_size_x = volume_size_y = volume_size_z = atoi( argv[1] );
-    }
-    else if( argc == 4 ) {
-        volume_size_x = atoi( argv[1] );
-        volume_size_y = atoi( argv[2] );
-        volume_size_z = atoi( argv[3] );
-    }
-    else {
-        volume_size_x = 64;
-        volume_size_y = 64;
-        volume_size_z = 64;
-    }
-    glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
-    glutInitWindowSize( 1280, 720 );
-    glutCreateWindow( argv[0] );
-    glewInit();
-    glutReshapeFunc( reshape );
-    glutDisplayFunc( display );
-    glutKeyboardFunc( keyboard );
-    glutIdleFunc( idle );
-    init();
-    glutMainLoop();
-    return EXIT_SUCCESS;
+    std::stringstream o;
+    o << std::setprecision(5) << fps << " fps, "
+      << volume_size_x << 'x'
+      << volume_size_y << 'x'
+      << volume_size_z << " samples, "
+      << (int)( ((volume_size_x-1)*(volume_size_y-1)*(volume_size_z-1)*fps)/1e6 )
+      << " MVPS, "
+      << HPMCacquireNumberOfVertices( hpmc_h )/3
+      << " vertices, iso=" << iso
+      << (wireframe?"[wireframe]":"");
+    return o.str();
 }

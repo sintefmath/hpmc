@@ -8,6 +8,7 @@ uniform mat3 NM;
 void
 extractVertex( out vec3 p, out vec3 n);
 
+
 void
 main()
 {
