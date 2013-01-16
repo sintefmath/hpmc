@@ -55,158 +55,38 @@ using std::string;
 using std::cerr;
 using std::endl;
 
-int volume_size_x;
-int volume_size_y;
-int volume_size_z;
-vector<GLubyte> dataset;
+vector<GLubyte>                 dataset;
+int                             volume_size_x  = 128;
+int                             volume_size_y  = 128;
+int                             volume_size_z  = 128;
+GLuint                          volume_tex     = 0;
+GLuint                          splat_v        = 0;
+GLuint                          splat_f        = 0;
+GLuint                          splat_p        = 0;
+GLuint                          particle_v     = 0;
+GLuint                          particle_p     = 0;
+GLuint                          shaded_v       = 0;
+GLuint                          shaded_f       = 0;
+GLuint                          shaded_p       = 0;
+GLuint                          flat_v         = 0;
+GLuint                          flat_p         = 0;
+struct HPMCConstants*           hpmc_c         = NULL;
+struct HPMCIsoSurface*          hpmc_h         = NULL;
+struct HPMCIsoSurfaceRenderer*  hpmc_th_flat   = NULL;
+struct HPMCIsoSurfaceRenderer*  hpmc_th_shaded = NULL;
 
-GLuint volume_tex;
-
-struct HPMCConstants* hpmc_c;
-struct HPMCIsoSurface* hpmc_h;
-
-GLuint splat_v;
-GLuint splat_f;
-GLuint splat_p;
-
-std::string splat_v_src =
-        "uniform samplerBuffer positions;\n"
-        "varying out vec3 velocity;\n"
-        "varying out vec3 param_pos;\n"
-        "const float r = 0.15;\n"
-        "uniform int active;\n"
-        "uniform float slice_z;\n"
-        "void\n"
-        "main()\n"
-        "{\n"
-        "    vec3 v = texelFetch( positions, 2*gl_InstanceID+0 ).xyz;\n"
-        "    vec3 p = texelFetch( positions, 2*gl_InstanceID+1 ).xyz;\n"
-        "    bool kill = (p.z+r < slice_z ) ||\n"
-        "                (slice_z < p.z-r ) ||\n"
-        "                (active < gl_InstanceID);\n"
-        "    velocity = v;\n"
-        "    param_pos = vec3( gl_Vertex.xy, (1.0/r)*(slice_z-p.z) );\n"
-        "    gl_Position = vec4( 2.0*(p.xy + r*gl_Vertex.xy)-vec3(1.0), kill ? 100.0 : 0.0, 1.0 );\n"
-        "}\n";
-std::string splat_f_src =
-        "uniform sampler1D gauss;\n"
-        "varying in vec3 velocity;\n"
-        "varying in vec3 param_pos;\n"
-        "void\n"
-        "main()\n"
-        "{\n"
-        "    float r = length(param_pos);\n"
-        "    float g = texture( gauss, r ).a;\n"
-        "    gl_FragColor = vec4( -100*g*normalize(param_pos), g );\n"
-        "}\n";
-
-GLuint particle_v;
-GLuint particle_p;
-
-std::string particle_v_src =
-        "uniform sampler3D density;\n"
-        "varying out vec4 vel;\n"
-        "varying out vec4 pos;\n"
-        "uniform int active;\n"
-        "uniform vec3 gravity;\n"
-        "uniform float dt;\n"
-        "void\n"
-        "main()\n"
-        "{\n"
-        "    if( active < gl_VertexID ) {\n"
-        "        vel = gl_MultiTexCoord0;\n"
-        "        pos = gl_Vertex;\n"
-        "        gl_Position = vec4(-5,0,0,1);\n"
-        "        return;\n"
-        "    }\n"
-        "    vec4 field = texture3D( density, gl_Vertex.xyz );\n"
-        "    vec3 foo = clamp(dot(field.xyz,field.xyz)-3.0,0.0,100.0)*field.xyz/dot(field.xyz,field.xyz);\n"
-        "    vec3 g = 0.01*field.xyz;//ec3(d_x - e_x, d_y-e_y, d_z-e_z);\n"
-        "    vec3 v = gl_MultiTexCoord0.xyz;\n"
-        "    vec3 avoidance = -0.02*pow((max(dot(g,g)-10*dot(v,v),0.0)),2.0)*normalize(g);\n"
-        "    vec3 drag = -0.5*dot(v,v)*normalize(v);\n"
-        "    vec3 p = gl_Vertex.xyz;\n"
-        "    float friction = min(0.9+abs(p.z)/0.01, 1.0);"
-        "    v = vec3(friction,friction,1.0)*v + dt*(\n"
-        "             gravity + \n"
-        "             avoidance + \n"
-        "             drag );\n"
-        "    p = p + dt*v;\n"
-        "    float i = 0.1;\n"
-        "    if( p.z < 0.0 ) {\n"
-        "       v = vec3(v.xy,  -0.1*v.z );\n"
-        "       p = vec3(p.xy,  -p.z );\n"
-        "    }\n"
-        "    else if( p.z > 1.0 ) {\n"
-        "       v = vec3(v.xy,  -i*v.z );\n"
-        "       p = vec3(p.xy, 2.0-p.z );\n"
-        "    }\n"
-        "    if( p.y < 0.0 ) {\n"
-        "       v = vec3(v.x, -i*v.y, v.z);\n"
-        "       p = vec3(p.x,   -p.y, p.z);\n"
-        "    }\n"
-        "    else if( p.y > 1.0 ) {\n"
-        "       v = vec3(v.x,  -i*v.y, v.z);\n"
-        "       p = vec3(p.x, 2.0-p.y, p.z);\n"
-        "    }\n"
-        "    if( p.x < 0.0  ) {\n"
-        "       v = vec3( -i*v.x, v.yz );\n"
-        "       p = vec3( -p.x,  p.yz );\n"
-        "    }\n"
-        "    else if( p.x > 1.0 ) {\n"
-        "       v = vec3(  -i*v.x, v.yz );\n"
-        "       p = vec3( 2.0-p.x, p.yz );\n"
-        "    }\n"
-        "    vel = vec4(v,1);\n"
-        "    pos = vec4(p,1);\n"
-        "    gl_FrontColor = vec4(1.0, 0.5, 0.1, 0.5 );\n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * vec4(p,1);\n"
-        "}\n";
-
-
+namespace resources{
+    extern std::string splat_vs_130; 
+    extern std::string splat_fs_130;
+    extern std::string particle_vs_130;
+    extern std::string shiny_vs_130;
+    extern std::string shiny_fs_130;
+    extern std::string solid_vs_130;
+}
 // -----------------------------------------------------------------------------
-GLuint shaded_v;
-GLuint shaded_f;
-GLuint shaded_p;
-struct HPMCIsoSurfaceRenderer* hpmc_th_flat;
-std::string shaded_vertex_shader_110 =
-        "varying vec3 normal;\n"
-        "void\n"
-        "main()\n"
-        "{\n"
-        "    vec3 p, n;\n"
-        "    extractVertex( p, n );\n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * vec4( p, 1.0 );\n"
-        "    normal = gl_NormalMatrix * normalize(n);\n"
-        "    gl_FrontColor = gl_Color;\n"
-        "}\n";
-std::string shaded_fragment_shader_110 =
-        "varying vec3 normal;\n"
-        "void\n"
-        "main()\n"
-        "{\n"
-        "    const vec3 v = vec3( 0.0, 0.0, 1.0 );\n"
-        "    vec3 l = normalize( vec3( 0.0, 1, 1.0 ) );\n"
-        "    vec3 h = normalize( v+l );\n"
-        "    vec3 n = normalize( normal );\n"
-        "    float diff = max( 0.0, dot( n, l ) );\n"
-        "    float spec = pow( max( 0.0, dot(n, h)), 50.0);\n"
-        "    gl_FragColor = diff * gl_Color +\n"
-        "                   spec * vec4(1.0);\n"
-        "}\n";
 
-GLuint flat_v;
-GLuint flat_p;
-struct HPMCIsoSurfaceRenderer* hpmc_th_shaded;
-std::string flat_vertex_shader_110 =
-        "void\n"
-        "main()\n"
-        "{\n"
-        "    vec3 p, n;\n"
-        "    extractVertex( p, n );\n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * vec4( p, 1.0 );\n"
-        "    gl_FrontColor = gl_Color;\n"
-        "}\n";
+
+        
 
 GLuint splat_fbo;
 
@@ -322,7 +202,7 @@ init()
 
     const char* splat_v_src_pa[1] =
     {
-        splat_v_src.c_str()
+        splat_vs_130.c_str()
     };
 
     splat_v = glCreateShader( GL_VERTEX_SHADER );
@@ -331,7 +211,7 @@ init()
 
     const char* splat_f_src_pa[1] =
     {
-        splat_f_src.c_str()
+        splat_fs_130.c_str()
     };
 
     splat_f = glCreateShader( GL_FRAGMENT_SHADER );
@@ -352,7 +232,7 @@ init()
 
     const char* particle_v_src_pa[1] =
     {
-        particle_v_src.c_str()
+        particle_vs_130.c_str()
     };
 
     particle_v = glCreateShader( GL_VERTEX_SHADER );
@@ -418,7 +298,7 @@ init()
     const char* shaded_vsrc[2] =
     {
         traversal_code,
-        shaded_vertex_shader_110.c_str()
+        shiny_vs_130.c_str()
     };
     shaded_v = glCreateShader( GL_VERTEX_SHADER );
     glShaderSource( shaded_v, 2, &shaded_vsrc[0], NULL );
@@ -427,7 +307,7 @@ init()
 
     const char* shaded_fsrc[1] =
     {
-        shaded_fragment_shader_110.c_str()
+        shiny_fs_130.c_str()
     };
     shaded_f = glCreateShader( GL_FRAGMENT_SHADER );
     glShaderSource( shaded_f, 1, &shaded_fsrc[0], NULL );
@@ -450,7 +330,7 @@ init()
     const char* flat_src[2] =
     {
         traversal_code,
-        flat_vertex_shader_110.c_str()
+        solid_vs_130.c_str()
     };
     flat_v = glCreateShader( GL_VERTEX_SHADER );
     glShaderSource( flat_v, 2, &flat_src[0], NULL );
@@ -665,11 +545,7 @@ main(int argc, char **argv)
         volume_size_y = atoi( argv[2] );
         volume_size_z = atoi( argv[3] );
     }
-    else {
-        volume_size_x = 128;
-        volume_size_y = 128;
-        volume_size_z = 128;
-    }
+   
 
     glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
     glutInitWindowSize( 1280, 720 );
