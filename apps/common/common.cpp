@@ -40,7 +40,6 @@
 #include <sys/timeb.h>
 #include <time.h>
 #include <windows.h>
-#define snprintf _snprintf_s
 #endif
 
 
@@ -331,9 +330,12 @@ struct frame_info
 void
 display()
 {
-    GLenum error = glGetError();
-    while( error != GL_NO_ERROR ) {
-        error = glGetError();
+    if( (hpmc_debug != HPMC_DEBUG_KHR_DEBUG) && (hpmc_debug != HPMC_DEBUG_KHR_DEBUG_VERBOSE) ) {
+        GLenum error = glGetError();
+        while( error != GL_NO_ERROR ) {
+            std::cerr << "Render loop entered with GL error " << std::hex << error << std::endl;
+            error = glGetError();
+        }
     }
 
     double t = getTimeOfDay();;
@@ -440,10 +442,12 @@ display()
     pt = t;
     glutSwapBuffers();
 
-    error = glGetError();
-    while( error != GL_NO_ERROR ) {
-        fprintf( stderr, "render loop produced GL error %x\n", error );
-        error = glGetError();
+    if( (hpmc_debug != HPMC_DEBUG_KHR_DEBUG) && (hpmc_debug != HPMC_DEBUG_KHR_DEBUG_VERBOSE) ) {
+        GLenum error = glGetError();
+        while( error != GL_NO_ERROR ) {
+            std::cerr << "Render loop produced GL error " << std::hex << error << std::endl;
+            error = glGetError();
+        }
     }
 }
 
@@ -460,83 +464,39 @@ static void APIENTRY debugLogger( GLenum source,
                                   const GLchar* message,
                                   void* data )
 {
-    const char* source_str = "---";
+    std::cerr << "OpenGL debug [src=";
     switch( source ) {
-    case GL_DEBUG_SOURCE_API: source_str = "API"; break;
-    case GL_DEBUG_SOURCE_WINDOW_SYSTEM: source_str = "WSY"; break;
-    case GL_DEBUG_SOURCE_SHADER_COMPILER: source_str = "SCM"; break;
-    case GL_DEBUG_SOURCE_THIRD_PARTY: source_str = "3PY"; break;
-    case GL_DEBUG_SOURCE_APPLICATION: source_str = "APP"; break;
-    case GL_DEBUG_SOURCE_OTHER: source_str = "OTH"; break;
+    case GL_DEBUG_SOURCE_API:               std::cerr << "api"; break;
+    case GL_DEBUG_SOURCE_WINDOW_SYSTEM:     std::cerr << "wsy"; break;
+    case GL_DEBUG_SOURCE_SHADER_COMPILER:   std::cerr << "cmp"; break;
+    case GL_DEBUG_SOURCE_THIRD_PARTY:       std::cerr << "3py"; break;
+    case GL_DEBUG_SOURCE_APPLICATION:       std::cerr << "app"; break;
+    case GL_DEBUG_SOURCE_OTHER:             std::cerr << "oth"; break;
+    default:                                std::cerr << "???"; break;
     }
 
-    const char* type_str = "---";
+    std::cerr << ", type=";
     switch( type ) {
-    case GL_DEBUG_TYPE_ERROR: type_str = "error"; break;
-    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: type_str = "deprecated"; break;
-    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: type_str = "undef"; break;
-    case GL_DEBUG_TYPE_PORTABILITY: type_str = "portability"; break;
-    case GL_DEBUG_TYPE_PERFORMANCE: type_str = "performance"; break;
-    case GL_DEBUG_TYPE_OTHER: type_str = "other"; break;
+    case GL_DEBUG_TYPE_ERROR:               std::cerr << "error"; break;
+    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: std::cerr <<  "deprecated"; break;
+    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  std::cerr <<  "undef"; break;
+    case GL_DEBUG_TYPE_PORTABILITY:         std::cerr <<  "portability"; break;
+    case GL_DEBUG_TYPE_PERFORMANCE:         std::cerr <<  "performance"; break;
+    case GL_DEBUG_TYPE_OTHER:               std::cerr <<  "other"; break;
+    default:                                std::cerr << "???"; break;
     }
 
-    const char* severity_str = "---";
+    std::cerr << ", severity=";
     switch( severity ) {
-    case GL_DEBUG_SEVERITY_HIGH: severity_str = "high"; break;
-    case GL_DEBUG_SEVERITY_MEDIUM: severity_str = "medium"; break;
-    case GL_DEBUG_SEVERITY_LOW: severity_str = "low"; break;
+    case GL_DEBUG_SEVERITY_HIGH:            std::cerr <<  "high"; break;
+    case GL_DEBUG_SEVERITY_MEDIUM:          std::cerr <<  "medium"; break;
+    case GL_DEBUG_SEVERITY_LOW:             std::cerr <<  "low"; break;
+    default:                                std::cerr << "???"; break;
     }
 
-    fprintf( stderr, "GL debug [src=%s, type=%s, severity=%s]: %s\n",
-             source_str,
-             type_str,
-             severity_str,
-             message );
-
+    std::cerr << "] " << message << std::endl;
 }
 
-static void APIENTRY debugLoggerARB( GLenum source,
-                                     GLenum type,
-                                     GLenum id,
-                                     GLenum severity,
-                                     GLsizei length,
-                                     const GLchar* message,
-                                     void* data )
-{
-    const char* source_str = "---";
-    switch( source ) {
-    case GL_DEBUG_SOURCE_API_ARB: source_str = "API"; break;
-    case GL_DEBUG_SOURCE_WINDOW_SYSTEM_ARB: source_str = "WSY"; break;
-    case GL_DEBUG_SOURCE_SHADER_COMPILER_ARB: source_str = "SCM"; break;
-    case GL_DEBUG_SOURCE_THIRD_PARTY_ARB: source_str = "3PY"; break;
-    case GL_DEBUG_SOURCE_APPLICATION_ARB: source_str = "APP"; break;
-    case GL_DEBUG_SOURCE_OTHER_ARB: source_str = "OTH"; break;
-    }
-
-    const char* type_str = "---";
-    switch( type ) {
-    case GL_DEBUG_TYPE_ERROR_ARB: type_str = "error"; break;
-    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR_ARB: type_str = "deprecated"; break;
-    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR_ARB: type_str = "undef"; break;
-    case GL_DEBUG_TYPE_PORTABILITY_ARB: type_str = "portability"; break;
-    case GL_DEBUG_TYPE_PERFORMANCE_ARB: type_str = "performance"; break;
-    case GL_DEBUG_TYPE_OTHER_ARB: type_str = "other"; break;
-    }
-
-    const char* severity_str = "---";
-    switch( severity ) {
-    case GL_DEBUG_SEVERITY_HIGH: severity_str = "high"; break;
-    case GL_DEBUG_SEVERITY_MEDIUM: severity_str = "medium"; break;
-    case GL_DEBUG_SEVERITY_LOW: severity_str = "low"; break;
-    }
-
-    fprintf( stderr, "GL debug [src=%s, type=%s, severity=%s]: %s\n",
-             source_str,
-             type_str,
-             severity_str,
-             message );
-
-}
 
 void
 printOptions()
@@ -750,18 +710,18 @@ main(int argc, char **argv)
     glutCreateWindow( argv[0] );
     GLenum error = glGetError();
     while( error != GL_NO_ERROR ) {
-        fprintf( stderr, "Context creation created GL error %x\n", error );
+        std::cerr << "Context creation created GL error " << std::hex << error << std::endl;
         error = glGetError();
     }
     glewExperimental = GL_TRUE;
     GLenum glew_error = glewInit();
     if( glew_error != GLEW_OK ) {
-        fprintf( stderr, "GLEW failed to initialize, exiting.\n" );
-        abort();
+        std::cerr << "GLEW failed to initialize." << std::endl;
+        exit( EXIT_FAILURE );
     }
     error = glGetError();
     while( error != GL_NO_ERROR ) {
-        fprintf( stderr, "GLEW initialization created GL error %x\n", error );
+        std::cerr << "GLEW initialization created GL error " << std::hex << error << std::endl;
         error = glGetError();
     }
     if( (hpmc_debug == HPMC_DEBUG_KHR_DEBUG) || (hpmc_debug == HPMC_DEBUG_KHR_DEBUG_VERBOSE) ) {
@@ -774,12 +734,13 @@ main(int argc, char **argv)
                                    0, NULL, GL_TRUE );
         }
         else {
-            fprintf( stderr, "GL_KHR_debug extension not present.\n" );
+            std::cerr << "GL_KHR_debug extension not present, reverting to stderr.\n";
+            hpmc_debug = HPMC_DEBUG_STDERR;
         }
     }
     error = glGetError();
     while( error != GL_NO_ERROR ) {
-        fprintf( stderr, "Debug setup created GL error %x\n", error );
+        std::cerr << "Debug setup created GL error " << std::hex << error << std::endl;
         error = glGetError();
     }
 
