@@ -569,12 +569,12 @@ render( float t,
     glUniformMatrix3fv( anim_loc_NM, 1, GL_FALSE, NM );
 
     // Output after the results of the emitter.
-    glBindBufferOffsetNV( GL_TRANSFORM_FEEDBACK_BUFFER_NV,
-                          0, particles_vbo[ (particles_vbo_p+1)%2 ],
-                          emitter_result*(2+3+3)*sizeof(GLfloat) );
+    glBindBufferRange( GL_TRANSFORM_FEEDBACK_BUFFER, 0,
+                       particles_vbo[ (particles_vbo_p+1)%2 ],
+                       8*sizeof(GLfloat)*emitter_result,
+                       8*sizeof(GLfloat)*(particles_vbo_N-emitter_result) );
 
     // Render previous frame's particles
-
     glBindVertexArray( particles_vao[ particles_vbo_p] );
     glEnable( GL_RASTERIZER_DISCARD );
     glBeginQuery( GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN, anim_query );
