@@ -137,7 +137,13 @@ HPMCBaseLevelBuilder::build( GLuint vertex_table_sampler, GLuint field_sampler )
     }
 
     // And trigger computation.
-    glBindFramebuffer( GL_FRAMEBUFFER, m_iso_surface->histoPyramid().baseFramebufferObject() );
+    if( m_iso_surface->constants()->target() < HPMC_TARGET_GL30_GLSL130 ) {
+        glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, m_iso_surface->histoPyramid().baseFramebufferObject() );
+    }
+    else {
+        glBindFramebuffer( GL_FRAMEBUFFER, m_iso_surface->histoPyramid().baseFramebufferObject() );
+    }
+
     glViewport( 0,
                 0,
                 m_iso_surface->histoPyramid().size(),

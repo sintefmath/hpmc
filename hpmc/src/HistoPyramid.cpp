@@ -108,18 +108,22 @@ HPMCHistoPyramid::build( GLint tex_unit_a )
             retval = false;
         }
         else {
-            glUseProgram( m_reduce1_program );
-            glUniform1i( m_reduce1_loc_hp_tex, tex_unit_a );
-            glUniform2f( m_reduce1_loc_delta, -0.5f/m_size, 0.5f/m_size );
-
             glActiveTexture( GL_TEXTURE0 + tex_unit_a );
             glBindTexture( GL_TEXTURE_2D, m_tex );
             glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0 );
             glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0 );
 
-            glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, m_fbos[1] );
+            glUseProgram( m_reduce1_program );
+            glUniform1i( m_reduce1_loc_hp_tex, tex_unit_a );
+            if( m_constants->target() < HPMC_TARGET_GL30_GLSL130 ) {
+                glUniform2f( m_reduce1_loc_delta, -0.5f/m_size, 0.5f/m_size );
+                glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, m_fbos[1] );
+            }
+            else {
+                glUniform2f( m_reduce1_loc_delta, -0.5f/m_size, 0.5f/m_size );
+                glBindFramebuffer( GL_FRAMEBUFFER, m_fbos[1] );
+            }
             glViewport( 0, 0, m_size/2, m_size/2 );
-
             m_constants->gpgpuQuad().render();
 
             // levels 2 and up
@@ -136,11 +140,19 @@ HPMCHistoPyramid::build( GLint tex_unit_a )
                         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, m-1 );
                         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, m-1 );
 
-                        glUniform2f( m_reducen_loc_delta,
-                                    -0.5f/(1<<(m_size_l2+1-m)),
-                                     0.5f/(1<<(m_size_l2+1-m)) );
+                        if( m_constants->target() < HPMC_TARGET_GL30_GLSL130 ) {
+                            glUniform2f( m_reducen_loc_delta,
+                                         -0.5f/(1<<(m_size_l2+1-m)),
+                                         0.5f/(1<<(m_size_l2+1-m)) );
+                            glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, m_fbos[m] );
+                        }
+                        else {
+                            glUniform2f( m_reducen_loc_delta,
+                                         -0.5f/(1<<(m_size_l2+1-m)),
+                                         0.5f/(1<<(m_size_l2+1-m)) );
+                            glBindFramebuffer( GL_FRAMEBUFFER, m_fbos[m] );
+                        }
 
-                        glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, m_fbos[m] );
                         glViewport( 0, 0, 1<<(m_size_l2-m), 1<<(m_size_l2-m) );
                         m_constants->gpgpuQuad().render();
                     }
@@ -168,7 +180,12 @@ HPMCHistoPyramid::~HPMCHistoPyramid()
     glDeleteBuffers( 1, &m_top_pbo );
     glDeleteTextures( 1, &m_tex );
     if( !m_fbos.empty() ) {
-        glDeleteFramebuffers( static_cast<GLsizei>( m_fbos.size() ), m_fbos.data() );
+        if( m_constants->target() < HPMC_TARGET_GL30_GLSL130 ) {
+            glDeleteFramebuffersEXT( static_cast<GLsizei>( m_fbos.size() ), m_fbos.data() );
+        }
+        else {
+            glDeleteFramebuffers( static_cast<GLsizei>( m_fbos.size() ), m_fbos.data() );
+        }
     }
 }
 
@@ -257,26 +274,52 @@ HPMCHistoPyramid::configure( GLsizei size_l2 )
     glGenerateMipmap( GL_TEXTURE_2D );
 
     // release old fbos and set up new
-    if( !m_fbos.empty() ) {
-        glDeleteFramebuffers( static_cast<GLsizei>( m_fbos.size() ), m_fbos.data() );
-    }
-    m_fbos.resize( m_size_l2 + 1 );
-    glGenFramebuffers( static_cast<GLsizei>( m_fbos.size() ), m_fbos.data() );
+    if( m_constants->target() < HPMC_TARGET_GL30_GLSL130 ) {
+        if( !m_fbos.empty() ) {
+            glDeleteFramebuffersEXT( static_cast<GLsizei>( m_fbos.size() ), m_fbos.data() );
+        }
+        m_fbos.resize( m_size_l2 + 1 );
+        glGenFramebuffersEXT( static_cast<GLsizei>( m_fbos.size() ), m_fbos.data() );
 
-    for( GLuint m=0; m<m_fbos.size(); m++) {
-        glBindFramebuffer( GL_FRAMEBUFFER, m_fbos[m] );
-        glFramebufferTexture2D( GL_FRAMEBUFFER,
-                                GL_COLOR_ATTACHMENT0,
-                                GL_TEXTURE_2D,
-                                m_tex,
-                                m );
-        glDrawBuffer( GL_COLOR_ATTACHMENT0 );
-        GLenum status = glCheckFramebufferStatus( GL_FRAMEBUFFER );
-        if( status != GL_FRAMEBUFFER_COMPLETE ) {
-            std::stringstream o;
-            o << "Framebuffer for HP level " << m << " of " << m_size_l2 << " is incomplete";
-            log.errorMessage( o.str() );
-            retval = false;
+        for( GLuint m=0; m<m_fbos.size(); m++) {
+            glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, m_fbos[m] );
+            glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT,
+                                       GL_COLOR_ATTACHMENT0_EXT,
+                                       GL_TEXTURE_2D,
+                                       m_tex,
+                                       m );
+            glDrawBuffer( GL_COLOR_ATTACHMENT0_EXT );
+            GLenum status = glCheckFramebufferStatus( GL_FRAMEBUFFER_EXT );
+            if( status != GL_FRAMEBUFFER_COMPLETE_EXT ) {
+                std::stringstream o;
+                o << "Framebuffer for HP level " << m << " of " << m_size_l2 << " is incomplete";
+                log.errorMessage( o.str() );
+                retval = false;
+            }
+        }
+    }
+    else {
+        if( !m_fbos.empty() ) {
+            glDeleteFramebuffers( static_cast<GLsizei>( m_fbos.size() ), m_fbos.data() );
+        }
+        m_fbos.resize( m_size_l2 + 1 );
+        glGenFramebuffers( static_cast<GLsizei>( m_fbos.size() ), m_fbos.data() );
+
+        for( GLuint m=0; m<m_fbos.size(); m++) {
+            glBindFramebuffer( GL_FRAMEBUFFER, m_fbos[m] );
+            glFramebufferTexture2D( GL_FRAMEBUFFER,
+                                    GL_COLOR_ATTACHMENT0,
+                                    GL_TEXTURE_2D,
+                                    m_tex,
+                                    m );
+            glDrawBuffer( GL_COLOR_ATTACHMENT0 );
+            GLenum status = glCheckFramebufferStatus( GL_FRAMEBUFFER );
+            if( status != GL_FRAMEBUFFER_COMPLETE ) {
+                std::stringstream o;
+                o << "Framebuffer for HP level " << m << " of " << m_size_l2 << " is incomplete";
+                log.errorMessage( o.str() );
+                retval = false;
+            }
         }
     }
 
