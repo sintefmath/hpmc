@@ -46,10 +46,12 @@ protected:
     GLsizei             m_top_count;            ///< CPU copy of \ref m_tex top element.
     GLsizei             m_top_count_updated;    ///< Tags that \m_top_pbo is more recent than \ref m_top_count.
     GLuint              m_reduce1_program;      ///< Shader program for first reduction.
-    GLint               m_reduce1_loc_delta;    ///< Pixel deltas for first reduction.
+    GLint               m_reduce1_loc_delta;    ///< Pixel deltas for first reduction (GL 2.x).
+    GLint               m_reduce1_loc_level;    ///< Source mipmap level for first reduction (GL 3.x and up).
     GLint               m_reduce1_loc_hp_tex;   ///< Texture unit for \ref m_tex for first reduction.
     GLuint              m_reducen_program;      ///< Shader program for subsequent reductions.
-    GLint               m_reducen_loc_delta;    ///< Pixel deltas for subsequent reductions.
+    GLint               m_reducen_loc_delta;    ///< Pixel deltas for subsequent reduction (GL 2.x).
+    GLint               m_reducen_loc_level;    ///< Source mipmap level for subsequent reduction (GL 3.x and up).
     GLint               m_reducen_loc_hp_tex;   ///< Texture unit for \ref m_tex for subsequent reductions.
 
     /** Create fragment shader source for reductions
