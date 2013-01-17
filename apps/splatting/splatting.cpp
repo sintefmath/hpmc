@@ -452,7 +452,7 @@ void
     //glColor3f( 1, 1, 1 ); //need to use shader variable instead
 
     glBindBuffer( GL_ARRAY_BUFFER, positions_vbo[ positions_p ] );
-    glInterleavedArrays( GL_T4F_V4F, 0, NULL );
+    //glInterleavedArrays( GL_T4F_V4F, 0, NULL );
     positions_p = (positions_p+1)%2;
     glBindBufferBase( GL_TRANSFORM_FEEDBACK_BUFFER,
                         0, positions_vbo[ positions_p ] );
@@ -463,7 +463,7 @@ void
     }
     else {
         glPointSize( 10 );
-        glEnable( GL_POINT_SMOOTH );
+        //glEnable( GL_POINT_SMOOTH );
         glBlendFunc( GL_SRC_ALPHA, GL_ONE );
         glEnable( GL_BLEND );
         glDepthMask( GL_FALSE );
@@ -476,14 +476,14 @@ void
         glDisable( GL_RASTERIZER_DISCARD_NV );
     }
     else {
-        glDisable( GL_POINT_SMOOTH );
+        //glDisable( GL_POINT_SMOOTH );
         glDisable( GL_BLEND );
         glDepthMask( GL_TRUE );
     }
 
     glBindTexture( GL_TEXTURE_3D, 0 );
     glBindBuffer( GL_ARRAY_BUFFER, 0 );
-    glPopClientAttrib();
+//    glPopClientAttrib();
 
     // --- build HistoPyramid --------------------------------------------------
     iso = .3;//.5 + 0.48*cosf( t );
@@ -500,7 +500,7 @@ void
         glEnable( GL_BLEND );
         glBlendFunc( GL_SRC_ALPHA, GL_ONE );
         glDepthMask( GL_FALSE );
-        glColor4f( 0.3, 0.3, 0.5, 0.15 );
+//        glColor4f( 0.3, 0.3, 0.5, 0.15 );
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glEnable( GL_POLYGON_OFFSET_FILL );
         HPMCextractVertices( hpmc_th_flat, GL_FALSE );
@@ -508,7 +508,7 @@ void
 
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE );
-        glColor4f( 0.5, 0.5, 0.8, 0.2 );
+//        glColor4f( 0.5, 0.5, 0.8, 0.2 );
         HPMCextractVertices( hpmc_th_flat, GL_FALSE );
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glDisable( GL_BLEND );
