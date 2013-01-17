@@ -115,16 +115,15 @@ SET( HPMC_APP_COMMON_GLSL "apps/shaders/phong_fs_110.glsl"
 			  "apps/shaders/splatting_fs_140.glsl"
 			  "apps/shaders/particle_vs_140.glsl"
 )
+
 SOURCE_GROUP( "Apps common shaders" FILES ${HPMC_APP_COMMON_GLSL} )
-SET_SOURCE_FILES_PROPERTIES( ${HPMC_APP_COMMON_GLSL} PROPERTIES HEADER_FILE_ONLY TRUE )
+
 FOREACH( file ${HPMC_APP_COMMON_GLSL} )
     GET_FILENAME_COMPONENT( symbol ${file} NAME_WE)
-    ADD_TEXT_FILE( ${symbol} "resources::${symbol}" ${file} )
-    LIST( APPEND HPMC_APP_COMMON_GLSL_LIBS ${symbol} )
+    ADD_RESOURCE_TXT( HPMC_APP_COMMON_GLSL_GEN "resources::${symbol}" ${file} )
 ENDFOREACH()
-ADD_LIBRARY( hpmc_app_common STATIC ${HPMC_APP_COMMON_SRCS} ${HPMC_APP_COMMON_HDRS} ${HPMC_APP_COMMON_GLSL} )
+ADD_LIBRARY( hpmc_app_common STATIC ${HPMC_APP_COMMON_SRCS} ${HPMC_APP_COMMON_HDRS} ${HPMC_APP_COMMON_GLSL_GEN} ${HPMC_APP_COMMON_GLSL} )
 TARGET_LINK_LIBRARIES( hpmc_app_common ${HPMC_APP_COMMON_GLSL_LIBS} )
-
 
 ADD_EXECUTABLE( texture3d "apps/texture3d/texture3d.cpp" )
 TARGET_LINK_LIBRARIES( texture3d hpmc hpmc_app_common ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )

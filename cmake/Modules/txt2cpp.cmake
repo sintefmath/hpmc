@@ -1,5 +1,5 @@
 
-SET ( txt2cpp_source 
+SET ( txt2cpp_source
 "#include <string>\n"
 "#include <vector>\n"
 "#include <iostream>\n"
@@ -92,6 +92,29 @@ set_source_files_properties( "${CMAKE_BINARY_DIR}/buildtools/txt2cpp.cpp" PROPER
 ADD_EXECUTABLE(app_txt2cpp "${CMAKE_BINARY_DIR}/buildtools/txt2cpp.cpp")
 SET_TARGET_PROPERTIES(app_txt2cpp PROPERTIES OUTPUT_NAME "txt2cpp")
 
+MACRO( ADD_RESOURCE_TXT resource_src symbol input )
+    # Path to txt2cpp tool
+    GET_TARGET_PROPERTY( txt2cpp_bin app_txt2cpp LOCATION)
+
+    # Get full path to input
+    GET_FILENAME_COMPONENT( input_full_path ${input} ABSOLUTE )
+
+    # Create path to output cpp-file (symbol with :: replaced with __).
+    STRING(REGEX REPLACE "::" "__" target_name ${symbol}  )
+    SET( result_full_filename "${CMAKE_CURRENT_BINARY_DIR}/${target_name}.cpp" )
+
+    # creates cpp from txt
+    ADD_CUSTOM_COMMAND( OUTPUT ${result_full_filename}
+                        COMMAND ${txt2cpp_bin} ${input_full_path} ${symbol} ${result_full_filename}
+                        DEPENDS app_txt2cpp ${input} )
+    SET_SOURCE_FILES_PROPERTIES( ${result_full_filename} PROPERTIES GENERATED TRUE )
+    SET_SOURCE_FILES_PROPERTIES( ${input} PROPERTIES HEADER_FILE_ONLY TRUE )
+
+    # Add source file to list of resource sources
+    LIST( APPEND ${resource_src} ${result_full_filename} )
+ENDMACRO( ADD_RESOURCE_TXT )
+
+
 MACRO( ADD_TEXT_FILE targetName symbol input )
     GET_FILENAME_COMPONENT(infile_we ${input} NAME_WE)
     GET_FILENAME_COMPONENT(input_filename ${input} ABSOLUTE)
@@ -100,11 +123,11 @@ MACRO( ADD_TEXT_FILE targetName symbol input )
     ADD_CUSTOM_COMMAND(
       OUTPUT ${result_filename}
       COMMAND ${TXT2cppP_EXE} ${input_filename} ${symbol} ${result_filename}
-	  DEPENDS app_txt2cpp ${input_filename} 
-	  )
-	STRING(REGEX REPLACE "::" "__" target_name ${symbol}  )
+          DEPENDS app_txt2cpp ${input_filename}
+          )
+        STRING(REGEX REPLACE "::" "__" target_name ${symbol}  )
 #	message("target ${targetName}")
-	add_library(${targetName} ${result_filename})
-	add_dependencies(${targetName}  app_txt2cpp )
+        add_library(${targetName} ${result_filename})
+        add_dependencies(${targetName}  app_txt2cpp )
 #	ADD_CUSTOM_TARGET(${targetName} DEPENDS ${result_filename})
 ENDMACRO( ADD_TEXT_FILE )
