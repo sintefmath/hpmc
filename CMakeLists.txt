@@ -97,8 +97,20 @@ SET( HPMC_APP_COMMON_GLSL "apps/shaders/phong_fs_110.glsl"
                           "apps/shaders/shiny_fs_130.glsl"
                           "apps/shaders/shiny_vs_110.glsl"
                           "apps/shaders/shiny_vs_130.glsl"
+                          "apps/shaders/plain_vs_110.glsl"
+                          "apps/shaders/plain_vs_130.glsl"
                           "apps/shaders/metaballs_fetch.glsl"
                           "apps/shaders/cayley_fetch.glsl"
+                          "apps/shaders/particles_fetch.glsl"
+                          "apps/shaders/particles_shape_vs_150.glsl"
+                          "apps/shaders/particles_shape_fs_150.glsl"
+                          "apps/shaders/particles_emitter_vs_150.glsl"
+                          "apps/shaders/particles_emitter_gs_150.glsl"
+                          "apps/shaders/particles_anim_vs_150.glsl"
+                          "apps/shaders/particles_anim_gs_150.glsl"
+                          "apps/shaders/particles_billboard_vs_150.glsl"
+                          "apps/shaders/particles_billboard_gs_150.glsl"
+                          "apps/shaders/particles_billboard_fs_150.glsl"
 			  "apps/shaders/splatting_vs_140.glsl"
 			  "apps/shaders/splatting_fs_140.glsl"
 			  "apps/shaders/particle_vs_140.glsl"
@@ -120,15 +132,15 @@ TARGET_LINK_LIBRARIES( texture3d hpmc hpmc_app_common ${GLEW_LIBRARIES} ${OPENGL
 ADD_EXECUTABLE( cayley "apps/cayley/cayley.cpp" )
 TARGET_LINK_LIBRARIES( cayley hpmc hpmc_app_common ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
-#ADD_EXECUTABLE( transform_feedback "apps/transform_feedback/transform_feedback.cpp" ${HPMC_APP_COMMON_SRC} )
-#TARGET_LINK_LIBRARIES( transform_feedback hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+ADD_EXECUTABLE( transform_feedback "apps/transform_feedback/transform_feedback.cpp" ${HPMC_APP_COMMON_SRC} )
+TARGET_LINK_LIBRARIES( transform_feedback hpmc_app_common hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
 ADD_EXECUTABLE( metaballs "apps/metaballs/metaballs.cpp" )
 TARGET_LINK_LIBRARIES( metaballs hpmc hpmc_app_common ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
+ADD_EXECUTABLE( particles "apps/particles/particles.cpp" ${HPMC_APP_COMMON_SRC} )
+TARGET_LINK_LIBRARIES( particles hpmc_app_common hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
 ADD_EXECUTABLE( splatting "apps/splatting/splatting.cpp" )
 TARGET_LINK_LIBRARIES( splatting hpmc hpmc_app_common ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
-#ADD_EXECUTABLE( particles "apps/particles/particles.cpp" ${HPMC_APP_COMMON_SRC} )
-#TARGET_LINK_LIBRARIES( particles hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )

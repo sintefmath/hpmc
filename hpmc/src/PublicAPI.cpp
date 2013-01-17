@@ -26,6 +26,7 @@
 #include <string>
 #include <cstring>
 #include <sstream>
+#include <stdexcept>
 #include <hpmc.h>
 #include <hpmc_internal.h>
 #include "Constants.hpp"
@@ -40,9 +41,15 @@ using namespace HPMC;
 struct HPMCConstants*
 HPMCcreateConstants( HPMCTarget target, HPMCDebugBehaviour debug )
 {
-    struct HPMCConstants *constants = new HPMCConstants( target, debug );
-    Logger log( constants, package + "createConstants", true );
-    constants->init();
+    struct HPMCConstants *constants = NULL;
+    try {
+        constants = new HPMCConstants( target, debug );
+        Logger log( constants, package + "createConstants", true );
+        constants->init();
+    }
+    catch( std::runtime_error& e ) {
+        std::cerr << e.what() << std::endl;
+    }
     return constants;
 }
 

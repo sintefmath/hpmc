@@ -40,7 +40,6 @@
 #include <sys/timeb.h>
 #include <time.h>
 #include <windows.h>
-#define snprintf _snprintf_s
 #endif
 
 
@@ -331,9 +330,12 @@ struct frame_info
 void
 display()
 {
-    GLenum error = glGetError();
-    while( error != GL_NO_ERROR ) {
-        error = glGetError();
+    if( (hpmc_debug != HPMC_DEBUG_KHR_DEBUG) && (hpmc_debug != HPMC_DEBUG_KHR_DEBUG_VERBOSE) ) {
+        GLenum error = glGetError();
+        while( error != GL_NO_ERROR ) {
+            std::cerr << "Render loop entered with GL error " << std::hex << error << std::endl;
+            error = glGetError();
+        }
     }
 
     double t = getTimeOfDay();;
@@ -363,7 +365,10 @@ display()
     GLfloat NM[9];
     GLfloat T[16];
 
+    GLfloat MVi[16];
+
     frustum( P,  -0.2*aspect_x, 0.2*aspect_x, -0.2*aspect_y, 0.2*aspect_y, 0.5, 3.0 );
+
     translate( MV, 0.f, 0.f, -2.f );
     rotX( T, 20.f );
     rightMulAssign( MV, T );
@@ -372,6 +377,15 @@ display()
     translate( T, -0.5f, -0.5f, -0.5f );
     rightMulAssign( MV, T );
     extractUpperLeft3x3( NM, MV );
+
+    translate( MVi, 0.5f, 0.5f, 0.5f );
+    rotY( T, -20.f*t );
+    rightMulAssign( MVi, T );
+    rotX( T, -20.f );
+    rightMulAssign( MVi, T );
+    translate( T, 0.f, 0.f, 2.f );
+    rightMulAssign( MVi, T );
+
 
     memcpy( PMV, P, sizeof(GLfloat)*16 );
     rightMulAssign( PMV, MV );
@@ -412,7 +426,7 @@ display()
         render( t, dt, fps );
     }
 #else
-    render( t, dt, fps, P, MV, PMV, NM );
+    render( t, dt, fps, P, MV, PMV, NM, MVi );
 #endif
 
     static std::string message = "";
@@ -440,10 +454,12 @@ display()
     pt = t;
     glutSwapBuffers();
 
-    error = glGetError();
-    while( error != GL_NO_ERROR ) {
-        fprintf( stderr, "render loop produced GL error %x\n", error );
-        error = glGetError();
+    if( (hpmc_debug != HPMC_DEBUG_KHR_DEBUG) && (hpmc_debug != HPMC_DEBUG_KHR_DEBUG_VERBOSE) ) {
+        GLenum error = glGetError();
+        while( error != GL_NO_ERROR ) {
+            std::cerr << "Render loop produced GL error " << std::hex << error << std::endl;
+            error = glGetError();
+        }
     }
 }
 
@@ -460,83 +476,39 @@ static void APIENTRY debugLogger( GLenum source,
                                   const GLchar* message,
                                   void* data )
 {
-    const char* source_str = "---";
+    std::cerr << "OpenGL debug [src=";
     switch( source ) {
-    case GL_DEBUG_SOURCE_API: source_str = "API"; break;
-    case GL_DEBUG_SOURCE_WINDOW_SYSTEM: source_str = "WSY"; break;
-    case GL_DEBUG_SOURCE_SHADER_COMPILER: source_str = "SCM"; break;
-    case GL_DEBUG_SOURCE_THIRD_PARTY: source_str = "3PY"; break;
-    case GL_DEBUG_SOURCE_APPLICATION: source_str = "APP"; break;
-    case GL_DEBUG_SOURCE_OTHER: source_str = "OTH"; break;
+    case GL_DEBUG_SOURCE_API:               std::cerr << "api"; break;
+    case GL_DEBUG_SOURCE_WINDOW_SYSTEM:     std::cerr << "wsy"; break;
+    case GL_DEBUG_SOURCE_SHADER_COMPILER:   std::cerr << "cmp"; break;
+    case GL_DEBUG_SOURCE_THIRD_PARTY:       std::cerr << "3py"; break;
+    case GL_DEBUG_SOURCE_APPLICATION:       std::cerr << "app"; break;
+    case GL_DEBUG_SOURCE_OTHER:             std::cerr << "oth"; break;
+    default:                                std::cerr << "???"; break;
     }
 
-    const char* type_str = "---";
+    std::cerr << ", type=";
     switch( type ) {
-    case GL_DEBUG_TYPE_ERROR: type_str = "error"; break;
-    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: type_str = "deprecated"; break;
-    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: type_str = "undef"; break;
-    case GL_DEBUG_TYPE_PORTABILITY: type_str = "portability"; break;
-    case GL_DEBUG_TYPE_PERFORMANCE: type_str = "performance"; break;
-    case GL_DEBUG_TYPE_OTHER: type_str = "other"; break;
+    case GL_DEBUG_TYPE_ERROR:               std::cerr << "error"; break;
+    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: std::cerr <<  "deprecated"; break;
+    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  std::cerr <<  "undef"; break;
+    case GL_DEBUG_TYPE_PORTABILITY:         std::cerr <<  "portability"; break;
+    case GL_DEBUG_TYPE_PERFORMANCE:         std::cerr <<  "performance"; break;
+    case GL_DEBUG_TYPE_OTHER:               std::cerr <<  "other"; break;
+    default:                                std::cerr << "???"; break;
     }
 
-    const char* severity_str = "---";
+    std::cerr << ", severity=";
     switch( severity ) {
-    case GL_DEBUG_SEVERITY_HIGH: severity_str = "high"; break;
-    case GL_DEBUG_SEVERITY_MEDIUM: severity_str = "medium"; break;
-    case GL_DEBUG_SEVERITY_LOW: severity_str = "low"; break;
+    case GL_DEBUG_SEVERITY_HIGH:            std::cerr <<  "high"; break;
+    case GL_DEBUG_SEVERITY_MEDIUM:          std::cerr <<  "medium"; break;
+    case GL_DEBUG_SEVERITY_LOW:             std::cerr <<  "low"; break;
+    default:                                std::cerr << "???"; break;
     }
 
-    fprintf( stderr, "GL debug [src=%s, type=%s, severity=%s]: %s\n",
-             source_str,
-             type_str,
-             severity_str,
-             message );
-
+    std::cerr << "] " << message << std::endl;
 }
 
-static void APIENTRY debugLoggerARB( GLenum source,
-                                     GLenum type,
-                                     GLenum id,
-                                     GLenum severity,
-                                     GLsizei length,
-                                     const GLchar* message,
-                                     void* data )
-{
-    const char* source_str = "---";
-    switch( source ) {
-    case GL_DEBUG_SOURCE_API_ARB: source_str = "API"; break;
-    case GL_DEBUG_SOURCE_WINDOW_SYSTEM_ARB: source_str = "WSY"; break;
-    case GL_DEBUG_SOURCE_SHADER_COMPILER_ARB: source_str = "SCM"; break;
-    case GL_DEBUG_SOURCE_THIRD_PARTY_ARB: source_str = "3PY"; break;
-    case GL_DEBUG_SOURCE_APPLICATION_ARB: source_str = "APP"; break;
-    case GL_DEBUG_SOURCE_OTHER_ARB: source_str = "OTH"; break;
-    }
-
-    const char* type_str = "---";
-    switch( type ) {
-    case GL_DEBUG_TYPE_ERROR_ARB: type_str = "error"; break;
-    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR_ARB: type_str = "deprecated"; break;
-    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR_ARB: type_str = "undef"; break;
-    case GL_DEBUG_TYPE_PORTABILITY_ARB: type_str = "portability"; break;
-    case GL_DEBUG_TYPE_PERFORMANCE_ARB: type_str = "performance"; break;
-    case GL_DEBUG_TYPE_OTHER_ARB: type_str = "other"; break;
-    }
-
-    const char* severity_str = "---";
-    switch( severity ) {
-    case GL_DEBUG_SEVERITY_HIGH: severity_str = "high"; break;
-    case GL_DEBUG_SEVERITY_MEDIUM: severity_str = "medium"; break;
-    case GL_DEBUG_SEVERITY_LOW: severity_str = "low"; break;
-    }
-
-    fprintf( stderr, "GL debug [src=%s, type=%s, severity=%s]: %s\n",
-             source_str,
-             type_str,
-             severity_str,
-             message );
-
-}
 
 void
 printOptions()
@@ -567,6 +539,58 @@ int
 main(int argc, char **argv)
 {
     glutInit( &argc, argv );
+
+    GLint gl_major, gl_minor;
+    glGetIntegerv( GL_MAJOR_VERSION, &gl_major );
+    glGetIntegerv( GL_MINOR_VERSION, &gl_minor );
+   //not working on windows....
+	/*
+	if( gl_major < 2 ) {
+        std::cerr << "Requires minimum OpenGL 2.0 (driver reports "
+                  << gl_major << "."
+                  << gl_minor << ").";
+        exit( EXIT_FAILURE );
+    }
+    else if( gl_major == 2 ) {
+        if( gl_minor == 0 ) {
+            hpmc_target = HPMC_TARGET_GL20_GLSL110;
+        }
+        else {
+            hpmc_target = HPMC_TARGET_GL21_GLSL120;
+        }
+    }
+    else if( gl_major == 3 ) {
+        if( gl_minor == 0 ) {
+            hpmc_target = HPMC_TARGET_GL30_GLSL130;
+        }
+        else if( gl_minor == 1 ) {
+            hpmc_target = HPMC_TARGET_GL31_GLSL140;
+        }
+        else if( gl_minor == 2 ) {
+            hpmc_target = HPMC_TARGET_GL32_GLSL150;
+        }
+        else {
+            hpmc_target = HPMC_TARGET_GL33_GLSL330;
+        }
+    }
+    else if( gl_major == 4 ) {
+        if( gl_minor == 0 ) {
+            hpmc_target = HPMC_TARGET_GL40_GLSL400;
+        }
+        else if( gl_minor == 1 ) {
+            hpmc_target = HPMC_TARGET_GL41_GLSL410;
+        }
+        else if( gl_minor == 2 ) {
+            hpmc_target = HPMC_TARGET_GL42_GLSL420;
+        }
+        else {
+            hpmc_target = HPMC_TARGET_GL43_GLSL430;
+        }
+    }
+    else {
+        hpmc_target = HPMC_TARGET_GL43_GLSL430;
+    }
+	*/
 
     for( int i=1; i<argc; ) {
         int eat = 0;
@@ -648,59 +672,70 @@ main(int argc, char **argv)
     switch( hpmc_target ) {
     case HPMC_TARGET_GL20_GLSL110:
         glutInitContextVersion( 2, 0 );
+        std::cerr << "Target is OpenGL 2.0" << std::endl;
         break;
     case HPMC_TARGET_GL21_GLSL120:
         glutInitContextVersion( 2, 1 );
+        std::cerr << "Target is OpenGL 2.1" << std::endl;
         break;
     case HPMC_TARGET_GL30_GLSL130:
         glutInitContextVersion( 3, 0 );
+        std::cerr << "Target is OpenGL 3.0" << std::endl;
         break;
     case HPMC_TARGET_GL31_GLSL140:
         glutInitContextVersion( 3, 1 );
+        std::cerr << "Target is OpenGL 3.1" << std::endl;
         break;
     case HPMC_TARGET_GL32_GLSL150:
         glutInitContextVersion( 3, 2 );
+        std::cerr << "Target is OpenGL 3.2" << std::endl;
         break;
     case HPMC_TARGET_GL33_GLSL330:
         glutInitContextVersion( 3, 3 );
+        std::cerr << "Target is OpenGL 3.3" << std::endl;
         break;
     case HPMC_TARGET_GL40_GLSL400:
         glutInitContextVersion( 4, 0 );
+        std::cerr << "Target is OpenGL 4.0" << std::endl;
         break;
     case HPMC_TARGET_GL41_GLSL410:
         glutInitContextVersion( 4, 1 );
+        std::cerr << "Target is OpenGL 4.1" << std::endl;
         break;
     case HPMC_TARGET_GL42_GLSL420:
         glutInitContextVersion( 4, 2 );
+        std::cerr << "Target is OpenGL 4.2" << std::endl;
         break;
     case HPMC_TARGET_GL43_GLSL430:
-        glutInitContextVersion( 4, 2 );
+        glutInitContextVersion( 4, 3 );
+        std::cerr << "Target is OpenGL 4.3" << std::endl;
         break;
     }
 
-    glutInitContextFlags( GLUT_CORE_PROFILE | GLUT_DEBUG );
-/*                          ((hpmc_debug == HPMC_DEBUG_KHR_DEBUG) ||
-                           (hpmc_debug == HPMC_DEBUG_KHR_DEBUG_VERBOSE)
-                           ? GLUT_DEBUG : 0 )
-                          );
-*/
+    if( (hpmc_debug == HPMC_DEBUG_KHR_DEBUG) || (hpmc_debug == HPMC_DEBUG_KHR_DEBUG_VERBOSE ) ) {
+        glutInitContextFlags( GLUT_CORE_PROFILE | GLUT_DEBUG );
+    }
+    else {
+        glutInitContextFlags( GLUT_CORE_PROFILE );
+    }
+
     glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
     glutInitWindowSize( 1280, 720 );
     glutCreateWindow( argv[0] );
     GLenum error = glGetError();
     while( error != GL_NO_ERROR ) {
-        fprintf( stderr, "Context creation created GL error %x\n", error );
+        std::cerr << "Context creation created GL error " << std::hex << error << std::endl;
         error = glGetError();
     }
     glewExperimental = GL_TRUE;
     GLenum glew_error = glewInit();
     if( glew_error != GLEW_OK ) {
-        fprintf( stderr, "GLEW failed to initialize, exiting.\n" );
-        abort();
+        std::cerr << "GLEW failed to initialize." << std::endl;
+        exit( EXIT_FAILURE );
     }
     error = glGetError();
     while( error != GL_NO_ERROR ) {
-        fprintf( stderr, "GLEW initialization created GL error %x\n", error );
+        std::cerr << "GLEW initialization created GL error " << std::hex << error << std::endl;
         error = glGetError();
     }
     if( (hpmc_debug == HPMC_DEBUG_KHR_DEBUG) || (hpmc_debug == HPMC_DEBUG_KHR_DEBUG_VERBOSE) ) {
@@ -713,12 +748,13 @@ main(int argc, char **argv)
                                    0, NULL, GL_TRUE );
         }
         else {
-            fprintf( stderr, "GL_KHR_debug extension not present.\n" );
+            std::cerr << "GL_KHR_debug extension not present, reverting to stderr.\n";
+            hpmc_debug = HPMC_DEBUG_STDERR;
         }
     }
     error = glGetError();
     while( error != GL_NO_ERROR ) {
-        fprintf( stderr, "Debug setup created GL error %x\n", error );
+        std::cerr << "Debug setup created GL error " << std::hex << error << std::endl;
         error = glGetError();
     }
 

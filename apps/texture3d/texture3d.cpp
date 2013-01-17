@@ -271,7 +271,14 @@ init( int argc, char **argv )
 }
 
 void
-render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const GLfloat* PMV, const GLfloat *NM )
+render( float t,
+        float dt,
+        float fps,
+        const GLfloat* P,
+        const GLfloat* MV,
+        const GLfloat* PM,
+        const GLfloat *NM,
+        const GLfloat* MV_inv )
 {
     // Clear screen
     glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
@@ -296,7 +303,7 @@ render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const
             glColor3f( 1.0-iso, 0.0, iso );
         }
         else {
-            glUniformMatrix4fv( shaded_loc_pm, 1, GL_FALSE, PMV );
+            glUniformMatrix4fv( shaded_loc_pm, 1, GL_FALSE, PM );
             glUniformMatrix3fv( shaded_loc_nm, 1, GL_FALSE, NM );
             glUniform4f( shaded_loc_color,  1.0-iso, 0.0, iso, 1.f );
         }
@@ -309,7 +316,7 @@ render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const
             glColor3f( 0.2*(1.0-iso), 0.0, 0.2*iso );
         }
         else {
-            glUniformMatrix4fv( flat_loc_pm, 1, GL_FALSE, PMV );
+            glUniformMatrix4fv( flat_loc_pm, 1, GL_FALSE, PM );
             glUniform4f( flat_loc_color,  1.0-iso, 0.0, iso, 1.f );
         }
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

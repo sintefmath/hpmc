@@ -1,9 +1,12 @@
 #version 140
-uniform sampler3D density;
+
+in vec3 inPosition;
+in vec3 texCoords;
+
 out vec4 vel;
 out vec4 pos;
-in vec4 position;
-in vec3 texCoords;
+
+uniform sampler3D density;
 uniform int active;
 uniform vec3 gravity;
 uniform float dt;
@@ -13,17 +16,17 @@ main()
 {
   if( active < gl_VertexID ) {
     vel = vec4( texCoords, 1.0);
-    pos = position;
+    pos = vec4(inPosition, 1.0);
     gl_Position = vec4(-5,0,0,1);
     return;
   }
-  vec4 field = texture( density, position.xyz );
+  vec4 field = texture( density, inPosition );
   vec3 foo = clamp(dot(field.xyz,field.xyz)-3.0,0.0,100.0)*field.xyz/dot(field.xyz,field.xyz);
   vec3 g = 0.01*field.xyz;//ec3(d_x - e_x, d_y-e_y, d_z-e_z);
   vec3 v = texCoords;
   vec3 avoidance = -0.02*pow((max(dot(g,g)-10*dot(v,v),0.0)),2.0)*normalize(g);
   vec3 drag = -0.5*dot(v,v)*normalize(v);
-  vec3 p = position.xyz;
+  vec3 p = inPosition;
   float friction = min(0.9+abs(p.z)/0.01, 1.0);
     v = vec3(friction,friction,1.0)*v + dt*(
              gravity + 

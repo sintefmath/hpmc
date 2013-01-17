@@ -68,8 +68,11 @@ GLuint                          splat_fbo      = 0;
 GLuint                          splat_v        = 0;
 GLuint                          splat_f        = 0;
 GLuint                          splat_p        = 0;
+GLint                           splat_pos      = -1;
 GLuint                          particle_v     = 0;
 GLuint                          particle_p     = 0;
+GLint                           particle_pos   = -1;
+GLint                           particle_tex   = -1;
 GLuint                          shaded_v       = 0;
 GLuint                          shaded_f       = 0;
 GLuint                          shaded_p       = 0;
@@ -81,11 +84,13 @@ struct HPMCIsoSurfaceRenderer*  hpmc_th_flat   = NULL;
 struct HPMCIsoSurfaceRenderer*  hpmc_th_shaded = NULL;
 
 GLuint                          splat_vbo      = 0;
+GLuint                          splat_vao      = 0;
 GLuint                          positions_p    = 0;
 GLuint                          gauss_tex      = 0;
 GLsizei                         positions_N    = 5024;
 GLuint                          positions_tex[2];
 GLuint                          positions_vbo[2];
+GLuint                          positions_vao[2];
 
 namespace resources{
 	extern std::string splatting_vs_140; 
@@ -105,8 +110,8 @@ GLfloat splat_geo[12] =
 {
     -1.0f, -1.0f, 0.0,
      1.0f, -1.0f, 0.0,
-     1.0f,  1.0f, 0.0,
     -1.0f,  1.0f, 0.0,
+     1.0f,  1.0f, 0.0,
 };
 
 
@@ -152,14 +157,20 @@ init()
 
     glGenFramebuffers( 1, &splat_fbo );
 
+	glGenVertexArrays( 1, &splat_vao );
+	glBindVertexArray( splat_vao );
     glGenBuffers( 1, &splat_vbo );
 
-
-    glBindBuffer( GL_ARRAY_BUFFER, splat_vbo );
+	glBindBuffer( GL_ARRAY_BUFFER, splat_vbo );
     glBufferData( GL_ARRAY_BUFFER, 12*sizeof( GLfloat ), &splat_geo[0], GL_STATIC_DRAW );
+	glVertexAttribPointer( 0, 3, GL_FLOAT, false, 0, NULL );
+	glEnableVertexAttribArray( 0 );
+	glBindVertexArray( 0 );
 
+	glGenVertexArrays( 2, &positions_vao[0] );
     glGenBuffers( 2, &positions_vbo[0] );
     positions_p = 0;
+	glBindVertexArray( positions_vao[0] );
     glBindBuffer( GL_ARRAY_BUFFER, positions_vbo[0] );
     glBufferData( GL_ARRAY_BUFFER, positions_N*8*sizeof( GLfloat ), NULL, GL_DYNAMIC_COPY );
     GLfloat* ptr = reinterpret_cast<GLfloat*>( glMapBuffer( GL_ARRAY_BUFFER, GL_WRITE_ONLY ) );
@@ -211,6 +222,7 @@ init()
     splat_p = glCreateProgram();
     glAttachShader( splat_p, splat_v );
     glAttachShader( splat_p, splat_f );
+	glBindAttribLocation( splat_p, 0, "inPosition");
     linkProgram( splat_p, "splat program" );
     glUseProgram( splat_p );
     glUniform1i( glGetUniformLocation( splat_p, "positions" ), 0 );
@@ -237,20 +249,12 @@ init()
     // link program
     particle_p = glCreateProgram();
     glAttachShader( particle_p, particle_v );
-//     for(GLuint i=0; i<2; i++) {
-//         glActiveVaryingNV( particle_p, particle_varying_names[i] );
-//     }
-    linkProgram( particle_p, "particle program" );
-//     GLint particle_varying_locs[2];
-//     for(GLuint i=0; i<2; i++) {
-//         particle_varying_locs[i] = glGetVaryingLocation( particle_p,
-//                                                            particle_varying_names[i] );
-//         std::cerr << particle_varying_locs[i] << "\n";
-//     }
-	//need to use varying locations instead of text 
     glTransformFeedbackVaryings( particle_p,
                                    2, &particle_varying_names[0],
                                    GL_INTERLEAVED_ATTRIBS );
+	glBindAttribLocation( particle_p, 0, "inPosition" );
+	glBindAttribLocation( particle_p, 1, "texCoords" );
+	linkProgram( particle_p, "particle program" );
     glUseProgram( particle_p );
     glUniform1i( glGetUniformLocation( particle_p, "density" ), 0 );
     glUseProgram( 0 );
@@ -343,20 +347,19 @@ init()
 
     glPolygonOffset( 1.0, 1.0 );
     wireframe = true;
-	glBindFramebuffer( GL_FRAMEBUFFER, splat_fbo );
-	GLenum status = glCheckFramebufferStatus( GL_FRAMEBUFFER );
-	if (status != GL_FRAMEBUFFER_COMPLETE )
-	{
-		cerr << "Error occurred when checking FBO completeness!\n" << status <<endl;
-
-	}
-	glBindFramebuffer( GL_FRAMEBUFFER, 0 );
 
 }
 
 // -----------------------------------------------------------------------------
 void
-render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const GLfloat* PMV, const GLfloat *NM )
+	render( float t,
+	float dt,
+	float fps,
+	const GLfloat* P,
+	const GLfloat* MV,
+	const GLfloat* PM,
+	const GLfloat *NM,
+	const GLfloat* MV_inv )
 {
    // --- clear screen and set up view ----------------------------------------
     glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
@@ -398,32 +401,31 @@ render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const
     glActiveTexture( GL_TEXTURE1 );
     glBindTexture( GL_TEXTURE_1D, gauss_tex );
 
-    glBindBuffer( GL_ARRAY_BUFFER, splat_vbo );
-    glInterleavedArrays( GL_V3F, 0, NULL );
+    glBindVertexArray( splat_vao );
+    //glInterleavedArrays( GL_V3F, 0, NULL ); //change with vertexattribpointers
     glClearColor( 0.0, 0.0, 0.0, 0.0 );
     glEnable( GL_BLEND );
     glBlendFunc( GL_ONE, GL_ONE );
     for(int i=0; i<volume_size_z; i++) {
-        glFramebufferTexture3D( GL_FRAMEBUFFER,
+        glFramebufferTextureLayer( GL_FRAMEBUFFER,
                                    GL_COLOR_ATTACHMENT0,
-                                   GL_TEXTURE_3D,
                                    volume_tex,
                                    0,
                                    i );
        // checkFramebufferStatus( __FILE__, __LINE__ );
+		GLenum status = glCheckFramebufferStatus( GL_FRAMEBUFFER );
+		if (status != GL_FRAMEBUFFER_COMPLETE )
+		{
+			cerr << "Error occurred when checking FBO completeness!\n" << status <<endl;
 
+		}
         glClear( GL_COLOR_BUFFER_BIT );
 
         glUniform1f( slice_loc, (GLfloat)i/volume_size_z );
-        glDrawArraysInstanced( GL_QUADS, 0, 4, positions_N );
+        glDrawArraysInstanced( GL_TRIANGLE_STRIP, 0, 4, positions_N );
     }
 
-	GLenum status = glCheckFramebufferStatus( GL_FRAMEBUFFER );
-	if (status != GL_FRAMEBUFFER_COMPLETE )
-	{
-		cerr << "Error occurred when checking FBO completeness!\n" << status <<endl;
 
-	}
 
     glActiveTexture( GL_TEXTURE1 );
     glBindTexture( GL_TEXTURE_1D, 0 );
@@ -432,7 +434,7 @@ render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const
     glBindFramebuffer( GL_FRAMEBUFFER, 0 );
     glDisable( GL_BLEND );
     glViewport( viewport[0], viewport[1], viewport[2], viewport[3] );
-    glPopClientAttrib();
+    //glPopClientAttrib();
 
 
     //    glPushClientAttribDefaultEXT( GL_CLIENT_ALL_ATTRIB_BITS );
@@ -447,7 +449,7 @@ render( float t, float dt, float fps, const GLfloat* P, const GLfloat* MV, const
 //                 cosf( 1.3*t), 0.f, sinf(1.3*t) );
 
 
-    glColor3f( 1, 1, 1 );
+    //glColor3f( 1, 1, 1 ); //need to use shader variable instead
 
     glBindBuffer( GL_ARRAY_BUFFER, positions_vbo[ positions_p ] );
     glInterleavedArrays( GL_T4F_V4F, 0, NULL );
