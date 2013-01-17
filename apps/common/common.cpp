@@ -540,99 +540,58 @@ main(int argc, char **argv)
 {
     glutInit( &argc, argv );
 
-    GLint gl_major, gl_minor;
-    glGetIntegerv( GL_MAJOR_VERSION, &gl_major );
-    glGetIntegerv( GL_MINOR_VERSION, &gl_minor );
-   //not working on windows....
-	/*
-	if( gl_major < 2 ) {
-        std::cerr << "Requires minimum OpenGL 2.0 (driver reports "
-                  << gl_major << "."
-                  << gl_minor << ").";
-        exit( EXIT_FAILURE );
-    }
-    else if( gl_major == 2 ) {
-        if( gl_minor == 0 ) {
-            hpmc_target = HPMC_TARGET_GL20_GLSL110;
-        }
-        else {
-            hpmc_target = HPMC_TARGET_GL21_GLSL120;
-        }
-    }
-    else if( gl_major == 3 ) {
-        if( gl_minor == 0 ) {
-            hpmc_target = HPMC_TARGET_GL30_GLSL130;
-        }
-        else if( gl_minor == 1 ) {
-            hpmc_target = HPMC_TARGET_GL31_GLSL140;
-        }
-        else if( gl_minor == 2 ) {
-            hpmc_target = HPMC_TARGET_GL32_GLSL150;
-        }
-        else {
-            hpmc_target = HPMC_TARGET_GL33_GLSL330;
-        }
-    }
-    else if( gl_major == 4 ) {
-        if( gl_minor == 0 ) {
-            hpmc_target = HPMC_TARGET_GL40_GLSL400;
-        }
-        else if( gl_minor == 1 ) {
-            hpmc_target = HPMC_TARGET_GL41_GLSL410;
-        }
-        else if( gl_minor == 2 ) {
-            hpmc_target = HPMC_TARGET_GL42_GLSL420;
-        }
-        else {
-            hpmc_target = HPMC_TARGET_GL43_GLSL430;
-        }
-    }
-    else {
-        hpmc_target = HPMC_TARGET_GL43_GLSL430;
-    }
-	*/
-
+    bool target_set = false;
     for( int i=1; i<argc; ) {
         int eat = 0;
         if( strcmp( argv[i], "--target-gl20" ) == 0 ) {
             hpmc_target = HPMC_TARGET_GL20_GLSL110;
             eat = 1;
+            target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl21" ) == 0 ) {
             hpmc_target = HPMC_TARGET_GL21_GLSL120;
             eat = 1;
+            target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl30" ) == 0 ) {
             hpmc_target = HPMC_TARGET_GL30_GLSL130;
             eat = 1;
+            target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl31" ) == 0 ) {
             hpmc_target = HPMC_TARGET_GL31_GLSL140;
             eat = 1;
+            target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl32" ) == 0 ) {
             hpmc_target = HPMC_TARGET_GL32_GLSL150;
             eat = 1;
+            target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl33" ) == 0 ) {
             hpmc_target = HPMC_TARGET_GL33_GLSL330;
             eat = 1;
+            target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl40" ) == 0 ) {
             hpmc_target = HPMC_TARGET_GL40_GLSL400;
             eat = 1;
+            target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl41" ) == 0 ) {
             hpmc_target = HPMC_TARGET_GL41_GLSL410;
             eat = 1;
+            target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl42" ) == 0 ) {
             hpmc_target = HPMC_TARGET_GL42_GLSL420;
             eat = 1;
+            target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl43" ) == 0 ) {
             hpmc_target = HPMC_TARGET_GL43_GLSL430;
             eat = 1;
+            target_set = true;
         }
         else if( strcmp( argv[i], "--debug-none" ) == 0 ) {
             hpmc_debug = HPMC_DEBUG_NONE;
@@ -669,47 +628,39 @@ main(int argc, char **argv)
         }
     }
 
-    switch( hpmc_target ) {
-    case HPMC_TARGET_GL20_GLSL110:
-        glutInitContextVersion( 2, 0 );
-        std::cerr << "Target is OpenGL 2.0" << std::endl;
-        break;
-    case HPMC_TARGET_GL21_GLSL120:
-        glutInitContextVersion( 2, 1 );
-        std::cerr << "Target is OpenGL 2.1" << std::endl;
-        break;
-    case HPMC_TARGET_GL30_GLSL130:
-        glutInitContextVersion( 3, 0 );
-        std::cerr << "Target is OpenGL 3.0" << std::endl;
-        break;
-    case HPMC_TARGET_GL31_GLSL140:
-        glutInitContextVersion( 3, 1 );
-        std::cerr << "Target is OpenGL 3.1" << std::endl;
-        break;
-    case HPMC_TARGET_GL32_GLSL150:
-        glutInitContextVersion( 3, 2 );
-        std::cerr << "Target is OpenGL 3.2" << std::endl;
-        break;
-    case HPMC_TARGET_GL33_GLSL330:
-        glutInitContextVersion( 3, 3 );
-        std::cerr << "Target is OpenGL 3.3" << std::endl;
-        break;
-    case HPMC_TARGET_GL40_GLSL400:
-        glutInitContextVersion( 4, 0 );
-        std::cerr << "Target is OpenGL 4.0" << std::endl;
-        break;
-    case HPMC_TARGET_GL41_GLSL410:
-        glutInitContextVersion( 4, 1 );
-        std::cerr << "Target is OpenGL 4.1" << std::endl;
-        break;
-    case HPMC_TARGET_GL42_GLSL420:
-        glutInitContextVersion( 4, 2 );
-        std::cerr << "Target is OpenGL 4.2" << std::endl;
-        break;
-    case HPMC_TARGET_GL43_GLSL430:
-        glutInitContextVersion( 4, 3 );
-        std::cerr << "Target is OpenGL 4.3" << std::endl;
-        break;
+    if( target_set ) {
+        switch( hpmc_target ) {
+        case HPMC_TARGET_GL20_GLSL110:
+            glutInitContextVersion( 2, 0 );
+            break;
+        case HPMC_TARGET_GL21_GLSL120:
+            glutInitContextVersion( 2, 1 );
+            break;
+        case HPMC_TARGET_GL30_GLSL130:
+            glutInitContextVersion( 3, 0 );
+            break;
+        case HPMC_TARGET_GL31_GLSL140:
+            glutInitContextVersion( 3, 1 );
+            break;
+        case HPMC_TARGET_GL32_GLSL150:
+            glutInitContextVersion( 3, 2 );
+            break;
+        case HPMC_TARGET_GL33_GLSL330:
+            glutInitContextVersion( 3, 3 );
+            break;
+        case HPMC_TARGET_GL40_GLSL400:
+            glutInitContextVersion( 4, 0 );
+            break;
+        case HPMC_TARGET_GL41_GLSL410:
+            glutInitContextVersion( 4, 1 );
+            break;
+        case HPMC_TARGET_GL42_GLSL420:
+            glutInitContextVersion( 4, 2 );
+            break;
+        case HPMC_TARGET_GL43_GLSL430:
+            glutInitContextVersion( 4, 3 );
+            break;
+        }
     }
 
     if( (hpmc_debug == HPMC_DEBUG_KHR_DEBUG) || (hpmc_debug == HPMC_DEBUG_KHR_DEBUG_VERBOSE ) ) {
@@ -738,6 +689,92 @@ main(int argc, char **argv)
         std::cerr << "GLEW initialization created GL error " << std::hex << error << std::endl;
         error = glGetError();
     }
+
+    GLint gl_major, gl_minor;
+    glGetIntegerv( GL_MAJOR_VERSION, &gl_major );
+    glGetIntegerv( GL_MINOR_VERSION, &gl_minor );
+    std::cerr << "Driver reports OpenGL " << gl_major << "." << gl_minor << "." << std::endl;
+    if( !target_set ) {
+        // target not set, use driver version as target
+        if( gl_major < 2 ) {
+            std::cerr << "Requires minimum OpenGL 2.0.";
+            exit( EXIT_FAILURE );
+        }
+        else if( gl_major == 2 ) {
+            if( gl_minor == 0 ) {
+                hpmc_target = HPMC_TARGET_GL20_GLSL110;
+            }
+            else {
+                hpmc_target = HPMC_TARGET_GL21_GLSL120;
+            }
+        }
+        else if( gl_major == 3 ) {
+            if( gl_minor == 0 ) {
+                hpmc_target = HPMC_TARGET_GL30_GLSL130;
+            }
+            else if (gl_minor == 1 ) {
+                hpmc_target = HPMC_TARGET_GL31_GLSL140;
+            }
+            else if (gl_minor == 2 ) {
+                hpmc_target = HPMC_TARGET_GL32_GLSL150;
+            }
+            else {
+                hpmc_target = HPMC_TARGET_GL33_GLSL330;
+            }
+        }
+        else if( gl_major == 4 ) {
+            if( gl_minor == 0 ) {
+                hpmc_target = HPMC_TARGET_GL40_GLSL400;
+            }
+            else if (gl_minor == 1 ) {
+                hpmc_target = HPMC_TARGET_GL41_GLSL410;
+            }
+            else if (gl_minor == 2 ) {
+                hpmc_target = HPMC_TARGET_GL42_GLSL420;
+            }
+            else {
+                hpmc_target = HPMC_TARGET_GL43_GLSL430;
+            }
+        }
+        else {
+            hpmc_target = HPMC_TARGET_GL43_GLSL430;
+        }
+    }
+
+    switch( hpmc_target ) {
+    case HPMC_TARGET_GL20_GLSL110:
+        std::cerr << "HPMC target is OpenGL 2.0" << std::endl;
+        break;
+    case HPMC_TARGET_GL21_GLSL120:
+        std::cerr << "HPMC target is OpenGL 2.1" << std::endl;
+        break;
+    case HPMC_TARGET_GL30_GLSL130:
+        std::cerr << "HPMC target is OpenGL 3.0" << std::endl;
+        break;
+    case HPMC_TARGET_GL31_GLSL140:
+        std::cerr << "HPMC target is OpenGL 3.1" << std::endl;
+        break;
+    case HPMC_TARGET_GL32_GLSL150:
+        std::cerr << "HPMC target is OpenGL 3.2" << std::endl;
+        break;
+    case HPMC_TARGET_GL33_GLSL330:
+        std::cerr << "HPMC target is OpenGL 3.3" << std::endl;
+        break;
+    case HPMC_TARGET_GL40_GLSL400:
+        std::cerr << "HPMC target is OpenGL 4.0" << std::endl;
+        break;
+    case HPMC_TARGET_GL41_GLSL410:
+        std::cerr << "HPMC target is OpenGL 4.1" << std::endl;
+        break;
+    case HPMC_TARGET_GL42_GLSL420:
+        std::cerr << "HPMC target is OpenGL 4.2" << std::endl;
+        break;
+    case HPMC_TARGET_GL43_GLSL430:
+        std::cerr << "HPMC target is OpenGL 4.3" << std::endl;
+        break;
+    }
+
+
     if( (hpmc_debug == HPMC_DEBUG_KHR_DEBUG) || (hpmc_debug == HPMC_DEBUG_KHR_DEBUG_VERBOSE) ) {
         if( glewIsSupported( "GL_KHR_debug" ) ) {
             glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
