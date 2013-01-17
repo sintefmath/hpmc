@@ -9,6 +9,6 @@ void
 main()
 {
   float r = length(param_pos);
-  float g = texture( gauss, r ).a;
+  float g = texture( gauss, r ).r;
   fragColor = vec4( -100*g*normalize(param_pos), g );
 }
