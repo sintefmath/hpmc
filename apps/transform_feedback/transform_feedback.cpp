@@ -231,153 +231,156 @@ init( int argc, char** argv )
                         GL_TRUE );
 
 
-    // === Build shader programs ===============================================
-    const char* sources[2];
-    char* traversal_code;
+    // --- phong shaded render pipeline ----------------------------------------
+    {
+        hpmc_th_shaded = HPMCcreateIsoSurfaceRenderer( hpmc_h );
+        char* traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shaded );
 
-    // --- Phong-shaded on-the-fly traversal -----------------------------------
-
-    hpmc_th_shaded = HPMCcreateIsoSurfaceRenderer( hpmc_h );
-
-    // Vertex shader
-    traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shaded );
-    GLuint shaded_v = glCreateShader( GL_VERTEX_SHADER );
-    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+        const GLchar* vs_src[2] = {
+            hpmc_target < HPMC_TARGET_GL30_GLSL130
             ? resources::phong_vs_110.c_str()
-            : resources::phong_vs_130.c_str();
-    sources[1] = traversal_code;
-    glShaderSource( shaded_v, 2, sources, NULL );
-    compileShader( shaded_v, "shaded vertex shader" );
-    free( traversal_code );
-
-    // Fragment shader
-    GLuint shaded_f = glCreateShader( GL_FRAGMENT_SHADER );
-    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+            : resources::phong_vs_130.c_str(),
+            traversal_code
+        };
+        const GLchar* fs_src[1] = {
+            hpmc_target < HPMC_TARGET_GL30_GLSL130
             ? resources::phong_fs_110.c_str()
-            : resources::phong_fs_130.c_str();
-    glShaderSource( shaded_f, 1, sources, NULL );
-    compileShader( shaded_f, "shaded fragment shader" );
+            : resources::phong_fs_130.c_str()
+        };
 
-    // Program
-    shaded_p = glCreateProgram();
-    glAttachShader( shaded_p, shaded_v );
-    glAttachShader( shaded_p, shaded_f );
-    glDeleteShader( shaded_v );
-    glDeleteShader( shaded_f );
-    if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
-        glBindFragDataLocation( shaded_p, 0, "fragment" );
+        GLuint vs = glCreateShader( GL_VERTEX_SHADER );
+        glShaderSource( vs, 2, vs_src, NULL );
+        compileShader( vs, "shaded vertex shader" );
+
+        GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
+        glShaderSource( fs, 1, fs_src, NULL );
+        compileShader( fs, "shaded fragment shader" );
+
+        shaded_p = glCreateProgram();
+        glAttachShader( shaded_p, vs );
+        glAttachShader( shaded_p, fs );
+        if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+            glBindFragDataLocation( shaded_p, 0, "fragment" );
+        }
+        linkProgram( shaded_p, "shaded program" );
+        shaded_loc_pm = glGetUniformLocation( shaded_p, "PM" );
+        shaded_loc_nm = glGetUniformLocation( shaded_p, "NM" );
+        shaded_loc_color = glGetUniformLocation( shaded_p, "color" );
+
+        // Associate program with traversal handle
+        HPMCsetIsoSurfaceRendererProgram( hpmc_th_shaded, shaded_p, 0, 1, 2 );
+        glDeleteShader( vs );
+        glDeleteShader( fs );
+        free( traversal_code );
     }
-    linkProgram( shaded_p, "shaded program" );
-    shaded_loc_pm = glGetUniformLocation( shaded_p, "PM" );
-    shaded_loc_nm = glGetUniformLocation( shaded_p, "NM" );
-    shaded_loc_color = glGetUniformLocation( shaded_p, "color" );
+    // --- flat-shaded render pipeline with transform feedback capture ---------
+    {
+        hpmc_th_flat = HPMCcreateIsoSurfaceRenderer( hpmc_h );
+        char* traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_flat );
 
-    // Associate program with traversal handle
-    HPMCsetIsoSurfaceRendererProgram( hpmc_th_shaded,
-                                      shaded_p,
-                                      0, 1, 2 );
-
-    // --- Flat-shaded on-the-fly traversal ------------------------------------
-    hpmc_th_flat = HPMCcreateIsoSurfaceRenderer( hpmc_h );
-
-    // Vertex shader
-    traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_flat );
-    GLuint flat_v = glCreateShader( GL_VERTEX_SHADER );
-    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+        const GLchar* vs_src[2] = {
+            hpmc_target < HPMC_TARGET_GL30_GLSL130
             ? resources::solid_vs_110.c_str()
-            : resources::solid_vs_130.c_str();
-    sources[1] = traversal_code;
-    glShaderSource( flat_v, 2, sources, NULL );
-    compileShader( flat_v, "flat vertex shader" );
-    free( traversal_code );
-
-    // Fragment shader
-    GLuint flat_f = glCreateShader( GL_FRAGMENT_SHADER );
-    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
+            : resources::solid_vs_130.c_str(),
+            traversal_code
+        };
+        const GLchar* fs_src[1] = {
+            hpmc_target < HPMC_TARGET_GL30_GLSL130
             ? resources::solid_fs_110.c_str()
-            : resources::solid_fs_130.c_str();
-    glShaderSource( flat_f, 1, sources, NULL );
-    compileShader( flat_f, "flat fragment shader" );
+            : resources::solid_fs_130.c_str()
+        };
+        const char* varyings[2] = {
+            "position"
+        };
 
-    // Program
-    flat_p = glCreateProgram();
-    glAttachShader( flat_p, flat_v );
-    glAttachShader( flat_p, flat_f );
-    glDeleteShader( flat_v );
-    glDeleteShader( flat_f );
-    if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
-        glBindFragDataLocation( flat_p, 0, "fragment" );
-    }
-    // When using the EXT extension (or 3.0 core), we can directly tag varyings
-    // for feedback by name before linkage. The NV extension requires that we
-    // first tag the varyings as active, link the program, determine the
-    // varying locations of the varyings that shall be fed back, and then ship
-    // this to GL.
-    const char* flat_varying_names[2] = {
-        "position"
-    };
-    switch( extension ) {
-    case USE_EXT:
-        glTransformFeedbackVaryingsEXT( flat_p, 1, flat_varying_names, GL_INTERLEAVED_ATTRIBS_EXT );
-        break;
-    case USE_NV:
-        // tag the varyings we will record as active (so they don't get
-        // optimized away).
-        for(int i=0; i<1; i++ ) {
-            glActiveVaryingNV( flat_p, flat_varying_names[i] );
+        GLuint vs = glCreateShader( GL_VERTEX_SHADER );
+        glShaderSource( vs, 2, vs_src, NULL );
+        compileShader( vs, "flat vertex shader" );
+
+        GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
+        glShaderSource( fs, 1, fs_src, NULL );
+        compileShader( fs, "flat fragment shader" );
+
+        flat_p = glCreateProgram();
+        glAttachShader( flat_p, vs );
+        glAttachShader( flat_p, fs );
+        if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+            glBindFragDataLocation( flat_p, 0, "fragment" );
         }
-        break;
-    case USE_CORE:
-        glTransformFeedbackVaryings( flat_p, 1, flat_varying_names, GL_INTERLEAVED_ATTRIBS );
-        break;
-    }
-    linkProgram( flat_p, "flat program" );
-    if( extension == USE_NV ) {
-        GLint varying_locs[1];
-        for(int i=0; i<1; i++) {
-            varying_locs[i] = glGetVaryingLocationNV( flat_p, flat_varying_names[i] );
+        // When using the EXT extension (or 3.0 core), we can directly tag varyings
+        // for feedback by name before linkage. The NV extension requires that we
+        // first tag the varyings as active, link the program, determine the
+        // varying locations of the varyings that shall be fed back, and then ship
+        // this to GL.
+        switch( extension ) {
+        case USE_EXT:
+            glTransformFeedbackVaryingsEXT( flat_p, 1, varyings, GL_INTERLEAVED_ATTRIBS_EXT );
+            break;
+        case USE_NV:
+            // tag the varyings we will record as active (so they don't get
+            // optimized away).
+            for(int i=0; i<1; i++ ) {
+                glActiveVaryingNV( flat_p, varyings[i] );
+            }
+            break;
+        case USE_CORE:
+            glTransformFeedbackVaryings( flat_p, 1, varyings, GL_INTERLEAVED_ATTRIBS );
+            break;
         }
-        glTransformFeedbackVaryingsNV( flat_p, 1, varying_locs,  GL_INTERLEAVED_ATTRIBS );
+        linkProgram( flat_p, "flat program" );
+        if( extension == USE_NV ) {
+            GLint varying_locs[1];
+            for(int i=0; i<1; i++) {
+                varying_locs[i] = glGetVaryingLocationNV( flat_p, varyings[i] );
+            }
+            glTransformFeedbackVaryingsNV( flat_p, 1, varying_locs,  GL_INTERLEAVED_ATTRIBS );
+        }
+
+        flat_loc_pm = glGetUniformLocation( flat_p, "PM" );
+        flat_loc_color = glGetUniformLocation( flat_p, "color" );
+
+        // Associate program with traversal handle
+        HPMCsetIsoSurfaceRendererProgram( hpmc_th_flat, flat_p, 0, 1, 2 );
+
+        glDeleteShader( vs );
+        glDeleteShader( fs );
+        free( traversal_code );
     }
+    // --- plain rendering of a triangle set in a VBO --------------------------
+    {
+        const GLchar* vs_src[1] = {
+            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            ? resources::plain_vs_110.c_str()
+            : resources::plain_vs_130.c_str()
+        };
+        const GLchar* fs_src[1] = {
+            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            ? resources::solid_fs_110.c_str()
+            : resources::solid_fs_130.c_str()
+        };
 
-    flat_loc_pm = glGetUniformLocation( flat_p, "PM" );
-    flat_loc_color = glGetUniformLocation( flat_p, "color" );
+        GLuint vs = glCreateShader( GL_VERTEX_SHADER );
+        glShaderSource( vs, 1, vs_src, NULL );
+        compileShader( vs, "plain vertex shader" );
 
-    // Associate program with traversal handle
-    HPMCsetIsoSurfaceRendererProgram( hpmc_th_flat,
-                                      flat_p,
-                                      0, 1, 2 );
+        GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
+        glShaderSource( fs, 1, fs_src, NULL );
+        compileShader( vs, "plain fragment shader" );
 
-    // --- plain rendering of a VBO --------------------------------------------
-    // Vertex shader
-    GLuint plain_v = glCreateShader( GL_VERTEX_SHADER );
-    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
-               ? resources::plain_vs_110.c_str()
-               : resources::plain_vs_130.c_str();
-    glShaderSource( plain_v, 1, sources, NULL );
-    compileShader( plain_v, "plain vertex shader" );
+        plain_p = glCreateProgram();
+        glAttachShader( plain_p, vs );
+        glAttachShader( plain_p, fs );
+        if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+            glBindAttribLocation( plain_p, 0, "position" );
+            glBindFragDataLocation( plain_p, 0, "fragment" );
+        }
+        linkProgram( plain_p, "plain program" );
+        plain_loc_pm = glGetUniformLocation( plain_p, "PM" );
+        plain_loc_color = glGetUniformLocation( plain_p, "color" );
 
-    // Fragment shader
-    GLuint plain_f = glCreateShader( GL_FRAGMENT_SHADER );
-    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
-               ? resources::solid_fs_110.c_str()
-               : resources::solid_fs_130.c_str();
-    glShaderSource( plain_f, 1, sources, NULL );
-    compileShader( plain_v, "plain fragment shader" );
-
-    // Program
-    plain_p = glCreateProgram();
-    glAttachShader( plain_p, plain_v );
-    glAttachShader( plain_p, plain_f );
-    glDeleteShader( plain_v );
-    glDeleteShader( plain_f );
-    if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
-        glBindFragDataLocation( plain_p, 0, "fragment" );
-        glBindAttribLocation( plain_p, 0, "position" );
+        glDeleteShader( vs );
+        glDeleteShader( fs );
     }
-    linkProgram( plain_p, "plain program" );
-    plain_loc_pm = glGetUniformLocation( plain_p, "PM" );
-    plain_loc_color = glGetUniformLocation( plain_p, "color" );
 
 
     glPolygonOffset( 1.0, 1.0 );

@@ -171,9 +171,7 @@ init( int argc, char** argv )
         shaded_loc_color = glGetUniformLocation( shaded_p, "color" );
 
         // Associate program with traversal handle
-        HPMCsetIsoSurfaceRendererProgram( hpmc_th_shaded,
-                                          shaded_p,
-                                          0, 1, 2 );
+        HPMCsetIsoSurfaceRendererProgram( hpmc_th_shaded, shaded_p, 0, 1, 2 );
 
         glDeleteShader( vs );
         glDeleteShader( fs );

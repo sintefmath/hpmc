@@ -182,91 +182,90 @@ init( int argc, char **argv )
                            GL_NONE );
 
 
-    // --- create traversal vertex shader --------------------------------------
-    const char* sources[2];
-    char* traversal_code;
+    // --- phong shaded render pipeline ----------------------------------------
+    {
+        hpmc_th_shaded = HPMCcreateIsoSurfaceRenderer( hpmc_h );
+        char* traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shaded );
 
-    // Shaded pipeline
-    hpmc_th_shaded = HPMCcreateIsoSurfaceRenderer( hpmc_h );
+        const GLchar* vs_src[2] = {
+            hpmc_target < HPMC_TARGET_GL30_GLSL130
+                           ? resources::phong_vs_110.c_str()
+                           : resources::phong_vs_130.c_str(),
+            traversal_code
+        };
+        const GLchar* fs_src[1] = {
+            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            ? resources::phong_fs_110.c_str()
+            : resources::phong_fs_130.c_str()
+        };
+        GLuint vs = glCreateShader( GL_VERTEX_SHADER );
+        glShaderSource( vs, 2, vs_src, NULL );
+        compileShader( vs, "shaded vertex shader" );
 
-    // Vertex shader
-    traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shaded );
+        GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
+        glShaderSource( fs, 1, fs_src, NULL );
+        compileShader( fs, "shaded fragment shader" );
 
-    GLuint shaded_v = glCreateShader( GL_VERTEX_SHADER );
-    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
-               ? resources::phong_vs_110.c_str()
-               : resources::phong_vs_130.c_str();
-    sources[1] = traversal_code;
-    glShaderSource( shaded_v, 2, sources, NULL );
-    compileShader( shaded_v, "shaded vertex shader" );
-    free( traversal_code );
+        shaded_p = glCreateProgram();
+        glAttachShader( shaded_p, vs );
+        glAttachShader( shaded_p, fs );
+        if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+            glBindFragDataLocation( shaded_p, 0, "fragment" );
+        }
+        linkProgram( shaded_p, "shaded program" );
+        shaded_loc_pm = glGetUniformLocation( shaded_p, "PM" );
+        shaded_loc_nm = glGetUniformLocation( shaded_p, "NM" );
+        shaded_loc_color = glGetUniformLocation( shaded_p, "color" );
 
-    // Fragment shader
-    GLuint shaded_f = glCreateShader( GL_FRAGMENT_SHADER );
-    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
-               ? resources::phong_fs_110.c_str()
-               : resources::phong_fs_130.c_str();
-    glShaderSource( shaded_f, 1, sources, NULL );
-    compileShader( shaded_f, "shaded fragment shader" );
+        // Associate program with traversal handle
+        HPMCsetIsoSurfaceRendererProgram( hpmc_th_shaded, shaded_p, 0, 1, 2 );
 
-    // Program
-    shaded_p = glCreateProgram();
-    glAttachShader( shaded_p, shaded_v );
-    glAttachShader( shaded_p, shaded_f );
-    glDeleteShader( shaded_v );
-    glDeleteShader( shaded_f );
-    if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
-        glBindFragDataLocation( shaded_p, 0, "fragment" );
+        glDeleteShader( vs );
+        glDeleteShader( fs );
+        free( traversal_code );
     }
-    linkProgram( shaded_p, "shaded program" );
-    shaded_loc_pm = glGetUniformLocation( shaded_p, "PM" );
-    shaded_loc_nm = glGetUniformLocation( shaded_p, "NM" );
-    shaded_loc_color = glGetUniformLocation( shaded_p, "color" );
+    // --- flat-shaded render pipeline -----------------------------------------
+    {
+        hpmc_th_flat = HPMCcreateIsoSurfaceRenderer( hpmc_h );
+        char* traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_flat );
 
-    // Associate program with traversal handle
-    HPMCsetIsoSurfaceRendererProgram( hpmc_th_shaded,
-                                      shaded_p,
-                                      0, 1, 2 );
+        const GLchar* vs_src[2] = {
+            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            ? resources::solid_vs_110.c_str()
+            : resources::solid_vs_130.c_str(),
+            traversal_code
+        };
+        const GLchar* fs_src[1] = {
+            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            ? resources::solid_fs_110.c_str()
+            : resources::solid_fs_130.c_str()
+        };
 
-    // Flat-shaded pipeline
-    hpmc_th_flat = HPMCcreateIsoSurfaceRenderer( hpmc_h );
+        GLuint vs = glCreateShader( GL_VERTEX_SHADER );
+        glShaderSource( vs, 2, vs_src, NULL );
+        compileShader( vs, "flat vertex shader" );
 
-    // Vertex shader
-    traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_flat );
-    GLuint flat_v = glCreateShader( GL_VERTEX_SHADER );
-    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
-               ? resources::solid_vs_110.c_str()
-               : resources::solid_vs_130.c_str();
-    sources[1] = traversal_code;
-        glShaderSource( flat_v, 2, sources, NULL );
-    compileShader( flat_v, "flat vertex shader" );
-    free( traversal_code );
+        GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
+        glShaderSource( fs, 1, fs_src, NULL );
+        compileShader( vs, "flat fragment shader" );
 
-    // Fragment shader
-    GLuint flat_f = glCreateShader( GL_FRAGMENT_SHADER );
-    sources[0] = hpmc_target < HPMC_TARGET_GL30_GLSL130
-               ? resources::solid_fs_110.c_str()
-               : resources::solid_fs_130.c_str();
-    glShaderSource( flat_f, 1, sources, NULL );
+        flat_p = glCreateProgram();
+        glAttachShader( flat_p, vs );
+        glAttachShader( flat_p, fs );
+        if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+            glBindFragDataLocation( flat_p, 0, "fragment" );
+        }
+        linkProgram( flat_p, "flat program" );
+        flat_loc_pm = glGetUniformLocation( flat_p, "PM" );
+        flat_loc_color = glGetUniformLocation( flat_p, "color" );
 
-    // Program
-    flat_p = glCreateProgram();
-    glAttachShader( flat_p, flat_v );
-    glAttachShader( flat_p, flat_f );
-    glDeleteShader( flat_v );
-    glDeleteShader( flat_f );
-    if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
-        glBindFragDataLocation( flat_p, 0, "fragment" );
+        // Associate program with traversal handle
+        HPMCsetIsoSurfaceRendererProgram( hpmc_th_flat, flat_p, 0, 1, 2 );
+
+        glDeleteShader( vs );
+        glDeleteShader( fs );
+        free( traversal_code );
     }
-    linkProgram( flat_p, "flat program" );
-    flat_loc_pm = glGetUniformLocation( flat_p, "PM" );
-    flat_loc_color = glGetUniformLocation( flat_p, "color" );
-
-    // Associate program with traversal handle
-    HPMCsetIsoSurfaceRendererProgram( hpmc_th_flat,
-                                      flat_p,
-                                      0, 1, 2 );
-
     glPolygonOffset( 1.0, 1.0 );
 }
 
