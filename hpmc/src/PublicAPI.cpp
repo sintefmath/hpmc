@@ -1,27 +1,19 @@
-/***********************************************************************
+/* Copyright STIFTELSEN SINTEF 2012
  *
- *  File: hpiface.cpp
+ * This file is part of the HPMC Library.
  *
- *  Created: 2012-11-23
+ * HPMC is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
  *
- *  Authors: Christopher Dyken <christopher.dyken@sintef.no>
+ * HPMC is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
  *
- *  This file is part of the HPMC library.
- *  Copyright (C) 2009 by SINTEF.  All rights reserved.
- *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License
- *  ("GPL") version 2 as published by the Free Software Foundation.
- *  See the file LICENSE.GPL at the root directory of this source
- *  distribution for additional information about the GNU GPL.
- *
- *  For using HPMC with software that can not be combined with the
- *  GNU GPL, please contact SINTEF for aquiring a commercial license
- *  and support.
- *
- *  SINTEF, Pb 124 Blindern, N-0314 Oslo, Norway
- *  http://www.sintef.no
- *********************************************************************/
+ * You should have received a copy of the GNU General Public License along with
+ * HPMC.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #include <algorithm>
 #include <string>
 #include <cstring>

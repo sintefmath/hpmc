@@ -1,30 +1,19 @@
-/* -*- mode: C++; tab-width:4; c-basic-offset: 4; indent-tabs-mode:nil -*-
- ***********************************************************************
+/* Copyright STIFTELSEN SINTEF 2012
  *
- *  File: hpmc.h
+ * This file is part of the HPMC Library.
  *
- *  Created: 24. June 2009
+ * HPMC is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
  *
- *  Version: $Id: $
+ * HPMC is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
  *
- *  Authors: Christopher Dyken <christopher.dyken@sintef.no>
- *
- *  This file is part of the HPMC library.
- *  Copyright (C) 2009 by SINTEF.  All rights reserved.
- *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License
- *  ("GPL") version 2 as published by the Free Software Foundation.
- *  See the file LICENSE.GPL at the root directory of this source
- *  distribution for additional information about the GNU GPL.
- *
- *  For using HPMC with software that can not be combined with the
- *  GNU GPL, please contact SINTEF for aquiring a commercial license
- *  and support.
- *
- *  SINTEF, Pb 124 Blindern, N-0314 Oslo, Norway
- *  http://www.sintef.no
- *********************************************************************/
+ * You should have received a copy of the GNU General Public License along with
+ * HPMC.  If not, see <http://www.gnu.org/licenses/>.
+ */
 /**
   * \mainpage
   *
