@@ -54,14 +54,6 @@ protected:
     GLint               m_reducen_loc_level;    ///< Source mipmap level for subsequent reduction (GL 3.x and up).
     GLint               m_reducen_loc_hp_tex;   ///< Texture unit for \ref m_tex for subsequent reductions.
 
-    /** Create fragment shader source for reductions
-     *
-     * \param first  True if shader is first reduction, false for subsequent
-     *               reductions.
-     */
-    const std::string
-    fragmentSource( bool first ) const;
-
 
 };
 
