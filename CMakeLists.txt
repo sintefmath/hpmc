@@ -76,7 +76,10 @@ SET_SOURCE_FILES_PROPERTIES( ${HPMC_HDRS} PROPERTIES HEADER_FILE_ONLY TRUE )
 SET( HPMC_GLSL "hpmc/shaders/reduction_first_fs_110.glsl"
                "hpmc/shaders/reduction_first_fs_130.glsl"
                "hpmc/shaders/reduction_upper_fs_110.glsl"
-               "hpmc/shaders/reduction_upper_fs_130.glsl" )
+               "hpmc/shaders/reduction_upper_fs_130.glsl"
+               "hpmc/shaders/downtraversal_110.glsl"
+               "hpmc/shaders/downtraversal_130.glsl"
+ )
 SOURCE_GROUP( "HPMC shaders" FILES ${HPMC_GLSL} )
 SET_SOURCE_FILES_PROPERTIES( ${HPMC_GLSL} PROPERTIES HEADER_FILE_ONLY TRUE )
 FOREACH( file ${HPMC_GLSL} )

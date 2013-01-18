@@ -69,6 +69,9 @@ HPMCgenerateDefines( const struct HPMCIsoSurface* h )
     src << "#define HPMC_TILE_SIZE_Y_F float(HPMC_TILE_SIZE_Y)" << endl;
     //      histopyramid size
     src << "#define HPMC_HP_SIZE_L2  " << h->baseLevelBuilder().log2Size() << endl;
+    src << "#define HPMC_HP_SIZE     " << (1<<h->baseLevelBuilder().log2Size()) << endl;
+
+    //std::cerr << src.str() << "\n";
 
     return src.str();
 }
@@ -82,6 +85,7 @@ HPMCgenerateExtractVertexFunction( struct HPMCIsoSurface* h )
 {
     HPMCTarget target = h->constants()->target();
     stringstream src;
+
 
     src << "uniform sampler2D  HPMC_histopyramid;" << endl;
     src << "uniform float      HPMC_threshold;" << endl;
