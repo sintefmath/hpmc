@@ -49,9 +49,6 @@ public:
 
     GLuint baseFramebufferObject() const { return m_fbos[0]; }
 
-    const std::string
-    downTraversalSource() const;
-
 protected:
     HPMCConstants*      m_constants;
     GLsizei             m_size;                 ///< Size of \ref m_tex.
