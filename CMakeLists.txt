@@ -72,8 +72,20 @@ SET( HPMC_HDRS
 SOURCE_GROUP( "HPMC headers" FILES ${HPMC_HDRS} )
 SET_SOURCE_FILES_PROPERTIES( ${HPMC_HDRS} PROPERTIES HEADER_FILE_ONLY TRUE )
 
+# HPMC shader files
+SET( HPMC_GLSL "hpmc/shaders/reduction_first_fs_110.glsl"
+               "hpmc/shaders/reduction_first_fs_130.glsl"
+               "hpmc/shaders/reduction_upper_fs_110.glsl"
+               "hpmc/shaders/reduction_upper_fs_130.glsl" )
+SOURCE_GROUP( "HPMC shaders" FILES ${HPMC_GLSL} )
+SET_SOURCE_FILES_PROPERTIES( ${HPMC_GLSL} PROPERTIES HEADER_FILE_ONLY TRUE )
+FOREACH( file ${HPMC_GLSL} )
+    GET_FILENAME_COMPONENT( symbol ${file} NAME_WE)
+    ADD_RESOURCE_TXT( HPMC_GLSL_GEN "hpmc::resources::${symbol}" ${file} )
+ENDFOREACH()
+
 # HPMC library
-ADD_LIBRARY( hpmc STATIC ${HPMC_SRCS} ${HPMC_HDRS} )
+ADD_LIBRARY( hpmc STATIC ${HPMC_SRCS} ${HPMC_HDRS} ${HPMC_GLSL_GEN} ${HPMC_GLSL} )
 TARGET_LINK_LIBRARIES( hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
 
@@ -111,9 +123,9 @@ SET( HPMC_APP_COMMON_GLSL "apps/shaders/phong_fs_110.glsl"
                           "apps/shaders/particles_billboard_vs_150.glsl"
                           "apps/shaders/particles_billboard_gs_150.glsl"
                           "apps/shaders/particles_billboard_fs_150.glsl"
-			  "apps/shaders/splatting_vs_140.glsl"
-			  "apps/shaders/splatting_fs_140.glsl"
-			  "apps/shaders/particle_vs_140.glsl"
+                          "apps/shaders/splatting_vs_140.glsl"
+                          "apps/shaders/splatting_fs_140.glsl"
+                          "apps/shaders/particle_vs_140.glsl"
 )
 
 SOURCE_GROUP( "Apps common shaders" FILES ${HPMC_APP_COMMON_GLSL} )

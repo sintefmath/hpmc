@@ -12,6 +12,15 @@ using std::endl;
 
 static const std::string package = "HPMC.HistoPyramid";
 
+namespace hpmc {
+    namespace resources {
+        extern std::string reduction_first_fs_110;
+        extern std::string reduction_first_fs_130;
+        extern std::string reduction_upper_fs_110;
+        extern std::string reduction_upper_fs_130;
+    } // of namespace resources
+} // of namespace hpmc
+
 
 HPMCHistoPyramid::HPMCHistoPyramid(HPMCConstants *constants )
     : m_constants( constants ),
@@ -41,58 +50,117 @@ HPMCHistoPyramid::init()
 
     bool retval = true;
 
-    GLuint fs_0 = HPMCcompileShader( m_constants->versionString() +
-                                     fragmentSource( true ),
-                                     GL_FRAGMENT_SHADER );
-    if( fs_0 == 0 ) {
-        log.errorMessage( "Failed to compile first reduction fragment shader" );
-        retval = false;
-    }
-    else {
-        m_reduce1_program = glCreateProgram();
-        glAttachShader( m_reduce1_program, m_constants->gpgpuQuad().passThroughVertexShader() );
-        glAttachShader( m_reduce1_program, fs_0 );
-        m_constants->gpgpuQuad().configurePassThroughVertexShader( m_reduce1_program );
-        if( m_constants->target() >= HPMC_TARGET_GL30_GLSL130 ) {
-            glBindFragDataLocation(  m_reduce1_program, 0, "fragment" );
-        }
-        if( !HPMClinkProgram( m_reduce1_program ) ) {
-            log.errorMessage( "Failed to link first reduction program" );
+    if( m_constants->target() < HPMC_TARGET_GL30_GLSL130 ) {
+
+        GLuint fs_0 = HPMCcompileShader( m_constants->versionString() +
+                                         hpmc::resources::reduction_first_fs_110,
+                                         GL_FRAGMENT_SHADER );
+        if( fs_0 == 0 ) {
+            log.errorMessage( "Failed to compile first reduction fragment shader" );
             retval = false;
         }
         else {
-            m_reduce1_loc_delta = glGetUniformLocation( m_reduce1_program, "HPMC_delta" );
-            m_reduce1_loc_level = glGetUniformLocation( m_reduce1_program, "HPMC_src_level" );
-            m_reduce1_loc_hp_tex = glGetUniformLocation( m_reduce1_program, "HPMC_histopyramid" );
-
-            GLuint fs_n = HPMCcompileShader( m_constants->versionString() +
-                                             fragmentSource( false ),
-                                             GL_FRAGMENT_SHADER );
-            if( fs_n == 0 ) {
-                log.errorMessage( "Failed to compile subsequent reduction fragment shader" );
+            m_reduce1_program = glCreateProgram();
+            glAttachShader( m_reduce1_program, m_constants->gpgpuQuad().passThroughVertexShader() );
+            glAttachShader( m_reduce1_program, fs_0 );
+            m_constants->gpgpuQuad().configurePassThroughVertexShader( m_reduce1_program );
+            if( m_constants->target() >= HPMC_TARGET_GL30_GLSL130 ) {
+                glBindFragDataLocation(  m_reduce1_program, 0, "fragment" );
+            }
+            if( !HPMClinkProgram( m_reduce1_program ) ) {
+                log.errorMessage( "Failed to link first reduction program" );
                 retval = false;
             }
             else {
-                m_reducen_program = glCreateProgram();
-                glAttachShader( m_reducen_program, m_constants->gpgpuQuad().passThroughVertexShader() );
-                glAttachShader( m_reducen_program, fs_0 );
-                m_constants->gpgpuQuad().configurePassThroughVertexShader( m_reducen_program );
-                if( m_constants->target() >= HPMC_TARGET_GL30_GLSL130 ) {
-                    glBindFragDataLocation(  m_reducen_program, 0, "fragment" );
-                }
-                if( !HPMClinkProgram( m_reducen_program ) ) {
-                    log.errorMessage( "Failed to link subsequent reduction program" );
+                m_reduce1_loc_delta = glGetUniformLocation( m_reduce1_program, "HPMC_delta" );
+                m_reduce1_loc_level = glGetUniformLocation( m_reduce1_program, "HPMC_src_level" );
+                m_reduce1_loc_hp_tex = glGetUniformLocation( m_reduce1_program, "HPMC_histopyramid" );
+
+                GLuint fs_n = HPMCcompileShader( m_constants->versionString() +
+                                                 hpmc::resources::reduction_upper_fs_110,
+                                                 GL_FRAGMENT_SHADER );
+                if( fs_n == 0 ) {
+                    log.errorMessage( "Failed to compile subsequent reduction fragment shader" );
                     retval = false;
                 }
                 else {
-                    m_reducen_loc_delta = glGetUniformLocation( m_reducen_program, "HPMC_delta" );
-                    m_reducen_loc_level = glGetUniformLocation( m_reducen_program, "HPMC_src_level" );
-                    m_reducen_loc_hp_tex = glGetUniformLocation( m_reducen_program, "HPMC_histopyramid" );
+                    m_reducen_program = glCreateProgram();
+                    glAttachShader( m_reducen_program, m_constants->gpgpuQuad().passThroughVertexShader() );
+                    glAttachShader( m_reducen_program, fs_0 );
+                    m_constants->gpgpuQuad().configurePassThroughVertexShader( m_reducen_program );
+                    if( m_constants->target() >= HPMC_TARGET_GL30_GLSL130 ) {
+                        glBindFragDataLocation(  m_reducen_program, 0, "fragment" );
+                    }
+                    if( !HPMClinkProgram( m_reducen_program ) ) {
+                        log.errorMessage( "Failed to link subsequent reduction program" );
+                        retval = false;
+                    }
+                    else {
+                        m_reducen_loc_delta = glGetUniformLocation( m_reducen_program, "HPMC_delta" );
+                        m_reducen_loc_level = glGetUniformLocation( m_reducen_program, "HPMC_src_level" );
+                        m_reducen_loc_hp_tex = glGetUniformLocation( m_reducen_program, "HPMC_histopyramid" );
+                    }
+                    glDeleteShader( fs_n );
                 }
-                glDeleteShader( fs_n );
             }
+            glDeleteShader( fs_0 );
         }
-        glDeleteShader( fs_0 );
+    }
+    else {
+
+        GLuint fs_0 = HPMCcompileShader( m_constants->versionString() +
+                                         hpmc::resources::reduction_first_fs_130,
+                                         GL_FRAGMENT_SHADER );
+        if( fs_0 == 0 ) {
+            log.errorMessage( "Failed to compile first reduction fragment shader" );
+            retval = false;
+        }
+        else {
+            m_reduce1_program = glCreateProgram();
+            glAttachShader( m_reduce1_program, m_constants->gpgpuQuad().passThroughVertexShader() );
+            glAttachShader( m_reduce1_program, fs_0 );
+            m_constants->gpgpuQuad().configurePassThroughVertexShader( m_reduce1_program );
+            if( m_constants->target() >= HPMC_TARGET_GL30_GLSL130 ) {
+                glBindFragDataLocation(  m_reduce1_program, 0, "fragment" );
+            }
+            if( !HPMClinkProgram( m_reduce1_program ) ) {
+                log.errorMessage( "Failed to link first reduction program" );
+                retval = false;
+            }
+            else {
+                m_reduce1_loc_delta = glGetUniformLocation( m_reduce1_program, "HPMC_delta" );
+                m_reduce1_loc_level = glGetUniformLocation( m_reduce1_program, "HPMC_src_level" );
+                m_reduce1_loc_hp_tex = glGetUniformLocation( m_reduce1_program, "HPMC_histopyramid" );
+
+                GLuint fs_n = HPMCcompileShader( m_constants->versionString() +
+                                                 hpmc::resources::reduction_upper_fs_130,
+                                                 GL_FRAGMENT_SHADER );
+                if( fs_n == 0 ) {
+                    log.errorMessage( "Failed to compile subsequent reduction fragment shader" );
+                    retval = false;
+                }
+                else {
+                    m_reducen_program = glCreateProgram();
+                    glAttachShader( m_reducen_program, m_constants->gpgpuQuad().passThroughVertexShader() );
+                    glAttachShader( m_reducen_program, fs_0 );
+                    m_constants->gpgpuQuad().configurePassThroughVertexShader( m_reducen_program );
+                    if( m_constants->target() >= HPMC_TARGET_GL30_GLSL130 ) {
+                        glBindFragDataLocation(  m_reducen_program, 0, "fragment" );
+                    }
+                    if( !HPMClinkProgram( m_reducen_program ) ) {
+                        log.errorMessage( "Failed to link subsequent reduction program" );
+                        retval = false;
+                    }
+                    else {
+                        m_reducen_loc_delta = glGetUniformLocation( m_reducen_program, "HPMC_delta" );
+                        m_reducen_loc_level = glGetUniformLocation( m_reducen_program, "HPMC_src_level" );
+                        m_reducen_loc_hp_tex = glGetUniformLocation( m_reducen_program, "HPMC_histopyramid" );
+                    }
+                    glDeleteShader( fs_n );
+                }
+            }
+            glDeleteShader( fs_0 );
+        }
     }
     return retval;
 }
