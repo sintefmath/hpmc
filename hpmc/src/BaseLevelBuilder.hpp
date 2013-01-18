@@ -59,9 +59,6 @@ public:
     GLint               m_loc_threshold;
     Field::Context      m_field_context;
 
-    const std::string
-    extractSource() const;
-
 protected:
     const HPMCIsoSurface*   m_iso_surface;
     GLsizei                 m_tile_size[2]; ///< The size of a tile in the base level.
