@@ -18,11 +18,12 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <cuhpmc/cuhpmc.hpp>
+#include <cuhpmc/NonCopyable.hpp>
 
 namespace cuhpmc {
 
 /** Per device constants. */
-class Constants
+class Constants : public NonCopyable
 {
 public:
     Constants();

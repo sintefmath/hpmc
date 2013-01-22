@@ -29,7 +29,7 @@
 #include <cuhpmc/Constants.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/IsoSurface.hpp>
-
+#include <cuhpmc/TriangleVertexWriter.hpp>
 
 using std::cerr;
 using std::endl;
@@ -43,10 +43,14 @@ cuhpmc::Constants*              constants           = NULL;
 unsigned char*                  field_data_dev      = NULL;
 cuhpmc::AbstractField*          field               = NULL;
 cuhpmc::IsoSurface*             iso_surface         = NULL;
+cuhpmc::TriangleVertexWriter*   tri_vtx_writer      = NULL;
 
+GLuint                          surface_vao         = 0;
 GLuint                          surface_vbo         = 0;
 GLsizei                         surface_vbo_n       = 0;
 cudaGraphicsResource*           surface_resource    = NULL;
+cudaStream_t                    stream              = 0;
+
 
 template<class type, bool clamp, bool half_float>
 __global__
@@ -217,14 +221,26 @@ init( int argc, char** argv )
 */
 
     // Generate OpenGL VBO that we lend to CUDA
-    surface_vbo_n = 1000;
+    surface_vbo_n = 100;
     glGenBuffers( 1, &surface_vbo );
     glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
     glBufferData( GL_ARRAY_BUFFER,
-                  3*sizeof(GLfloat)*surface_vbo_n,
+                  3*2*3*sizeof(GLfloat)*surface_vbo_n,
                   NULL,
                   GL_DYNAMIC_COPY );
-    glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
+    glGenVertexArrays( 1, &surface_vao );
+    glBindVertexArray( surface_vao );
+    glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*6, (void*)(3*sizeof(GLfloat)) );
+    glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*6, NULL );
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glBindVertexArray( 0);
+    glBindBuffer( GL_ARRAY_BUFFER, 0 );
+
+    cudaGraphicsGLRegisterBuffer( &surface_resource,
+                                  surface_vbo,
+                                  cudaGraphicsRegisterFlagsWriteDiscard );
+
 
     constants = new cuhpmc::Constants();
     field = new cuhpmc::FieldGlobalMemUChar( constants,
@@ -234,6 +250,7 @@ init( int argc, char** argv )
                                              volume_size_z );
     iso_surface = new cuhpmc::IsoSurface( field );
 
+    tri_vtx_writer = new cuhpmc::TriangleVertexWriter( iso_surface );
 
     cudaError_t error = cudaGetLastError();
     if( error != cudaSuccess ) {
@@ -255,8 +272,49 @@ render( float t,
         const GLfloat* MV_inv )
 {
 
-    iso_surface->build( iso );
+    iso_surface->build( iso, stream );
 
+    uint triangles = iso_surface->triangles();
+    if( surface_vbo_n < triangles ) {
+        if( cudaGraphicsUnregisterResource( surface_resource ) == cudaSuccess ) {
+            surface_vbo_n = 1.1f*triangles;
+            glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
+            glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
+            glBufferData( GL_ARRAY_BUFFER,
+                          3*2*3*sizeof(GLfloat)*surface_vbo_n,
+                          NULL,
+                          GL_DYNAMIC_COPY );
+            glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
+
+            cudaGraphicsGLRegisterBuffer( &surface_resource,
+                                          surface_vbo,
+                                          cudaGraphicsRegisterFlagsWriteDiscard );
+        }
+
+        std::cerr << "Resized VBO to hold " << triangles << " triangles (" << (3*2*3*sizeof(GLfloat)*surface_vbo_n) << " bytes)\n";
+    }
+
+    if( cudaGraphicsMapResources( 1, &surface_resource, stream ) == cudaSuccess ) {
+        float* surface_d = NULL;
+        size_t surface_size = 0;
+        if( cudaGraphicsResourceGetMappedPointer( (void**)&surface_d,
+                                                  &surface_size,
+                                                  surface_resource ) == cudaSuccess )
+        {
+            tri_vtx_writer->writeInterleavedNormalPosition( surface_d, triangles, stream );
+        }
+        cudaGraphicsUnmapResources( 1, &surface_resource, stream );
+    }
+
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    glMatrixMode( GL_PROJECTION );
+    glLoadMatrixf( P );
+    glMatrixMode( GL_MODELVIEW );
+    glLoadMatrixf( MV );
+
+    glBindVertexArray( surface_vao );
+    glDrawArrays( GL_POINTS, 0, 3*triangles );
+    glBindVertexArray( 0 );
 
     cudaError_t error = cudaGetLastError();
     if( error != cudaSuccess ) {
@@ -275,7 +333,7 @@ infoString( float fps )
       << volume_size_z << " samples, "
       << (int)( ((volume_size_x-1)*(volume_size_y-1)*(volume_size_z-1)*fps)/1e6 )
       << " MVPS, "
-      << iso_surface->vertices()
+      << iso_surface->triangles()
       << " vertices, iso=" << iso
       << (wireframe?"[wireframe]":"");
     return o.str();

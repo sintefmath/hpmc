@@ -34,9 +34,8 @@
 
 namespace cuhpmc {
 
-IsoSurface::IsoSurface( AbstractField* field, cudaStream_t stream )
-    : AbstractIsoSurface( field ),
-      m_stream( stream )
+IsoSurface::IsoSurface( AbstractField* field )
+    : AbstractIsoSurface( field )
 {
     m_cells = make_uint3( field->width()-1,
                           field->height()-1,
@@ -127,6 +126,13 @@ IsoSurface::IsoSurface( AbstractField* field, cudaStream_t stream )
     cudaMalloc( (void**)&m_hp5_hp_d, 4*sizeof(uint)* m_hp5_size );
     cudaMalloc( (void**)&m_hp5_sb_d, sizeof(uint)*m_hp5_size );
     cudaMalloc( (void**)&m_case_d, m_hp5_input_N );
+
+    cudaMalloc( (void**)&m_hp5_offsets_d, sizeof(uint)*32 );
+    cudaMemset( m_hp5_offsets_d, 0, sizeof(uint)*32 );
+    cudaMemcpy( m_hp5_offsets_d, m_hp5_offsets.data(), sizeof(uint)*m_hp5_offsets.size(), cudaMemcpyHostToDevice );
+
+
+    cudaEventCreateWithFlags( &m_buildup_event, cudaEventDisableTiming | cudaEventBlockingSync );
 }
 
 IsoSurface::~IsoSurface( )
@@ -135,7 +141,7 @@ IsoSurface::~IsoSurface( )
 
 
 void
-IsoSurface::build( float iso )
+IsoSurface::build( float iso, cudaStream_t stream )
 {
     uint3 field_size = make_uint3( m_field->width(), m_field->height(), m_field->depth() );
 
@@ -151,7 +157,7 @@ IsoSurface::build( float iso )
                                            field->fieldDev(),
                                            field_size,
                                            m_constants->triangleIndexCountDev(),
-                                           m_stream );
+                                           stream );
 
 
     }
@@ -164,27 +170,28 @@ IsoSurface::build( float iso )
                                       m_hp5_hp_d + m_hp5_offsets[i-1],
                                       m_hp5_sb_d + m_hp5_offsets[i],
                                       m_hp5_level_sizes[i-1],
-                                      m_stream );
+                                      stream );
     }
     for( uint i=m_hp5_first_double_level; i>m_hp5_first_single_level; --i ) {
         run_hp5_buildup_level_single( m_hp5_hp_d + m_hp5_offsets[ i-1 ],
                                       m_hp5_sb_d + m_hp5_offsets[ i-1 ],
                                       m_hp5_sb_d + m_hp5_offsets[ i   ],
                                       m_hp5_level_sizes[i-1],
-                                      m_stream );
+                                      stream );
     }
     run_hp5_buildup_apex( m_hp5_top_d,
                           m_hp5_hp_d,
                           m_hp5_sb_d + 32,
                           m_hp5_level_sizes[2],
-                          m_stream );
+                          stream );
+    cudaEventRecord( m_buildup_event, stream );
 }
 
-size_t
-IsoSurface::vertices()
+uint
+IsoSurface::triangles()
 {
-    cudaStreamSynchronize( m_stream );
-    return m_hp5_top_h[0];
+    cudaEventSynchronize( m_buildup_event );
+    return m_hp5_top_h[0]/3;
 }
 
 

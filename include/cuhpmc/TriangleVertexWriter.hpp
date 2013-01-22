@@ -17,21 +17,25 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <cuda.h>
-#include <cuda_runtime_api.h>
-#include <builtin_types.h>
+
+#include <cuhpmc/cuhpmc.hpp>
+#include <cuhpmc/AbstractWriter.hpp>
 
 namespace cuhpmc {
 
-class Constants;
+class TriangleVertexWriter : public AbstractWriter
+{
+public:
+    TriangleVertexWriter( AbstractIsoSurface* iso_surface );
 
-class AbstractField;
-class FieldGlobalMemUChar;
 
-class AbstractIsoSurface;
-class IsoSurface;
+    void
+    writeInterleavedNormalPosition( float* interleaved_buffer_d, uint triangles, cudaStream_t stream  );
 
-class AbstractWriter;
-class TriangleVertexWriter;
+protected:
+
+};
+
+
 
 } // of namespace cuhpmc

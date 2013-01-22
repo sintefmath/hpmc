@@ -18,15 +18,23 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <cuhpmc/cuhpmc.hpp>
+#include <cuhpmc/NonCopyable.hpp>
 
 namespace cuhpmc {
 
-class AbstractIsoSurface
+class AbstractIsoSurface : public NonCopyable
 {
 public:
 
     virtual
     ~AbstractIsoSurface( );
+
+    Constants*
+    constants() { return m_constants; }
+
+    AbstractField*
+    field() { return m_field; }
+
 
 protected:
     Constants*      m_constants;

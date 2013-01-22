@@ -26,22 +26,33 @@ namespace cuhpmc {
 class IsoSurface : public AbstractIsoSurface
 {
 public:
-    IsoSurface( AbstractField* field, cudaStream_t stream = 0 );
+    IsoSurface( AbstractField* field );
 
     ~IsoSurface( );
 
-    cudaStream_t
-    stream() const { return m_stream; }
-
     void
-    build( float iso );
+    build( float iso, cudaStream_t stream );
 
-    size_t
-    vertices();
+    uint
+    triangles();
+
+    /** Returns a device pointer to the hp5 histopyramid data. */
+    const uint4*
+    hp5Dev() const { return m_hp5_hp_d; }
+
+    /** Returns the size of the hp5 histopyramid. */
+    uint
+    hp5Size() const { return m_hp5_size; }
+
+    /** Returns a device pointer to an array of hp5 level offsets. */
+    const uint*
+    hp5LevelOffsetsDev() const { return m_hp5_offsets_d; }
+
+    uint
+    hp5Levels() const { return m_hp5_levels; }
 
 
 protected:
-    cudaStream_t        m_stream;
     uint3               m_cells;
     uint3               m_hp5_chunks;
     uint                m_hp5_input_N;
@@ -52,9 +63,11 @@ protected:
     uint                m_hp5_size;
     std::vector<uint>   m_hp5_level_sizes;
     std::vector<uint>   m_hp5_offsets;
+    uint*               m_hp5_offsets_d;
     uint4*              m_hp5_hp_d;
     uint*               m_hp5_sb_d;
     unsigned char*      m_case_d;
+    cudaEvent_t         m_buildup_event;
 
     uint*               m_hp5_top_h;    // populated using zero-copy
     uint*               m_hp5_top_d;

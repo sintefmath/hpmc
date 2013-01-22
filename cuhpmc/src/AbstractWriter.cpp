@@ -1,4 +1,3 @@
-#pragma once
 /* Copyright STIFTELSEN SINTEF 2012
  *
  * This file is part of the HPMC Library.
@@ -17,21 +16,18 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <cuda.h>
-#include <cuda_runtime_api.h>
-#include <builtin_types.h>
+
+#include <cuhpmc/AbstractWriter.hpp>
+#include <cuhpmc/AbstractField.hpp>
+#include <cuhpmc/AbstractIsoSurface.hpp>
 
 namespace cuhpmc {
 
-class Constants;
-
-class AbstractField;
-class FieldGlobalMemUChar;
-
-class AbstractIsoSurface;
-class IsoSurface;
-
-class AbstractWriter;
-class TriangleVertexWriter;
+AbstractWriter::AbstractWriter( AbstractIsoSurface* iso_surface )
+    : m_constants( iso_surface->constants() ),
+      m_field( iso_surface->field() ),
+      m_iso_surface( iso_surface )
+{
+}
 
 } // of namespace cuhpmc

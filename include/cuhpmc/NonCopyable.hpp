@@ -17,21 +17,20 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <cuda.h>
-#include <cuda_runtime_api.h>
-#include <builtin_types.h>
 
 namespace cuhpmc {
 
-class Constants;
+/** Helper class that prohibits copying of objects of descendent classes. */
+class NonCopyable
+{
+private:
+    NonCopyable( const NonCopyable& );
 
-class AbstractField;
-class FieldGlobalMemUChar;
+    NonCopyable& operator=(const NonCopyable& );
+protected:
 
-class AbstractIsoSurface;
-class IsoSurface;
+    NonCopyable() {}
 
-class AbstractWriter;
-class TriangleVertexWriter;
+};
 
-} // of namespace cuhpmc
+}

@@ -18,20 +18,20 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <cuda.h>
-#include <cuda_runtime_api.h>
 #include <builtin_types.h>
 
 namespace cuhpmc {
 
-class Constants;
 
-class AbstractField;
-class FieldGlobalMemUChar;
-
-class AbstractIsoSurface;
-class IsoSurface;
-
-class AbstractWriter;
-class TriangleVertexWriter;
+void
+run_dummy_writer( float*                output_d,
+                  const uint4*          hp5_pyramid_d,
+                  const uint*           hp5_level_offsets_d,
+                  const uint            hp5_size,
+                  const uint            hp5_max_level,
+                  const uint            triangles,
+                  const unsigned char*  field,
+                  const uint3           field_size,
+                  cudaStream_t          stream );
 
 } // of namespace cuhpmc

@@ -18,10 +18,11 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <cuhpmc/cuhpmc.hpp>
+#include <cuhpmc/NonCopyable.hpp>
 
 namespace cuhpmc {
 
-class AbstractField
+class AbstractField : public NonCopyable
 {
 public:
 
@@ -47,6 +48,7 @@ protected:
     uint        m_depth;
 
     AbstractField( Constants* constants, uint width, uint height, uint depth );
+
 
 };
 
