@@ -27,6 +27,7 @@ void
 run_dummy_writer( float*                output_d,
                   const uint4*          hp5_pyramid_d,
                   const uint*           hp5_level_offsets_d,
+                  const uint3           hp5_chunks,
                   const uint            hp5_size,
                   const uint            hp5_max_level,
                   const uint            triangles,

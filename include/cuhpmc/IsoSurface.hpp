@@ -51,6 +51,9 @@ public:
     uint
     hp5Levels() const { return m_hp5_levels; }
 
+    const uint3
+    hp5Chunks() const { return m_hp5_chunks; }
+
 
 protected:
     uint3               m_cells;

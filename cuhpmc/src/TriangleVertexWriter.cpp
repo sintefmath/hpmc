@@ -37,9 +37,11 @@ TriangleVertexWriter::writeInterleavedNormalPosition( float* interleaved_buffer_
     if( IsoSurface* iso_surface = dynamic_cast<IsoSurface*>( m_iso_surface ) ) {
 
         if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
+
             run_dummy_writer( interleaved_buffer_d,
                               iso_surface->hp5Dev(),
                               iso_surface->hp5LevelOffsetsDev(),
+                              iso_surface->hp5Chunks(),
                               iso_surface->hp5Size(),
                               iso_surface->hp5Levels(),
                               triangles,
