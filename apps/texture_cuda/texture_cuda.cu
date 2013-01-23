@@ -30,6 +30,7 @@
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/IsoSurface.hpp>
+#include <cuhpmc/IsoSurfaceGLInterop.hpp>
 #include <cuhpmc/TriangleVertexWriter.hpp>
 
 using std::cerr;
@@ -43,7 +44,7 @@ float                           iso                 = 0.5f;
 cuhpmc::Constants*              constants           = NULL;
 unsigned char*                  field_data_dev      = NULL;
 cuhpmc::AbstractField*          field               = NULL;
-cuhpmc::IsoSurface*             iso_surface         = NULL;
+cuhpmc::AbstractIsoSurface*     iso_surface         = NULL;
 cuhpmc::TriangleVertexWriter*   tri_vtx_writer      = NULL;
 
 GLuint                          surface_vao         = 0;
@@ -267,6 +268,7 @@ init( int argc, char** argv )
                                                 volume_size_y,
                                                 volume_size_z );
 
+        iso_surface = new cuhpmc::IsoSurfaceGLInterop( field );
     }
     else {
         field = new cuhpmc::FieldGlobalMemUChar( constants,
@@ -274,8 +276,8 @@ init( int argc, char** argv )
                                                  volume_size_x,
                                                  volume_size_y,
                                                  volume_size_z );
+        iso_surface = new cuhpmc::IsoSurface( field );
     }
-    iso_surface = new cuhpmc::IsoSurface( field );
 
     tri_vtx_writer = new cuhpmc::TriangleVertexWriter( iso_surface );
 

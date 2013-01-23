@@ -30,6 +30,10 @@ public:
     virtual
     ~AbstractIsoSurface( );
 
+    virtual
+    void
+    build( float iso, cudaStream_t stream ) = 0;
+
     Constants*
     constants() { return m_constants; }
 
