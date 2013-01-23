@@ -17,36 +17,23 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <cuhpmc/cuhpmc.hpp>
-#include <cuhpmc/AbstractIsoSurface.hpp>
+#include <stdexcept>
+#include <cuda.h>
+#include <cuda_runtime.h>
 
 namespace cuhpmc {
 
-class IsoSurface : public AbstractIsoSurface
+class CUDAErrorException : public std::runtime_error
 {
 public:
-    IsoSurface( AbstractField* field );
+    CUDAErrorException( cudaError_t error )
+        : std::runtime_error( std::string( cudaGetErrorString( error ) ) )
+    {
+    }
 
-    ~IsoSurface( );
-
-    void
-    build( float iso, cudaStream_t stream );
-
-
-    /** Returns a device pointer to the hp5 histopyramid data. */
-    const uint4*
-    hp5Dev() const { return m_hp5_hp_d; }
-
-    /** Returns a device pointer to an array of hp5 level offsets. */
-    const uint*
-    hp5LevelOffsetsDev() const { return m_hp5_offsets_d; }
-
-protected:
-    uint*               m_hp5_offsets_d;
-    uint4*              m_hp5_hp_d;
-    unsigned char*      m_case_d;
 
 };
+
 
 
 } // of namespace cuhpmc

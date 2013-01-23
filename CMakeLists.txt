@@ -6,8 +6,9 @@ PROJECT( hpmc )
 
 SET( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake/Modules )
 
-OPTION( ENABLE_CUHPMC "Enable building of CUDA HPMC" ON )
 OPTION( ENABLE_GLHPMC "Enable building of OpenGL HPMC" ON )
+OPTION( ENABLE_CUHPMC "Enable building of CUDA HPMC" ON )
+OPTION( ENABLE_CUHPMC_INTEROP "Build CUDA HPMC with GL interop support" ON )
 OPTION( ENABLE_SAMPLES "Enable building of sample applications" ON )
 
 OPTION( SINTEF_INTERNAL "Compiled internally at SINTEF" OFF )
@@ -21,6 +22,7 @@ IF( ENABLE_CUHPMC )
     FIND_PACKAGE( CUDA REQUIRED )
     SET( HPMC_NVCC_OPTIONS )
 ENDIF( ENABLE_CUHPMC )
+
 
 IF( UNIX )
     SET( CMAKE_CXX_FLAGS "-O2 ${CMAKE_CXX_FLAGS}" )
@@ -64,6 +66,10 @@ ENDIF( ENABLE_GLHPMC )
 
 # --- CUHPMC library -----------------------------------------------------------
 IF( ENABLE_CUHPMC )
+    IF( ENABLE_CUHPMC_INTEROP )
+        ADD_DEFINITIONS( -DENABLE_CUHPMC_INTEROP )
+    ENDIF( ENABLE_CUHPMC_INTEROP )
+
     INCLUDE_DIRECTORIES( "${CUDA_TOOLKIT_ROOT_DIR}/include" )
     INCLUDE_DIRECTORIES( "./include" )
 

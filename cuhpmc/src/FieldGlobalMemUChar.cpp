@@ -17,6 +17,7 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <cuhpmc/cuhpmc.hpp>
+#include <cuhpmc/CUDAErrorException.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 
 namespace cuhpmc {

@@ -17,36 +17,35 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <GL/glew.h>
 #include <cuhpmc/cuhpmc.hpp>
-#include <cuhpmc/AbstractIsoSurface.hpp>
+#include <cuhpmc/AbstractField.hpp>
 
 namespace cuhpmc {
 
-class IsoSurface : public AbstractIsoSurface
+class FieldGLBufferUChar : public AbstractField
 {
 public:
-    IsoSurface( AbstractField* field );
+    FieldGLBufferUChar( Constants*     constants,
+                        GLuint         field_buf,
+                        uint           width,
+                        uint           height,
+                        uint           depth );
 
-    ~IsoSurface( );
+    ~FieldGLBufferUChar();
+
+    const unsigned char*
+    mapFieldBuffer( cudaStream_t stream );
 
     void
-    build( float iso, cudaStream_t stream );
+    unmapFieldBuffer( cudaStream_t stream );
 
-
-    /** Returns a device pointer to the hp5 histopyramid data. */
-    const uint4*
-    hp5Dev() const { return m_hp5_hp_d; }
-
-    /** Returns a device pointer to an array of hp5 level offsets. */
-    const uint*
-    hp5LevelOffsetsDev() const { return m_hp5_offsets_d; }
 
 protected:
-    uint*               m_hp5_offsets_d;
-    uint4*              m_hp5_hp_d;
-    unsigned char*      m_case_d;
+    bool                    m_mapped;
+    GLuint                  m_field_buf;
+    cudaGraphicsResource*   m_field_resource;
 
 };
-
 
 } // of namespace cuhpmc

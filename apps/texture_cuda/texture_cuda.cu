@@ -28,6 +28,7 @@
 #include "../common/common.hpp"
 #include <cuhpmc/Constants.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
+#include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/IsoSurface.hpp>
 #include <cuhpmc/TriangleVertexWriter.hpp>
 
@@ -60,6 +61,9 @@ cudaEvent_t                     post_write          = 0;
 float                           write_ms            = 0.f;
 
 uint                            runs                = 0;
+
+bool                            gl_direct_draw      = true;
+GLuint                          gl_field_buffer     = 0;
 
 template<class type, bool clamp, bool half_float>
 __global__
@@ -243,11 +247,34 @@ init( int argc, char** argv )
 
 
     constants = new cuhpmc::Constants();
-    field = new cuhpmc::FieldGlobalMemUChar( constants,
-                                             field_data_dev,
-                                             volume_size_x,
-                                             volume_size_y,
-                                             volume_size_z );
+    if( gl_direct_draw ) {
+        std::vector<unsigned char> foo( volume_size_x*volume_size_y*volume_size_z );
+        cudaMemcpy( foo.data(), field_data_dev, foo.size(), cudaMemcpyDeviceToHost );
+        cudaFree( field_data_dev );
+        field_data_dev = NULL;
+
+        glGenBuffers( 1, &gl_field_buffer );
+        glBindBuffer( GL_TEXTURE_BUFFER, gl_field_buffer );
+        glBufferData( GL_TEXTURE_BUFFER,
+                      foo.size(),
+                      foo.data(),
+                      GL_STATIC_DRAW );
+        glBindBuffer( GL_TEXTURE_BUFFER, 0 );
+
+        field = new cuhpmc::FieldGLBufferUChar( constants,
+                                                gl_field_buffer,
+                                                volume_size_x,
+                                                volume_size_y,
+                                                volume_size_z );
+
+    }
+    else {
+        field = new cuhpmc::FieldGlobalMemUChar( constants,
+                                                 field_data_dev,
+                                                 volume_size_x,
+                                                 volume_size_y,
+                                                 volume_size_z );
+    }
     iso_surface = new cuhpmc::IsoSurface( field );
 
     tri_vtx_writer = new cuhpmc::TriangleVertexWriter( iso_surface );

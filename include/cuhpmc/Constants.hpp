@@ -17,6 +17,8 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+#include <GL/glew.h>
 #include <cuhpmc/cuhpmc.hpp>
 #include <cuhpmc/NonCopyable.hpp>
 
@@ -33,8 +35,12 @@ public:
     const unsigned char*
     triangleIndexCountDev() const { return m_vtxcnt_dev; }
 
+    GLuint
+    caseIntersectEdgeGL() { return m_case_intersect_edge_tex; }
+
 private:
     unsigned char*  m_vtxcnt_dev;
+    GLuint          m_case_intersect_edge_tex;
 
 
 };
