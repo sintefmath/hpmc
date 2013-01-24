@@ -25,27 +25,36 @@ namespace cuhpmc {
 
 /** Iso-surface that keeps the buffers needed for direct renderering in OpenGL.
  */
-class IsoSurfaceGLInterop : public AbstractIsoSurface
+class GLIsoSurface : public AbstractIsoSurface
 {
 public:
-    IsoSurfaceGLInterop( AbstractField* field );
+    GLIsoSurface( AbstractField* field );
 
-    ~IsoSurfaceGLInterop( );
+    ~GLIsoSurface( );
 
     void
     build( float iso, cudaStream_t stream );
 
 
-    /** Returns a device pointer to the hp5 histopyramid data. */
-    GLuint
-    hp5Buf() const { return m_hp5_hp_buf; }
 
     GLuint
     caseBuf() const { return m_case_buf; }
 
+    GLuint
+    caseGLTex() const { return m_case_gl_tex; }
+
+    GLuint
+    hp5GLBuf() const { return m_hp5_hp_buf; }
+
+    GLuint
+    hp5GLTex() const { return m_hp5_gl_tex; }
+
 protected:
     GLuint                  m_hp5_hp_buf;
     GLuint                  m_case_buf;
+    GLuint                  m_hp5_gl_tex;
+    GLuint                  m_case_gl_tex;
+
     cudaGraphicsResource*   m_resources[2];
 };
 

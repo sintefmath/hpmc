@@ -18,34 +18,46 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <GL/glew.h>
+#include <iosfwd>
+#include <string>
 #include <cuhpmc/cuhpmc.hpp>
-#include <cuhpmc/AbstractField.hpp>
+#include <cuhpmc/AbstractWriter.hpp>
 
 namespace cuhpmc {
 
-class FieldGLBufferUChar : public AbstractField
+class GLWriter : public AbstractWriter
 {
 public:
-    FieldGLBufferUChar( Constants*     constants,
-                        GLuint         field_buf,
-                        uint           width,
-                        uint           height,
-                        uint           depth );
+    GLWriter( GLIsoSurface* iso_surface );
 
-    ~FieldGLBufferUChar();
-
-    const unsigned char*
-    mapFieldBuffer( cudaStream_t stream );
+    ~GLWriter();
 
     void
-    unmapFieldBuffer( cudaStream_t stream );
-
+    render( const GLfloat* modelview_projection,
+            const GLfloat* normal_matrix,
+            cudaStream_t stream );
 
 protected:
-    bool                    m_mapped;
-    GLuint                  m_field_buf;
-    cudaGraphicsResource*   m_field_resource;
+    GLuint  m_program;
+    GLint   m_loc_iso;
+    GLint   m_loc_hp_offsets;
+    GLint   m_loc_mvp;
+    GLint   m_loc_nm;
+
+    /** Adds line numbers to a source string and writes it to out. */
+    void
+    dumpSource( std::stringstream& out, const std::string& source );
+
+    /** Creates and compules a shader, writes compiler output to out. */
+    GLuint
+    compileShader( std::stringstream& out, const std::string& src, GLenum type ) const;
+
+    /** Links a shader program, writes linker output to out. */
+    bool
+    linkShaderProgram( std::stringstream& out, GLuint program ) const;
 
 };
+
+
 
 } // of namespace cuhpmc

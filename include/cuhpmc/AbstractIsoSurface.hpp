@@ -50,13 +50,21 @@ public:
     const uint3
     hp5Chunks() const { return m_hp5_chunks; }
 
+    const std::vector<uint>&
+    hp5Offsets() const { return m_hp5_offsets; }
+
     uint
     triangles();
+
+    /** Return the ISO value for which this surface was most recently built. */
+    float
+    iso() const { return m_iso; }
 
 protected:
     Constants*          m_constants;
     AbstractField*      m_field;
     uint3               m_cells;
+    float               m_iso;
     uint3               m_hp5_chunks;
     uint                m_hp5_input_N;
     uint                m_hp5_levels;

@@ -18,42 +18,38 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <GL/glew.h>
-#include <iosfwd>
-#include <string>
 #include <cuhpmc/cuhpmc.hpp>
-#include <cuhpmc/AbstractWriter.hpp>
+#include <cuhpmc/AbstractField.hpp>
 
 namespace cuhpmc {
 
-class GLDirectWriter : public AbstractWriter
+class GLFieldUCharBuffer : public AbstractField
 {
 public:
-    GLDirectWriter( IsoSurfaceGLInterop* iso_surface );
+    GLFieldUCharBuffer( Constants*     constants,
+                        GLuint         field_buf,
+                        uint           width,
+                        uint           height,
+                        uint           depth );
 
-    ~GLDirectWriter();
+    ~GLFieldUCharBuffer();
+
+    GLuint
+    fieldGLTex() const { return m_field_gl_tex; }
+
+    const unsigned char*
+    mapFieldBuffer( cudaStream_t stream );
 
     void
-    render( GLfloat* modelview_projection,
-            GLfloat* normal_matrix,
-            cudaStream_t stream );
+    unmapFieldBuffer( cudaStream_t stream );
+
 
 protected:
-    GLuint  m_program;
-
-    /** Adds line numbers to a source string and writes it to out. */
-    void
-    dumpSource( std::stringstream& out, const std::string& source );
-
-    /** Creates and compules a shader, writes compiler output to out. */
-    GLuint
-    compileShader( std::stringstream& out, const std::string& src, GLenum type ) const;
-
-    /** Links a shader program, writes linker output to out. */
-    bool
-    linkShaderProgram( std::stringstream& out, GLuint program ) const;
+    bool                    m_mapped;
+    GLuint                  m_field_buf;
+    GLuint                  m_field_gl_tex;
+    cudaGraphicsResource*   m_field_resource;
 
 };
-
-
 
 } // of namespace cuhpmc

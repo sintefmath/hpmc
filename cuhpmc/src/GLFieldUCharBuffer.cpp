@@ -20,11 +20,11 @@
 #include <cuda_gl_interop.h>
 #include <cuhpmc/cuhpmc.hpp>
 #include <cuhpmc/CUDAErrorException.hpp>
-#include <cuhpmc/FieldGLBufferUChar.hpp>
+#include <cuhpmc/GLFieldUCharBuffer.hpp>
 
 namespace cuhpmc {
 
-FieldGLBufferUChar::FieldGLBufferUChar( Constants*     constants,
+GLFieldUCharBuffer::GLFieldUCharBuffer( Constants*     constants,
                                         GLuint         field_buf,
                                         uint           width,
                                         uint           height,
@@ -37,6 +37,10 @@ FieldGLBufferUChar::FieldGLBufferUChar( Constants*     constants,
     if( m_field_buf == 0 ) {
         throw std::runtime_error( "field_buf == 0" );
     }
+    glGenTextures( 1, &m_field_gl_tex );
+    glBindTexture( GL_TEXTURE_BUFFER, m_field_gl_tex );
+    glTexBuffer( GL_TEXTURE_BUFFER, GL_R8, m_field_buf );
+    glBindTexture( GL_TEXTURE_BUFFER, 0 );
 
     cudaGraphicsGLRegisterBuffer( &m_field_resource,
                                   m_field_buf,
@@ -48,8 +52,9 @@ FieldGLBufferUChar::FieldGLBufferUChar( Constants*     constants,
     }
 }
 
-FieldGLBufferUChar::~FieldGLBufferUChar()
+GLFieldUCharBuffer::~GLFieldUCharBuffer()
 {
+    glDeleteTextures( 1, &m_field_gl_tex );
     if( m_field_resource != NULL ) {
         cudaGraphicsUnregisterResource( m_field_resource );
         m_field_resource = NULL;
@@ -57,7 +62,7 @@ FieldGLBufferUChar::~FieldGLBufferUChar()
 }
 
 const unsigned char*
-FieldGLBufferUChar::mapFieldBuffer( cudaStream_t stream )
+GLFieldUCharBuffer::mapFieldBuffer( cudaStream_t stream )
 {
     cudaError_t error;
     if( m_mapped ) {
@@ -78,7 +83,7 @@ FieldGLBufferUChar::mapFieldBuffer( cudaStream_t stream )
 }
 
 void
-FieldGLBufferUChar::unmapFieldBuffer( cudaStream_t stream )
+GLFieldUCharBuffer::unmapFieldBuffer( cudaStream_t stream )
 {
     if( !m_mapped ) {
         throw std::runtime_error( "buffer not mapped" );

@@ -23,15 +23,15 @@
 #include <builtin_types.h>
 #include <vector_functions.h>
 #include <stdexcept>
-#include <cuhpmc/IsoSurfaceGLInterop.hpp>
+#include <cuhpmc/GLIsoSurface.hpp>
 #include <cuhpmc/AbstractField.hpp>
-#include <cuhpmc/FieldGLBufferUChar.hpp>
+#include <cuhpmc/GLFieldUCharBuffer.hpp>
 #include <cuhpmc/Constants.hpp>
 #include <cuhpmc/CUDAErrorException.hpp>
 
 namespace cuhpmc {
 
-IsoSurfaceGLInterop::IsoSurfaceGLInterop( AbstractField* field )
+GLIsoSurface::GLIsoSurface( AbstractField* field )
     : AbstractIsoSurface( field )
 {
     glGenBuffers( 1, &m_hp5_hp_buf );
@@ -40,6 +40,11 @@ IsoSurfaceGLInterop::IsoSurfaceGLInterop( AbstractField* field )
                   4*sizeof(uint)* m_hp5_size,
                   NULL,
                   GL_DYNAMIC_COPY );
+    glGenTextures( 1, &m_hp5_gl_tex );
+    glBindTexture( GL_TEXTURE_BUFFER, m_hp5_gl_tex );
+    glTexBuffer( GL_TEXTURE_BUFFER, GL_RGBA32UI, m_hp5_hp_buf );
+    glBindTexture( GL_TEXTURE_BUFFER, 0 );
+
     glGenBuffers( 1, &m_case_buf );
     glBindBuffer( GL_TEXTURE_BUFFER, m_case_buf );
     glBufferData( GL_TEXTURE_BUFFER,
@@ -47,6 +52,10 @@ IsoSurfaceGLInterop::IsoSurfaceGLInterop( AbstractField* field )
                   NULL,
                   GL_DYNAMIC_COPY );
     glBindBuffer( GL_TEXTURE_BUFFER, 0 );
+
+    glGenTextures( 1, &m_case_gl_tex );
+    glTexBuffer( GL_TEXTURE_BUFFER, GL_R8UI, m_case_buf );
+    glBindTexture( GL_TEXTURE_BUFFER, 0 );
 
     cudaGraphicsGLRegisterBuffer( &m_resources[0], m_hp5_hp_buf, cudaGraphicsRegisterFlagsWriteDiscard );
     cudaGraphicsGLRegisterBuffer( &m_resources[1], m_hp5_hp_buf, cudaGraphicsRegisterFlagsWriteDiscard  );
@@ -61,7 +70,7 @@ IsoSurfaceGLInterop::IsoSurfaceGLInterop( AbstractField* field )
 */
 }
 
-IsoSurfaceGLInterop::~IsoSurfaceGLInterop( )
+GLIsoSurface::~GLIsoSurface( )
 {
     cudaGraphicsUnregisterResource( m_resources[0] );
     cudaGraphicsUnregisterResource( m_resources[1] );
@@ -71,7 +80,7 @@ IsoSurfaceGLInterop::~IsoSurfaceGLInterop( )
 
 
 void
-IsoSurfaceGLInterop::build( float iso, cudaStream_t stream )
+GLIsoSurface::build( float iso, cudaStream_t stream )
 {
     cudaError_t error;
 

@@ -27,7 +27,7 @@
 #include <cuhpmc/AbstractIsoSurface.hpp>
 #include <cuhpmc/AbstractField.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
-#include <cuhpmc/FieldGLBufferUChar.hpp>
+#include <cuhpmc/GLFieldUCharBuffer.hpp>
 #include <cuhpmc/Constants.hpp>
 #include "../kernels/hp5_buildup_base_triple_gb.hpp"
 #include "../kernels/hp5_buildup_level_double.hpp"
@@ -173,6 +173,7 @@ void
 AbstractIsoSurface::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, cudaStream_t stream )
 {
 
+    m_iso = iso;
     uint3 field_size = make_uint3( m_field->width(), m_field->height(), m_field->depth() );
 
     if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
@@ -182,7 +183,7 @@ AbstractIsoSurface::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* 
                                            hp5_hp_d + m_hp5_offsets[ m_hp5_levels-2 ],
                                            hp5_hp_d + m_hp5_offsets[ m_hp5_levels-1 ],
                                            case_d,
-                                           iso,
+                                           m_iso,
                                            m_hp5_chunks,
                                            field->fieldDev(),
                                            field_size,
@@ -191,7 +192,7 @@ AbstractIsoSurface::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* 
 
 
     }
-    else if( FieldGLBufferUChar* field = dynamic_cast<FieldGLBufferUChar*>( m_field ) ) {
+    else if( GLFieldUCharBuffer* field = dynamic_cast<GLFieldUCharBuffer*>( m_field ) ) {
         const unsigned char* field_d = field->mapFieldBuffer( stream );
         run_hp5_buildup_base_triple_gb_ub( hp5_hp_d + m_hp5_offsets[ m_hp5_levels-3 ],
                                            m_hp5_sb_d + m_hp5_offsets[ m_hp5_levels-3 ],
@@ -199,7 +200,7 @@ AbstractIsoSurface::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* 
                                            hp5_hp_d + m_hp5_offsets[ m_hp5_levels-2 ],
                                            hp5_hp_d + m_hp5_offsets[ m_hp5_levels-1 ],
                                            case_d,
-                                           iso,
+                                           m_iso,
                                            m_hp5_chunks,
                                            field_d,
                                            field_size,

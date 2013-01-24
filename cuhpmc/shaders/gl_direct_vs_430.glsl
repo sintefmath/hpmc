@@ -22,7 +22,7 @@ layout(binding=0)   uniform isampler2D      intersection_table_tex;
 layout(binding=1)   uniform samplerBuffer   field_tex;
 layout(binding=2)   uniform usamplerBuffer  hp5_tex;
                     uniform float           iso;
-                    uniform int             hp5_offsets[20];
+                    uniform uint            hp5_offsets[ CUHPMC_LEVELS ];
                     uniform mat4            modelviewprojection;
                     uniform mat3            normalmatrix;
 
@@ -35,7 +35,7 @@ layout(std140)      uniform HP5Apex {
 #ifdef CASE_BUFFER_LOAD
 uniform float* cases;
 #else
-uniform usamplerBuffer  cases_tex;
+layout(binding=3)   uniform usamplerBuffer  cases_tex;
 #endif
 
 
@@ -76,7 +76,7 @@ main()
 
 #endif
     for(; l<CUHPMC_LEVELS; l++) {
-        ivec4 val = ivec4(texelFetch( hp5_tex, hp5_offsets[l]+pos ));
+        ivec4 val = ivec4(texelFetch( hp5_tex, int(hp5_offsets[l]+pos) ));
         pos *= 5;
 
         if( val.x <= key ) {
@@ -182,10 +182,14 @@ main()
                     texelFetch( field_tex, ixb + CUHPMC_FIELD_SLICE_PITCH ).a -fb );
 
     // Find zero-crossing of linear polynomial and emit vertex.
-    float t = (iso-fa)/(fb-fa);
+    float t = 0.5f;//(iso-fa)/(fb-fa);
     float omt = 1.0f-t;
     normal = normalmatrix * (omt*ga + t*gb);
-    gl_Position = modelviewprojection * vec4( omt*vec3(oa) +
+    vec3 P = vec3( CUHPMC_SCALE_X, CUHPMC_SCALE_Y, CUHPMC_SCALE_Z )*vec3( i0 );
+
+    gl_Position = modelviewprojection * vec4( P, 1.0 );
+    /*gl_Position = modelviewprojection * vec4( omt*vec3(oa) +
                                               t*vec3(ob),
-                                              1.0 );
+                                              1.0 );*/
+    //gl_Position = modelviewprojection * vec4( 0.5, 0.5, 0.5, 1.0 );
 }

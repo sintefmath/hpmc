@@ -36,5 +36,5 @@ main()
              + vec3(0.5, 0.4, 0.2) * pow( max( 0.0, r.y), 3.0 );
     vec3 c_s = vec3(0.7, 0.9, 1.0) * pow( max( 0.0, dot( v, h ) ), 50.0 );
     vec3 c_f = vec3(0.8, 0.9, 1.0) * pow( 1.0-abs(n.z), 5.0 );
-    fragment = vec4( c_r + c_s + c_f, 0.2 );
+    fragment = vec4(1.f);//vec4( c_r + c_s + c_f, 0.2 );
 }

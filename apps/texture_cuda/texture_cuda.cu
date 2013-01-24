@@ -28,11 +28,11 @@
 #include "../common/common.hpp"
 #include <cuhpmc/Constants.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
-#include <cuhpmc/FieldGLBufferUChar.hpp>
+#include <cuhpmc/GLFieldUCharBuffer.hpp>
 #include <cuhpmc/IsoSurface.hpp>
-#include <cuhpmc/IsoSurfaceGLInterop.hpp>
+#include <cuhpmc/GLIsoSurface.hpp>
 #include <cuhpmc/TriangleVertexWriter.hpp>
-#include <cuhpmc/GLDirectWriter.hpp>
+#include <cuhpmc/GLWriter.hpp>
 
 using std::cerr;
 using std::endl;
@@ -263,15 +263,15 @@ init( int argc, char** argv )
                       GL_STATIC_DRAW );
         glBindBuffer( GL_TEXTURE_BUFFER, 0 );
 
-        field = new cuhpmc::FieldGLBufferUChar( constants,
+        field = new cuhpmc::GLFieldUCharBuffer( constants,
                                                 gl_field_buffer,
                                                 volume_size_x,
                                                 volume_size_y,
                                                 volume_size_z );
 
-        cuhpmc::IsoSurfaceGLInterop* srf = new cuhpmc::IsoSurfaceGLInterop( field );
+        cuhpmc::GLIsoSurface* srf = new cuhpmc::GLIsoSurface( field );
         iso_surface = srf;
-        writer = new cuhpmc::GLDirectWriter( srf );
+        writer = new cuhpmc::GLWriter( srf );
     }
     else {
         field = new cuhpmc::FieldGlobalMemUChar( constants,
@@ -303,6 +303,7 @@ render( float t,
         const GLfloat *NM,
         const GLfloat* MV_inv )
 {
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
     cudaEventRecord( pre_buildup, stream );
     iso_surface->build( iso, stream );
@@ -343,6 +344,7 @@ render( float t,
     }
 
     cudaEventRecord( pre_write );
+//    cudaEventSynchronize( pre_write );
     if( wireframe ) {
         if( cuhpmc::TriangleVertexWriter* w = dynamic_cast<cuhpmc::TriangleVertexWriter*> ( writer ) ) {
             if( surface_cuda_d == NULL ) {
@@ -365,18 +367,19 @@ render( float t,
                 }
                 cudaGraphicsUnmapResources( 1, &surface_resource, stream );
             }
+            glMatrixMode( GL_PROJECTION );
+            glLoadMatrixf( P );
+            glMatrixMode( GL_MODELVIEW );
+            glLoadMatrixf( MV );
+
+            glBindVertexArray( surface_vao );
+            glDrawArrays( GL_POINTS, 0, 3*triangles );
+            glBindVertexArray( 0 );
+        }
+        else if( cuhpmc::GLWriter* w = dynamic_cast<cuhpmc::GLWriter*>( writer ) ) {
+            w->render( PM, NM, stream );
         }
 
-
-        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-        glMatrixMode( GL_PROJECTION );
-        glLoadMatrixf( P );
-        glMatrixMode( GL_MODELVIEW );
-        glLoadMatrixf( MV );
-
-        glBindVertexArray( surface_vao );
-        glDrawArrays( GL_POINTS, 0, 3*triangles );
-        glBindVertexArray( 0 );
     }
     cudaEventRecord( post_write );
 
