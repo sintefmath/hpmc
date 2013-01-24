@@ -64,6 +64,7 @@ float                           write_ms            = 0.f;
 
 uint                            runs                = 0;
 
+bool                            profile             = false;
 bool                            gl_direct_draw      = true;
 GLuint                          gl_field_buffer     = 0;
 
@@ -112,6 +113,7 @@ bumpyCayley( type* __restrict__ output,
 void
 printHelp( const std::string& appname )
 {
+    //       --------------------------------------------------------------------------------
     cerr << "HPMC demo application that visualizes 1-16xyz-4x^2-4y^2-4z^2=iso."<<endl<<endl;
     cerr << "Usage: " << appname << " [options] xsize [ysize zsize] "<<endl<<endl;
     cerr << "where: xsize    The number of samples in the x-direction."<<endl;
@@ -120,6 +122,15 @@ printHelp( const std::string& appname )
     cerr << "Example usage:"<<endl;
     cerr << "    " << appname << " 64"<< endl;
     cerr << "    " << appname << " 64 128 64"<< endl;
+    cerr << endl;
+    cerr << "Options specific for this app:" << std::endl;
+    cerr << "    --device <int>  Specify which CUDA device to use." << endl;
+    cerr << "    --gl-direct     Enable direct rendering in OpenGL (i.e., do not store" << endl;
+    cerr << "                    geomtry in a buffer)." << endl;
+    cerr << "    --no-gl-direct  Disable direct rendering in OpenGL (i.e., geometry is stored" << endl;
+    cerr << "                    in a buffer by CUDA, which OpenGL then renders)." << endl;
+    cerr << "    --profile       Enable profiling of CUDA passes." << endl;
+    cerr << "    --no-profile    Disable profiling of CUDA passes." << endl;
     cerr << endl;
     printOptions();
 }
@@ -136,6 +147,23 @@ init( int argc, char** argv )
             device = atoi( argv[i+1] );
             eat = 2;
         }
+        else if( (arg == "--gl-direct" ) ) {
+            gl_direct_draw = true;
+            eat = 1;
+        }
+        else if( (arg == "--no-gl-direct" ) ) {
+            gl_direct_draw = false;
+            eat = 1;
+        }
+        else if( (arg == "--profile" ) ) {
+            profile = true;
+            eat = 1;
+        }
+        else if( (arg == "--no-profile" ) ) {
+            profile = false;
+            eat = 1;
+        }
+
         if( eat ) {
             argc = argc - eat;
             for( int k=i; k<argc; k++ ) {
@@ -200,7 +228,8 @@ init( int argc, char** argv )
         std::cerr << "Illegal CUDA device " << device << endl;
         exit( EXIT_FAILURE );
     }
-    cudaSetDevice( device );
+    cudaGLSetGLDevice( device );
+//    cudaSetDevice( device );
 
     // create field
 
@@ -237,11 +266,13 @@ init( int argc, char** argv )
 
     cudaStreamCreate( &stream );
 
-    cudaEventCreate( &pre_buildup );
-    cudaEventCreate( &post_buildup );
-    cudaEventCreate( &pre_write );
-    cudaEventCreate( &post_write );
-
+    // Create profiling events if needed
+    if( profile ) {
+        cudaEventCreate( &pre_buildup );
+        cudaEventCreate( &post_buildup );
+        cudaEventCreate( &pre_write );
+        cudaEventCreate( &post_write );
+    }
 
     cudaGraphicsGLRegisterBuffer( &surface_resource,
                                   surface_vbo,
@@ -304,48 +335,71 @@ render( float t,
         const GLfloat* MV_inv )
 {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    glEnable( GL_DEPTH_TEST );
 
-    cudaEventRecord( pre_buildup, stream );
+    iso = 0.5f*(sin(t)+1.f);
+
+    // build histopyramid
+    if( profile ) {
+        cudaEventRecord( pre_buildup, stream );
+    }
     iso_surface->build( iso, stream );
-    cudaEventRecord( post_buildup, stream );
-
-    uint triangles = iso_surface->triangles();
-    if( surface_vbo_n < triangles ) {
-        if( cudaGraphicsUnregisterResource( surface_resource ) == cudaSuccess ) {
-            if( surface_cuda_d != NULL ) {
-                cudaFree( surface_cuda_d );
-                surface_cuda_d = NULL;
-            }
-
-            surface_vbo_n = 1.1f*triangles;
-
-            std::vector<GLfloat> foo( 6*3*surface_vbo_n, 0.25f );
-            for(size_t i=0; i<3*surface_vbo_n; i++ ) {
-                foo[6*i+3] = 0.5f*(cos( 0.1f*i )+1.f);
-                foo[6*i+4] = 0.5f*(cos( 0.2f*i )+1.f);
-                foo[6*i+5] = 0.5f*(cos( 0.3f*i )+1.f);
-            }
-
-            glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
-            glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
-            glBufferData( GL_ARRAY_BUFFER,
-                          3*2*3*sizeof(GLfloat)*surface_vbo_n,
-                          foo.data(),
-                          GL_DYNAMIC_COPY );
-            glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
-
-            cudaGraphicsGLRegisterBuffer( &surface_resource,
-                                          surface_vbo,
-                                          cudaGraphicsRegisterFlagsNone ) /*,
-                                          cudaGraphicsRegisterFlagsWriteDiscard )*/;
-        }
-
-        std::cerr << "Resized VBO to hold " << triangles << " triangles (" << (3*2*3*sizeof(GLfloat)*surface_vbo_n) << " bytes)\n";
+    if( profile ) {
+        cudaEventRecord( post_buildup, stream );
     }
 
-    cudaEventRecord( pre_write );
-//    cudaEventSynchronize( pre_write );
-    if( wireframe ) {
+    // resize buffers if we run unless we do direct GL rendering
+    uint triangles = 0;
+    if( !gl_direct_draw ) {
+
+        triangles = iso_surface->triangles();
+        if( surface_vbo_n < triangles ) {
+            if( cudaGraphicsUnregisterResource( surface_resource ) == cudaSuccess ) {
+                if( surface_cuda_d != NULL ) {
+                    cudaFree( surface_cuda_d );
+                    surface_cuda_d = NULL;
+                }
+
+                surface_vbo_n = 1.1f*triangles;
+
+                std::vector<GLfloat> foo( 6*3*surface_vbo_n, 0.25f );
+                for(size_t i=0; i<3*surface_vbo_n; i++ ) {
+                    foo[6*i+3] = 0.5f*(cos( 0.1f*i )+1.f);
+                    foo[6*i+4] = 0.5f*(cos( 0.2f*i )+1.f);
+                    foo[6*i+5] = 0.5f*(cos( 0.3f*i )+1.f);
+                }
+
+                glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
+                glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
+                glBufferData( GL_ARRAY_BUFFER,
+                              3*2*3*sizeof(GLfloat)*surface_vbo_n,
+                              foo.data(),
+                              GL_DYNAMIC_COPY );
+                glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
+
+                cudaGraphicsGLRegisterBuffer( &surface_resource,
+                                              surface_vbo,
+                                              cudaGraphicsRegisterFlagsNone ) /*,
+                                              cudaGraphicsRegisterFlagsWriteDiscard )*/;
+            }
+            std::cerr << "Resized VBO to hold " << triangles << " triangles (" << (3*2*3*sizeof(GLfloat)*surface_vbo_n) << " bytes)\n";
+        }
+    }
+
+    if( profile ) {
+        cudaEventRecord( pre_write );
+    }
+
+    // direct rendering through OpenGL
+    if( gl_direct_draw ) {
+
+        if( cuhpmc::GLWriter* w = dynamic_cast<cuhpmc::GLWriter*>( writer ) ) {
+            w->render( PM, NM, stream );
+        }
+
+    }
+    // Let CUDA write, but don't use interop (i.e., no rendering)
+    else if( wireframe ) {
         if( cuhpmc::TriangleVertexWriter* w = dynamic_cast<cuhpmc::TriangleVertexWriter*> ( writer ) ) {
             if( surface_cuda_d == NULL ) {
                 cudaMalloc( &surface_cuda_d, 3*2*3*sizeof(GLfloat)*surface_vbo_n );
@@ -353,8 +407,8 @@ render( float t,
             w->writeInterleavedNormalPosition( surface_cuda_d, triangles, stream );
         }
     }
+    // Let CUDA write and let GL render the resulting buffer
     else {
-
         if( cuhpmc::TriangleVertexWriter* w = dynamic_cast<cuhpmc::TriangleVertexWriter*> ( writer ) ) {
             if( cudaGraphicsMapResources( 1, &surface_resource, stream ) == cudaSuccess ) {
                 float* surface_d = NULL;
@@ -376,24 +430,19 @@ render( float t,
             glDrawArrays( GL_POINTS, 0, 3*triangles );
             glBindVertexArray( 0 );
         }
-        else if( cuhpmc::GLWriter* w = dynamic_cast<cuhpmc::GLWriter*>( writer ) ) {
-            w->render( PM, NM, stream );
-        }
-
     }
-    cudaEventRecord( post_write );
 
+    if( profile ) {
+        cudaEventRecord( post_write );
+        cudaEventSynchronize( post_write );
 
-
-    cudaEventSynchronize( post_write );
-
-    float ms;
-    cudaEventElapsedTime( &ms, pre_buildup, post_buildup );
-    buildup_ms += ms;
-    cudaEventElapsedTime( &ms, pre_write, post_write );
-    write_ms += ms;
-    runs++;
-
+        float ms;
+        cudaEventElapsedTime( &ms, pre_buildup, post_buildup );
+        buildup_ms += ms;
+        cudaEventElapsedTime( &ms, pre_write, post_write );
+        write_ms += ms;
+        runs++;
+    }
 
     cudaError_t error = cudaGetLastError();
     if( error != cudaSuccess ) {
@@ -418,11 +467,13 @@ infoString( float fps )
       << volume_size_y << 'x'
       << volume_size_z << " samples, "
       << (int)( ((volume_size_x-1)*(volume_size_y-1)*(volume_size_z-1)*fps)/1e6 )
-      << " MVPS, "
-      << "build=" << avg_buildup << "ms, "
-      << "write=" << avg_write << "ms, "
-      << iso_surface->triangles()
-      << " vertices, iso=" << iso
+      << " MVPS, ";
+    if( profile ) {
+        o << "build=" << avg_buildup << "ms, "
+          << "write=" << avg_write << "ms, ";
+    }
+    o << iso_surface->triangles()
+      << " triangles, iso=" << iso
       << (wireframe?"[wireframe]":"");
     return o.str();
 }

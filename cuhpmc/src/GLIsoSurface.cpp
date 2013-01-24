@@ -22,6 +22,7 @@
 #include <cuda_gl_interop.h>
 #include <builtin_types.h>
 #include <vector_functions.h>
+#include <iostream>
 #include <stdexcept>
 #include <cuhpmc/GLIsoSurface.hpp>
 #include <cuhpmc/AbstractField.hpp>
@@ -54,11 +55,12 @@ GLIsoSurface::GLIsoSurface( AbstractField* field )
     glBindBuffer( GL_TEXTURE_BUFFER, 0 );
 
     glGenTextures( 1, &m_case_gl_tex );
+    glBindTexture( GL_TEXTURE_BUFFER, m_case_gl_tex );
     glTexBuffer( GL_TEXTURE_BUFFER, GL_R8UI, m_case_buf );
     glBindTexture( GL_TEXTURE_BUFFER, 0 );
 
     cudaGraphicsGLRegisterBuffer( &m_resources[0], m_hp5_hp_buf, cudaGraphicsRegisterFlagsWriteDiscard );
-    cudaGraphicsGLRegisterBuffer( &m_resources[1], m_hp5_hp_buf, cudaGraphicsRegisterFlagsWriteDiscard  );
+    cudaGraphicsGLRegisterBuffer( &m_resources[1], m_case_buf, cudaGraphicsRegisterFlagsWriteDiscard  );
 
     /*
     cudaMalloc( (void**)&m_hp5_hp_d, 4*sizeof(uint)* m_hp5_size );
@@ -105,6 +107,9 @@ GLIsoSurface::build( float iso, cudaStream_t stream )
 
 
     buildNonIndexed( iso, hp5_hp_d, case_d, stream );
+
+
+//    std::vector<unsigned int> foobar( 4*m_hp5_size );
 
     error = cudaGraphicsUnmapResources( 2, m_resources, stream );
     if( error != cudaSuccess ) {

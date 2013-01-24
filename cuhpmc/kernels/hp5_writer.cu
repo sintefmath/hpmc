@@ -118,6 +118,10 @@ dummy_writer( float* __restrict__       output_d,
                                ci.y + ((t_lix / 5)/32),
                                ci.z + ( t_lix%5 ) );
 
+ //       if( key >= 15 ) {
+ //           i0 = make_uint3( 64 + key, 64, 0 );
+ //       }
+
         for(uint i=0; i<3; i++ ) {
             uint vtx = 3*triangle + i;
 

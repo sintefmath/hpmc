@@ -46,6 +46,7 @@ GLWriter::GLWriter( GLIsoSurface* iso_surface )
     defines << "#define CUHPMC_SCALE_X           " << (1.f/m_field->width()) << "\n";
     defines << "#define CUHPMC_SCALE_Y           " << (1.f/m_field->height()) << "\n";
     defines << "#define CUHPMC_SCALE_Z           " << (1.f/m_field->depth()) << "\n";
+    defines << "#define CUHPMC_SIZE              " << m_iso_surface->hp5Size() << "\n";
 
     const std::string vs_src = "#version 430\n" +
                                defines.str() +
@@ -63,9 +64,13 @@ GLWriter::GLWriter( GLIsoSurface* iso_surface )
             if( linkShaderProgram( out, m_program ) ) {
                 GLint loc = glGetUniformLocation( m_program, "hp5_offsets" );
                 glProgramUniform1uiv( m_program, loc, m_iso_surface->hp5Levels(), m_iso_surface->hp5Offsets().data() );
+                std::cerr << "loc=" << loc << "\n";
+                for(int i=0; i<m_iso_surface->hp5Levels(); i++ ) {
+                    std::cerr << m_iso_surface->hp5Offsets()[i] << "\n";
+                }
                 m_loc_iso = glGetUniformLocation( m_program, "iso" );
                 m_loc_mvp = glGetUniformLocation( m_program, "modelviewprojection" );
-                m_loc_nm = glGetUniformLocation( m_program, "normal_matrix" );
+                m_loc_nm = glGetUniformLocation( m_program, "normalmatrix" );
 #if 0
                 glUseProgram( extract_p );
                 uniform1i( extract_p, "field_tex", 0 );
@@ -136,6 +141,7 @@ GLWriter::render( const GLfloat* modelview_projection,
                         const GLfloat* normal_matrix,
                         cudaStream_t stream )
 {
+
     glActiveTexture( GL_TEXTURE0 );
     glBindTexture( GL_TEXTURE_2D, m_constants->caseIntersectEdgeGL() );
     if( GLFieldUCharBuffer* f = dynamic_cast<GLFieldUCharBuffer*>( m_field ) ) {
@@ -153,7 +159,7 @@ GLWriter::render( const GLfloat* modelview_projection,
             glUniformMatrix3fv( m_loc_nm, 1, GL_FALSE, normal_matrix );
 
             glBindBuffer( GL_DRAW_INDIRECT_BUFFER, i->hp5GLBuf() );
-            glDrawArraysIndirect( GL_POINTS, NULL );
+            glDrawArraysIndirect( GL_TRIANGLES, NULL );
             glBindBuffer( GL_DRAW_INDIRECT_BUFFER, 0 );
         }
     }
