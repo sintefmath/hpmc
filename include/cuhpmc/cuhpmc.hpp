@@ -27,11 +27,15 @@ class Constants;
 
 class AbstractField;
 class FieldGlobalMemUChar;
+class FieldGLBufferUChar;
 
 class AbstractIsoSurface;
 class IsoSurface;
+class IsoSurfaceGLInterop;
 
 class AbstractWriter;
 class TriangleVertexWriter;
+class GLDirectWriter;
+
 
 } // of namespace cuhpmc

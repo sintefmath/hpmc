@@ -17,26 +17,43 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <GL/glew.h>
+#include <iosfwd>
+#include <string>
 #include <cuhpmc/cuhpmc.hpp>
-#include <cuhpmc/NonCopyable.hpp>
+#include <cuhpmc/AbstractWriter.hpp>
 
 namespace cuhpmc {
 
-class AbstractWriter : public NonCopyable
+class GLDirectWriter : public AbstractWriter
 {
 public:
-    AbstractWriter( AbstractIsoSurface* iso_surface );
+    GLDirectWriter( IsoSurfaceGLInterop* iso_surface );
 
-    virtual
-    ~AbstractWriter();
+    ~GLDirectWriter();
+
+    void
+    render( GLfloat* modelview_projection,
+            GLfloat* normal_matrix,
+            cudaStream_t stream );
 
 protected:
-    Constants*          m_constants;
-    AbstractField*      m_field;
-    AbstractIsoSurface* m_iso_surface;
+    GLuint  m_program;
 
+    /** Adds line numbers to a source string and writes it to out. */
+    void
+    dumpSource( std::stringstream& out, const std::string& source );
+
+    /** Creates and compules a shader, writes compiler output to out. */
+    GLuint
+    compileShader( std::stringstream& out, const std::string& src, GLenum type ) const;
+
+    /** Links a shader program, writes linker output to out. */
+    bool
+    linkShaderProgram( std::stringstream& out, GLuint program ) const;
 
 };
+
 
 
 } // of namespace cuhpmc

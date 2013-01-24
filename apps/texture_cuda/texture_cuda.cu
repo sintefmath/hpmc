@@ -32,6 +32,7 @@
 #include <cuhpmc/IsoSurface.hpp>
 #include <cuhpmc/IsoSurfaceGLInterop.hpp>
 #include <cuhpmc/TriangleVertexWriter.hpp>
+#include <cuhpmc/GLDirectWriter.hpp>
 
 using std::cerr;
 using std::endl;
@@ -45,7 +46,7 @@ cuhpmc::Constants*              constants           = NULL;
 unsigned char*                  field_data_dev      = NULL;
 cuhpmc::AbstractField*          field               = NULL;
 cuhpmc::AbstractIsoSurface*     iso_surface         = NULL;
-cuhpmc::TriangleVertexWriter*   tri_vtx_writer      = NULL;
+cuhpmc::AbstractWriter*         writer              = NULL;
 
 GLuint                          surface_vao         = 0;
 GLuint                          surface_vbo         = 0;
@@ -268,7 +269,9 @@ init( int argc, char** argv )
                                                 volume_size_y,
                                                 volume_size_z );
 
-        iso_surface = new cuhpmc::IsoSurfaceGLInterop( field );
+        cuhpmc::IsoSurfaceGLInterop* srf = new cuhpmc::IsoSurfaceGLInterop( field );
+        iso_surface = srf;
+        writer = new cuhpmc::GLDirectWriter( srf );
     }
     else {
         field = new cuhpmc::FieldGlobalMemUChar( constants,
@@ -277,9 +280,9 @@ init( int argc, char** argv )
                                                  volume_size_y,
                                                  volume_size_z );
         iso_surface = new cuhpmc::IsoSurface( field );
+        writer = new cuhpmc::TriangleVertexWriter( iso_surface );
     }
 
-    tri_vtx_writer = new cuhpmc::TriangleVertexWriter( iso_surface );
 
     cudaError_t error = cudaGetLastError();
     if( error != cudaSuccess ) {
@@ -339,29 +342,31 @@ render( float t,
         std::cerr << "Resized VBO to hold " << triangles << " triangles (" << (3*2*3*sizeof(GLfloat)*surface_vbo_n) << " bytes)\n";
     }
 
+    cudaEventRecord( pre_write );
     if( wireframe ) {
-        if( surface_cuda_d == NULL ) {
-            cudaMalloc( &surface_cuda_d, 3*2*3*sizeof(GLfloat)*surface_vbo_n );
+        if( cuhpmc::TriangleVertexWriter* w = dynamic_cast<cuhpmc::TriangleVertexWriter*> ( writer ) ) {
+            if( surface_cuda_d == NULL ) {
+                cudaMalloc( &surface_cuda_d, 3*2*3*sizeof(GLfloat)*surface_vbo_n );
+            }
+            w->writeInterleavedNormalPosition( surface_cuda_d, triangles, stream );
         }
-        cudaEventRecord( pre_write );
-        tri_vtx_writer->writeInterleavedNormalPosition( surface_cuda_d, triangles, stream );
-        cudaEventRecord( post_write );
     }
     else {
 
-        if( cudaGraphicsMapResources( 1, &surface_resource, stream ) == cudaSuccess ) {
-            float* surface_d = NULL;
-            size_t surface_size = 0;
-            if( cudaGraphicsResourceGetMappedPointer( (void**)&surface_d,
-                                                      &surface_size,
-                                                      surface_resource ) == cudaSuccess )
-            {
-                cudaEventRecord( pre_write );
-                tri_vtx_writer->writeInterleavedNormalPosition( surface_d, triangles, stream );
-                cudaEventRecord( post_write );
+        if( cuhpmc::TriangleVertexWriter* w = dynamic_cast<cuhpmc::TriangleVertexWriter*> ( writer ) ) {
+            if( cudaGraphicsMapResources( 1, &surface_resource, stream ) == cudaSuccess ) {
+                float* surface_d = NULL;
+                size_t surface_size = 0;
+                if( cudaGraphicsResourceGetMappedPointer( (void**)&surface_d,
+                                                          &surface_size,
+                                                          surface_resource ) == cudaSuccess )
+                {
+                    w->writeInterleavedNormalPosition( surface_d, triangles, stream );
+                }
+                cudaGraphicsUnmapResources( 1, &surface_resource, stream );
             }
-            cudaGraphicsUnmapResources( 1, &surface_resource, stream );
         }
+
 
         glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
         glMatrixMode( GL_PROJECTION );
@@ -373,6 +378,9 @@ render( float t,
         glDrawArrays( GL_POINTS, 0, 3*triangles );
         glBindVertexArray( 0 );
     }
+    cudaEventRecord( post_write );
+
+
 
     cudaEventSynchronize( post_write );
 
@@ -382,8 +390,6 @@ render( float t,
     cudaEventElapsedTime( &ms, pre_write, post_write );
     write_ms += ms;
     runs++;
-
-
 
 
     cudaError_t error = cudaGetLastError();
