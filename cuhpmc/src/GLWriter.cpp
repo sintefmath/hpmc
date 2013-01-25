@@ -31,6 +31,7 @@ namespace cuhpmc {
         extern std::string hp5_downtraversal_430;
         extern std::string mc_extract_430;
         extern std::string gl_direct_vs_430;
+        extern std::string gl_direct_gs_430;
         extern std::string gl_direct_fs_430;
     } // of namespace resources
 
@@ -56,41 +57,50 @@ GLWriter::GLWriter( GLIsoSurface* iso_surface )
 
     const std::string vs_src = "#version 430\n" +
                                defines.str() +
-                               resources::gl_direct_vs_430 +
-                               resources::mc_extract_430 +
-                               resources::hp5_downtraversal_430;
+                               resources::gl_direct_vs_430;
+    const std::string gs_src = "#version 430\n" +
+                                defines.str() +
+                                resources::gl_direct_gs_430 +
+                                resources::mc_extract_430 +
+            resources::hp5_downtraversal_430;
+
     const std::string fs_src = resources::gl_direct_fs_430;
     std::stringstream out;
 
     GLint vs = compileShader( out, vs_src, GL_VERTEX_SHADER );
     if( vs != 0 ) {
-        GLint fs = compileShader( out, fs_src, GL_FRAGMENT_SHADER );
-        if( fs != 0 ) {
-            m_program = glCreateProgram();
-            glAttachShader( m_program, vs );
-            glAttachShader( m_program, fs );
-            if( linkShaderProgram( out, m_program ) ) {
-                GLint loc = glGetUniformLocation( m_program, "hp5_offsets" );
-                glProgramUniform1uiv( m_program, loc, m_iso_surface->hp5Levels(), m_iso_surface->hp5Offsets().data() );
-                std::cerr << "loc=" << loc << "\n";
-                for(int i=0; i<m_iso_surface->hp5Levels(); i++ ) {
-                    std::cerr << m_iso_surface->hp5Offsets()[i] << "\n";
-                }
-                m_loc_iso = glGetUniformLocation( m_program, "iso" );
-                m_loc_mvp = glGetUniformLocation( m_program, "modelviewprojection" );
-                m_loc_nm = glGetUniformLocation( m_program, "normalmatrix" );
-                if( m_conf_constmem_apex ) {
-                    m_block_ix_apex = glGetUniformBlockIndex( m_program, "HP5Apex" );
+        GLint gs = compileShader( out, gs_src, GL_GEOMETRY_SHADER );
+        if( gs != 0 ) {
+            GLint fs = compileShader( out, fs_src, GL_FRAGMENT_SHADER );
+            if( fs != 0 ) {
+                m_program = glCreateProgram();
+                glAttachShader( m_program, vs );
+                glAttachShader( m_program, gs );
+                glAttachShader( m_program, fs );
+                if( linkShaderProgram( out, m_program ) ) {
+                    GLint loc = glGetUniformLocation( m_program, "hp5_offsets" );
+                    glProgramUniform1uiv( m_program, loc, m_iso_surface->hp5Levels(), m_iso_surface->hp5Offsets().data() );
+                    std::cerr << "loc=" << loc << "\n";
+                    for(int i=0; i<m_iso_surface->hp5Levels(); i++ ) {
+                        std::cerr << m_iso_surface->hp5Offsets()[i] << "\n";
+                    }
+                    m_loc_iso = glGetUniformLocation( m_program, "iso" );
+                    m_loc_mvp = glGetUniformLocation( m_program, "modelviewprojection" );
+                    m_loc_nm = glGetUniformLocation( m_program, "normalmatrix" );
+                    if( m_conf_constmem_apex ) {
+                        m_block_ix_apex = glGetUniformBlockIndex( m_program, "HP5Apex" );
+                    }
+                    else {
+                        m_block_ix_apex = -1;
+                    }
                 }
                 else {
-                    m_block_ix_apex = -1;
+                    glDeleteProgram( m_program );
+                    m_program = 0;
                 }
+                glDeleteShader( fs );
             }
-            else {
-                glDeleteProgram( m_program );
-                m_program = 0;
-            }
-            glDeleteShader( fs );
+            glDeleteShader( gs );
         }
         glDeleteShader( vs );
     }
@@ -140,7 +150,7 @@ GLWriter::render( const GLfloat* modelview_projection,
             glUniformMatrix3fv( m_loc_nm, 1, GL_FALSE, normal_matrix );
 
             glBindBuffer( GL_DRAW_INDIRECT_BUFFER, i->hp5GLBuf() );
-            glDrawArraysIndirect( GL_TRIANGLES, NULL );
+            glDrawArraysIndirect( GL_POINTS, NULL );
             glBindBuffer( GL_DRAW_INDIRECT_BUFFER, 0 );
 
         }

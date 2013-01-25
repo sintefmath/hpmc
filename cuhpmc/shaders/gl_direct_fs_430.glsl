@@ -18,7 +18,9 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-in vec3 normal;
+in GO {
+    vec3                normal;
+} in_f;
 
 layout(location=0)   out vec4 fragment;
 
@@ -26,7 +28,7 @@ void
 main()
 {
     vec3 v = vec3( 0.0, 0.0, 1.0 );
-    vec3 n = normalize( normal );
+    vec3 n = normalize( in_f.normal );
     if( n.z < 0.0 ) {
         n = -n;
     }
