@@ -17,7 +17,20 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+out VG {
+    uint pos;
+    uint remainder;
+} out_v;
+
+void
+hp5_downtraverse( out uint pos, out uint key_remainder, in uint key );
+
 void
 main()
 {
+    uint t_pos;
+    uint t_remainder;
+    hp5_downtraverse( t_pos, t_remainder, 3*gl_VertexID );
+    out_v.pos = t_pos;
+    out_v.remainder = t_remainder;
 }

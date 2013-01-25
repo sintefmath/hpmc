@@ -55,14 +55,14 @@ GLWriter::GLWriter( GLIsoSurface* iso_surface )
         defines << "#define CUHMPC_CONF_CONSTMEM_APEX\n";
     }
 
-    const std::string vs_src = "#version 430\n" +
-                               defines.str() +
-                               resources::gl_direct_vs_430;
-    const std::string gs_src = "#version 430\n" +
-                                defines.str() +
-                                resources::gl_direct_gs_430 +
-                                resources::mc_extract_430 +
-            resources::hp5_downtraversal_430;
+    const std::string vs_src = "#version 430\n"
+                             + defines.str()
+                             + resources::gl_direct_vs_430
+                             + resources::hp5_downtraversal_430;
+    const std::string gs_src = "#version 430\n"
+                             + defines.str()
+                             + resources::gl_direct_gs_430
+                             + resources::mc_extract_430;
 
     const std::string fs_src = resources::gl_direct_fs_430;
     std::stringstream out;
@@ -107,6 +107,8 @@ GLWriter::GLWriter( GLIsoSurface* iso_surface )
     if( out.tellp() != 0 ) {
         out << "--- vertex source --------------------------------------------------------------\n";
         dumpSource( out, vs_src );
+        out << "--- geometry source ------------------------------------------------------------\n";
+        dumpSource( out, gs_src );
         out << "--- fragment source ------------------------------------------------------------\n";
         dumpSource( out, fs_src );
         std::cerr << out.str() << "\n";
