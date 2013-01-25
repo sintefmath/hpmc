@@ -9,6 +9,7 @@ cmake_install.cmake
 /texture3d
 /transform_feedback
 /splatting
+buildtools
 
 # Compiled Object files
 *.slo
