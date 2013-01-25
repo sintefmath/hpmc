@@ -30,6 +30,7 @@ namespace cuhpmc {
     namespace resources {
         extern std::string hp5_downtraversal_430;
         extern std::string mc_extract_430;
+        extern std::string mc_per_cell_430;
         extern std::string gl_direct_vs_430;
         extern std::string gl_direct_gs_430;
         extern std::string gl_direct_fs_430;
@@ -58,6 +59,7 @@ GLWriter::GLWriter( GLIsoSurface* iso_surface )
     const std::string vs_src = "#version 430\n"
                              + defines.str()
                              + resources::gl_direct_vs_430
+                             + resources::mc_per_cell_430
                              + resources::hp5_downtraversal_430;
     const std::string gs_src = "#version 430\n"
                              + defines.str()

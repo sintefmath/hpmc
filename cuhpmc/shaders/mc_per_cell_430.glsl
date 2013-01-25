@@ -17,29 +17,21 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-out VG {
-    uvec3 i0;
-    uint mc_case;
-    uint remainder;
-} out_v;
+layout(binding=3)   uniform usamplerBuffer  cases_tex;
 
 void
-hp5_downtraverse( out uint pos, out uint key_remainder, in uint key );
-
-void
-mc_per_cell( out uvec3 i0, out uint mc_case, in uint hp_pos );
-
-void
-main()
+mc_per_cell( out uvec3 i0, out uint mc_case, in uint hp_pos )
 {
-    uint t_pos;
-    uint t_remainder;
-    hp5_downtraverse( t_pos, t_remainder, 3*gl_VertexID );
-    out_v.remainder = t_remainder;
+    // Calc 3D grid pos from linear input stream pos.
+    uint c_lix = hp_pos / 800;
+    uint t_lix = hp_pos % 800;
+    uvec3 ci = uvec3( 31u*( c_lix % CUHPMC_CHUNKS_X ),
+                       5u*( (c_lix/CUHPMC_CHUNKS_X) % CUHPMC_CHUNKS_Y ),
+                       5u*( (c_lix/CUHPMC_CHUNKS_X) / CUHPMC_CHUNKS_Y ) );
+    i0 = uvec3( ci.x + ((t_lix / 5u)%32u),
+                ci.y + ((t_lix / 5u)/32u),
+                ci.z + ( t_lix%5u ) );
 
-    uvec3 t_i0;
-    uint t_mc_case;
-    mc_per_cell( t_i0, t_mc_case, t_pos );
-    out_v.i0 = t_i0;
-    out_v.mc_case = t_mc_case;
+    mc_case = texelFetch( cases_tex, int(hp_pos) ).r;
+
 }

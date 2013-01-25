@@ -19,24 +19,11 @@
 
 layout(binding=0)   uniform usampler2D      intersection_table_tex;
 layout(binding=1)   uniform samplerBuffer   field_tex;
-layout(binding=3)   uniform usamplerBuffer  cases_tex;
                     uniform float           iso;
 
 void
-mc_extract( out vec3 P, out vec3 N, in uint pos, in uint remainder )
+mc_extract( out vec3 P, out vec3 N, in uvec3 i0, in uint mc_case, in uint remainder )
 {
-    // Calc 3D grid pos from linear input stream pos.
-    uint c_lix = pos / 800;
-    uint t_lix = pos % 800;
-    uvec3 ci = uvec3( 31u*( c_lix % CUHPMC_CHUNKS_X ),
-                       5u*( (c_lix/CUHPMC_CHUNKS_X) % CUHPMC_CHUNKS_Y ),
-                       5u*( (c_lix/CUHPMC_CHUNKS_X) / CUHPMC_CHUNKS_Y ) );
-    uvec3 i0 = uvec3( ci.x + ((t_lix / 5u)%32u),
-                      ci.y + ((t_lix / 5u)/32u),
-                      ci.z + ( t_lix%5u ) );
-
-    uint mc_case = texelFetch( cases_tex, int(pos) ).r;
-
     uint isec = texelFetch( intersection_table_tex,
                            ivec2( remainder, mc_case ), 0 ).r;
     uvec3 oa = i0 + uvec3( (isec   )&1u,
