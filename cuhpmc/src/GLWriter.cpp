@@ -28,12 +28,15 @@
 
 namespace cuhpmc {
     namespace resources {
+        extern std::string hp5_downtraversal_430;
+        extern std::string mc_extract_430;
         extern std::string gl_direct_vs_430;
         extern std::string gl_direct_fs_430;
     } // of namespace resources
 
 GLWriter::GLWriter( GLIsoSurface* iso_surface )
     : AbstractWriter( iso_surface ),
+      m_conf_constmem_apex( true ),
       m_program( 0 )
 {
     std::stringstream defines;
@@ -47,10 +50,15 @@ GLWriter::GLWriter( GLIsoSurface* iso_surface )
     defines << "#define CUHPMC_SCALE_Y           " << (1.f/m_field->height()) << "\n";
     defines << "#define CUHPMC_SCALE_Z           " << (1.f/m_field->depth()) << "\n";
     defines << "#define CUHPMC_SIZE              " << m_iso_surface->hp5Size() << "\n";
+    if( m_conf_constmem_apex ) {
+        defines << "#define CUHMPC_CONF_CONSTMEM_APEX\n";
+    }
 
     const std::string vs_src = "#version 430\n" +
                                defines.str() +
-                               resources::gl_direct_vs_430;
+                               resources::gl_direct_vs_430 +
+                               resources::mc_extract_430 +
+                               resources::hp5_downtraversal_430;
     const std::string fs_src = resources::gl_direct_fs_430;
     std::stringstream out;
 
@@ -71,43 +79,12 @@ GLWriter::GLWriter( GLIsoSurface* iso_surface )
                 m_loc_iso = glGetUniformLocation( m_program, "iso" );
                 m_loc_mvp = glGetUniformLocation( m_program, "modelviewprojection" );
                 m_loc_nm = glGetUniformLocation( m_program, "normalmatrix" );
-#if 0
-                glUseProgram( extract_p );
-                uniform1i( extract_p, "field_tex", 0 );
-                uniform1i( extract_p, "hp5_tex", 1 );
-                uniform1i( extract_p, "intersection_table_tex",2 );
-                uniform2i( extract_p, "cells", (field_size.width-1), (field_size.height-1) );
-                uniform1i( extract_p, "hp5_levels", hp5_levels );
-                uniform1i( extract_p, "row_pitch", field_size.width );
-                uniform1i( extract_p, "slice_pitch", field_size.width*field_size.height );
-                uniform3i( extract_p, "chunks", hp5_chunks.x, hp5_chunks.y, hp5_chunks.z );
-                uniform1iv( extract_p, "hp5_offsets", 20, &hp5_offsets[0] );
-
-
-                if( extract_case_buffer_load ) {
-
+                if( m_conf_constmem_apex ) {
+                    m_block_ix_apex = glGetUniformBlockIndex( m_program, "HP5Apex" );
                 }
                 else {
+                    m_block_ix_apex = -1;
                 }
-                uniform1i( extract_p, "cases_tex",3 );
-
-                if( extract_apex_constmem ) {
-                    extract_apex_ub_ix = glGetUniformBlockIndex( extract_p, "HP5Apex" );
-                }
-
-
-
-                extract_modelviewprojection_loc = glGetUniformLocation( extract_p, "modelviewprojection" );
-                extract_normalmatrix_loc = glGetUniformLocation( extract_p, "normalmatrix" );
-                extract_iso_loc = glGetUniformLocation( extract_p, "iso" );
-
-                // Solid shader
-                extract_solid_f = compileShader( snarfFile( "glsl/solid_f.glsl" ),
-                                                 GL_FRAGMENT_SHADER );
-                extract_solid_p = glCreateProgram();
-
-#endif
-
             }
             else {
                 glDeleteProgram( m_program );
@@ -153,6 +130,10 @@ GLWriter::render( const GLfloat* modelview_projection,
             glActiveTexture( GL_TEXTURE3 );
             glBindTexture( GL_TEXTURE_BUFFER, i->caseGLTex() );
 
+            if( m_conf_constmem_apex ) {
+                glBindBufferBase( GL_UNIFORM_BUFFER, m_block_ix_apex, i->hp5GLBuf() );
+            }
+
             glUseProgram( m_program );
             glUniform1f( m_loc_iso, m_iso_surface->iso() );
             glUniformMatrix4fv( m_loc_mvp, 1, GL_FALSE, modelview_projection );
@@ -161,7 +142,11 @@ GLWriter::render( const GLfloat* modelview_projection,
             glBindBuffer( GL_DRAW_INDIRECT_BUFFER, i->hp5GLBuf() );
             glDrawArraysIndirect( GL_TRIANGLES, NULL );
             glBindBuffer( GL_DRAW_INDIRECT_BUFFER, 0 );
+
         }
+    }
+    if( m_conf_constmem_apex ) {
+        glBindBufferBase( GL_UNIFORM_BUFFER, m_block_ix_apex, 0 );
     }
     glActiveTexture( GL_TEXTURE3 );
     glBindTexture( GL_TEXTURE_BUFFER, 0);

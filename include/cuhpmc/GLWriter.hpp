@@ -38,11 +38,13 @@ public:
             cudaStream_t stream );
 
 protected:
+    bool    m_conf_constmem_apex;
     GLuint  m_program;
     GLint   m_loc_iso;
     GLint   m_loc_hp_offsets;
     GLint   m_loc_mvp;
     GLint   m_loc_nm;
+    GLint   m_block_ix_apex;
 
     /** Adds line numbers to a source string and writes it to out. */
     void
