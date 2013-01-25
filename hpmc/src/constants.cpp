@@ -52,7 +52,7 @@ using std::endl;
 
 // -----------------------------------------------------------------------------
 struct HPMCConstants*
-HPMCcreateConstants()
+HPMCcreateConstants( GLint max_gl_major, GLint max_gl_minor )
 {
     if( !HPMCcheckGL( __FILE__, __LINE__ ) ) {
 #ifdef DEBUG
@@ -65,6 +65,14 @@ HPMCcreateConstants()
     GLint gl_major, gl_minor;
     glGetIntegerv( GL_MAJOR_VERSION, &gl_major );
     glGetIntegerv( GL_MINOR_VERSION, &gl_minor );
+
+    if( gl_major > max_gl_major ) {
+        gl_major = max_gl_major;
+        gl_minor = max_gl_minor;
+    }
+    else if( (gl_major == max_gl_major) && (gl_minor > max_gl_minor ) ) {
+        gl_minor = max_gl_minor;
+    }
 
 //    gl_major = 2;
 //    gl_minor = 0;
@@ -92,7 +100,6 @@ HPMCcreateConstants()
             return NULL;
 #endif
         }
-
     }
 
     struct HPMCConstants *s = new HPMCConstants;
@@ -142,7 +149,44 @@ HPMCcreateConstants()
         s->m_target = HPMC_TARGET_GL43_GLSL430;
     }
 
-
+#ifdef DEBUG
+    std::cerr << "HPMC uses target OpenGL ";
+    switch( s->m_target) {
+    case HPMC_TARGET_GL20_GLSL110:
+        std::cerr << "2.0";
+        break;
+    case HPMC_TARGET_GL21_GLSL120:
+        std::cerr << "2.1";
+        break;
+    case HPMC_TARGET_GL30_GLSL130:
+        std::cerr << "3.0";
+        break;
+    case HPMC_TARGET_GL31_GLSL140:
+        std::cerr << "3.1";
+        break;
+    case HPMC_TARGET_GL32_GLSL150:
+        std::cerr << "3.2";
+        break;
+    case HPMC_TARGET_GL33_GLSL330:
+        std::cerr << "3.3";
+        break;
+    case HPMC_TARGET_GL40_GLSL400:
+        std::cerr << "4.0";
+        break;
+    case HPMC_TARGET_GL41_GLSL410:
+        std::cerr << "4.1";
+        break;
+    case HPMC_TARGET_GL42_GLSL420:
+        std::cerr << "4.2";
+        break;
+    case HPMC_TARGET_GL43_GLSL430:
+        std::cerr << "4.3";
+        break;
+    default:
+        std::cerr << "???";
+    }
+    std::cerr << "." << std::endl;
+#endif
 
 
     // --- store state ---------------------------------------------------------

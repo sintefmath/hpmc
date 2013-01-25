@@ -144,7 +144,7 @@ void
 init()
 {
     // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = HPMCcreateConstants();
+    hpmc_c = HPMCcreateConstants( 4, 3 );
     hpmc_h = HPMCcreateHistoPyramid( hpmc_c );
 
     HPMCsetLatticeSize( hpmc_h,

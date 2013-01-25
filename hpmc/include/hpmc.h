@@ -308,7 +308,7 @@ struct HPMCTraversalHandle;
   * \sideeffect None.
   */
 struct HPMCConstants*
-HPMCcreateConstants();
+HPMCcreateConstants( GLint max_gl_major, GLint max_gl_minor );
 
 /** Destroys a set of constants.
   *
