@@ -17,26 +17,19 @@ FIND_PACKAGE( OpenGL REQUIRED )
 FIND_PACKAGE( GLUT REQUIRED )
 FIND_PACKAGE( GLEW REQUIRED )
 
-SET( HPMC_SRC
-     "hpmc/src/hpiface.cpp"
-     "hpmc/src/util.cpp"
-     "hpmc/src/tables.cpp"
-     "hpmc/src/triface.cpp"
-     "hpmc/src/buildpass.cpp"
-     "hpmc/src/init.cpp"
-     "hpmc/src/constants.cpp"
-     "hpmc/src/shadergen.cpp"
-     "hpmc/src/shaderbuild.cpp"
-     "hpmc/src/texfbosetup.cpp"
-)
-#SET( CMAKE_CXX_FLAGS "-pedantic -O2 -DDEBUG ${CMAKE_CXX_FLAGS}" )
-#SET( CMAKE_CXX_FLAGS "-pedantic ${CMAKE_CXX_FLAGS}" )
+FILE( GLOB HPMC_HDRS "hpmc/include/*.h" "hpmc/include/*.hpp" "hpmc/src/*.hpp" )
+SOURCE_GROUP( "HPMC headers" FILES ${HPMC_HDRS} )
+SET_SOURCE_FILES_PROPERTIES( ${HPMC_HDRS} PROPERTIES HEADER_FILE_ONLY TRUE )
+
+FILE( GLOB HPMC_SRCS "hpmc/src/*.cpp" )
+SOURCE_GROUP( "HPMC sources" FILES ${HPMC_SRCS} )
+
 
 IF( DEBUG )
     SET( CMAKE_CXX_FLAGS "-DDEBUG ${CMAKE_CXX_FLAGS}" )
 ENDIF( DEBUG )
 
-ADD_LIBRARY( hpmc STATIC ${HPMC_SRC} )
+ADD_LIBRARY( hpmc STATIC ${HPMC_HDRS} ${HPMC_SRCS} )
 TARGET_LINK_LIBRARIES( hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
 INCLUDE_DIRECTORIES( ${GLUT_INCLUDE_DIR} ${GLEW_INCLUDE_DIR} )
