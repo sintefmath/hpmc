@@ -225,7 +225,8 @@ render( float t,
 
     // Build histopyramid
     iso = sin(t);
-    HPMCbuildIsoSurface( hpmc_h, iso );
+    hpmc_h->build( iso );
+
     // Set up view matrices if pre 3.0
     glEnable( GL_DEPTH_TEST );
     if( hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130 ) {

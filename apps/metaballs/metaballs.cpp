@@ -250,7 +250,8 @@ render( float t,
     glUniform1f( builder_loc_twist, twist );
     glUniform3fv( builder_loc_centers, 8, &centers[0] );
 
-    HPMCbuildIsoSurface( hpmc_h, iso );
+    hpmc_h->build( iso );
+
     // Set up view matrices if pre 3.0
     glEnable( GL_DEPTH_TEST );
     if( hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130 ) {

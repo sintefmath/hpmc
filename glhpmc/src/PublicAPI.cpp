@@ -144,55 +144,6 @@ HPMCgetBuilderProgram( struct HPMCIsoSurface*  h )
 }
 
 
-// -----------------------------------------------------------------------------
-void
-HPMCdestroyIsoSurface( struct HPMCIsoSurface* h )
-{
-    if( h == NULL ) {
-        return;
-    }
-    Logger log( h->constants(), package + ".destroyIsoSurface" );
-    delete h;
-}
-
-// -----------------------------------------------------------------------------
-void
-HPMCbuildIsoSurface( struct   HPMCIsoSurface* h,
-                       GLfloat  threshold )
-{
-    if( h == NULL ) {
-        return;
-    }
-    Logger log( h->constants(), package + ".buildIsoSurface", true );
-/*
-    std::cerr << __LINE__ << "\t" <<
-                 th->m_handle->histoPyramid().texture() << "\n";
-*/
-    // --- store state ---------------------------------------------------------
-    GLint old_viewport[4];
-    GLuint old_pbo;
-    GLuint old_fbo;
-    GLuint old_prog;
-    glGetIntegerv( GL_VIEWPORT, old_viewport );
-    glGetIntegerv( GL_CURRENT_PROGRAM, reinterpret_cast<GLint*>(&old_prog) );
-    glGetIntegerv( GL_PIXEL_PACK_BUFFER_BINDING, reinterpret_cast<GLint*>(&old_pbo) );
-    glGetIntegerv( GL_FRAMEBUFFER_BINDING, reinterpret_cast<GLint*>(&old_fbo) );
-
-    h->setThreshold( threshold );
-    h->build();
-
-    // --- restore state -------------------------------------------------------
-
-    if( h->constants()->target() >= HPMC_TARGET_GL30_GLSL130 ) {
-        glBindVertexArray( 0 ); // GPGPU quad uses VAO.
-    }
-    glBindBuffer( GL_PIXEL_PACK_BUFFER, old_pbo );
-    glBindFramebuffer( GL_FRAMEBUFFER, old_fbo );
-    glViewport( old_viewport[0], old_viewport[1], old_viewport[2], old_viewport[3] );
-    glUseProgram( old_prog );
-
-    // should check for errors and h->setAsBroken()?
-}
 
 GLuint
 HPMCacquireNumberOfVertices( struct HPMCIsoSurface* h )

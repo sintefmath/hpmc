@@ -127,10 +127,8 @@ public:
     threshold() const { return m_threshold; }
 
     void
-    setThreshold( GLfloat threshold ) { m_threshold = threshold; }
+    build( GLfloat iso );
 
-    void
-    build();
 
     GLsizei
     vertexCount();
@@ -153,6 +151,8 @@ private:
     HPMCHistoPyramid        m_histopyramid;
 
     HPMCIsoSurface(HPMCConstants *constants );
+
+
 
 };
 

@@ -411,7 +411,7 @@ render( float t,
 {
     // --- build HistoPyramid --------------------------------------------------
     float iso = sin(t);
-    HPMCbuildIsoSurface( hpmc_h, iso );
+    hpmc_h->build( iso );
 
     // --- clear screen and set up view ----------------------------------------
     glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );

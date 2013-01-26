@@ -497,7 +497,7 @@ render( float t,
 
     // --- build HistoPyramid --------------------------------------------------
     iso = .3;//.5 + 0.48*cosf( t );
-    HPMCbuildIsoSurface( hpmc_h, iso );
+    hpmc_h->build( iso );
 
     // --- render surface ------------------------------------------------------
 

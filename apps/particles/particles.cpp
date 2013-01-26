@@ -462,7 +462,8 @@ render( float t,
     GLuint builder = HPMCgetBuilderProgram( hpmc_h );
     glUseProgram( builder );
     glUniform1fv( glGetUniformLocation( builder, "shape" ), 12, &CC[0] );
-    HPMCbuildIsoSurface( hpmc_h, iso );
+
+    hpmc_h->build( iso );
 
     // Get number of vertices in MC triangulation, forces CPU-GPU sync.
     GLsizei N = HPMCacquireNumberOfVertices( hpmc_h );

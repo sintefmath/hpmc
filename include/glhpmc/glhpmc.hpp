@@ -416,19 +416,6 @@ GLuint
 HPMCgetBuilderProgram( struct HPMCIsoSurface*  h );
 
 
-/** Free the resources associated with a handle. */
-void
-HPMCdestroyIsoSurface( struct HPMCIsoSurface* handle );
-
-/** Builds the histopyramid using a volume texture.
-  *
-  * \sideeffect GL_CURRENT_PROGRAM,
-  *             GL_TEXTURE_2D_BINDING,
-  *             GL_FRAMEBUFFER_BINDING
-  */
-void
-HPMCbuildIsoSurface( struct HPMCIsoSurface*  h,
-                       GLfloat                   threshold );
 
 /** Returns the number of vertices in the histopyramid.
   *

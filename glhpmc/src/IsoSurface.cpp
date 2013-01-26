@@ -113,6 +113,49 @@ HPMCIsoSurface::setGridExtent( GLsizei x_extent, GLsizei y_extent, GLsizei z_ext
     }
 }
 
+void
+HPMCIsoSurface::build( GLfloat iso )
+{
+    Logger log( m_constants, package + ".build", true );
+    if( m_broken ) {
+        log.errorMessage( "Invoked while broken" );
+        return;
+    }
+
+    // --- store state ---------------------------------------------------------
+    GLint old_viewport[4];
+    glGetIntegerv( GL_VIEWPORT, old_viewport );
+
+    // set iso
+    m_threshold = iso;
+    // try to untaint
+    if( !untaint() ) {
+        setAsBroken();
+    }
+    else {
+        if( !m_base_builder.build( m_hp_build.m_tex_unit_1, m_hp_build.m_tex_unit_2 ) ) {
+            setAsBroken();
+        }
+        else {
+            if( !m_histopyramid.build( m_hp_build.m_tex_unit_1 ) ) {
+                setAsBroken();
+            }
+        }
+    }
+    // --- restore state -------------------------------------------------------
+    if( m_constants->target() >= HPMC_TARGET_GL30_GLSL130 ) {
+        glBindVertexArray( 0 ); // GPGPU quad uses VAO.
+    }
+    glBindBuffer( GL_PIXEL_PACK_BUFFER, 0 );
+    glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+    glViewport( old_viewport[0], old_viewport[1], old_viewport[2], old_viewport[3] );
+    glUseProgram( 0 );
+
+    // should check for errors and h->setAsBroken()?
+
+}
+
+
 
 HPMCIsoSurface::HPMCIsoSurface( HPMCConstants* constants )
     : m_field( constants ),
@@ -192,29 +235,6 @@ HPMCIsoSurface::vertexCount()
     return m_histopyramid.count();
 }
 
-
-void
-HPMCIsoSurface::build()
-{
-    Logger log( m_constants, package + ".build" );
-    if( isBroken() ) {
-        log.errorMessage( "Invoked while broken" );
-        return;
-    }
-    if( !untaint() ) {
-        setAsBroken();
-    }
-    else {
-        if( !m_base_builder.build( m_hp_build.m_tex_unit_1, m_hp_build.m_tex_unit_2 ) ) {
-            setAsBroken();
-        }
-        else {
-            if( !m_histopyramid.build( m_hp_build.m_tex_unit_1 ) ) {
-                setAsBroken();
-            }
-        }
-    }
-}
 
 
 HPMCIsoSurface::~HPMCIsoSurface()
