@@ -25,19 +25,17 @@
 #include <glhpmc/Constants.hpp>
 #include <glhpmc/Logger.hpp>
 
-using namespace HPMC;
-using std::endl;
 
-static const std::string package = "HPMC.HistoPyramid";
 
-namespace hpmc {
+namespace glhpmc {
     namespace resources {
         extern std::string reduction_first_fs_110;
         extern std::string reduction_first_fs_130;
         extern std::string reduction_upper_fs_110;
         extern std::string reduction_upper_fs_130;
     } // of namespace resources
-} // of namespace hpmc
+    static const std::string package = "HPMC.HistoPyramid";
+    using std::endl;
 
 
 HPMCHistoPyramid::HPMCHistoPyramid(HPMCConstants *constants )
@@ -73,7 +71,7 @@ HPMCHistoPyramid::init()
 
         // Build base-level reduction
         GLuint fs_0 = HPMCcompileShader( m_constants->versionString() +
-                                         hpmc::resources::reduction_first_fs_110,
+                                         resources::reduction_first_fs_110,
                                          GL_FRAGMENT_SHADER );
         if( fs_0 != 0 ) {
             m_reduce1_program = glCreateProgram();
@@ -99,7 +97,7 @@ HPMCHistoPyramid::init()
 
         // Build upper-level reduction
         GLuint fs_n = HPMCcompileShader( m_constants->versionString() +
-                                         hpmc::resources::reduction_upper_fs_110,
+                                         resources::reduction_upper_fs_110,
                                          GL_FRAGMENT_SHADER );
         if( fs_n != 0 ) {
             m_reducen_program = glCreateProgram();
@@ -131,7 +129,7 @@ HPMCHistoPyramid::init()
 
         // Build base-level reduction
         GLuint fs_0 = HPMCcompileShader( m_constants->versionString() +
-                                         hpmc::resources::reduction_first_fs_130,
+                                         resources::reduction_first_fs_130,
                                          GL_FRAGMENT_SHADER );
         if( fs_0 != 0 ) {
             m_reduce1_program = glCreateProgram();
@@ -158,7 +156,7 @@ HPMCHistoPyramid::init()
 
         // Build upper-level reduction
         GLuint fs_n = HPMCcompileShader( m_constants->versionString() +
-                                         hpmc::resources::reduction_upper_fs_130,
+                                         resources::reduction_upper_fs_130,
                                          GL_FRAGMENT_SHADER );
         if( fs_n != 0 ) {
             m_reducen_program = glCreateProgram();
@@ -390,3 +388,5 @@ HPMCHistoPyramid::configure( GLsizei size_l2 )
     }
     return retval;
 }
+
+} // of namespace glhpmc

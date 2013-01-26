@@ -21,6 +21,7 @@
 #include <glhpmc/Constants.hpp>
 #include <glhpmc/Logger.hpp>
 
+namespace glhpmc {
 static const std::string package = "HPMC.SequenceRenderer";
 
 HPMCSequenceRenderer::HPMCSequenceRenderer( HPMCConstants* constants )
@@ -112,3 +113,5 @@ HPMCSequenceRenderer::unbindVertexInputs() const
         glBindVertexArray( 0 );
     }
 }
+
+} // of namespace glhpmc

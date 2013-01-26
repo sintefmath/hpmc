@@ -1,3 +1,4 @@
+#pragma once
 /* Copyright STIFTELSEN SINTEF 2012
  *
  * This file is part of the HPMC Library.
@@ -23,8 +24,6 @@
   *
   *
   */
-#ifndef _HPMC_INTERNAL_H_
-#define _HPMC_INTERNAL_H_
 
 #include <GL/glew.h>
 #include <string>
@@ -41,7 +40,7 @@
 
 // Logger interface that should be easy to replace with log4cxx
 
-namespace HPMC {
+namespace glhpmc {
 /*
 typedef std::string OldLogger;
 static inline OldLogger getLogger( const std::string& component ) { return component; }
@@ -67,7 +66,6 @@ static inline OldLogger getLogger( const std::string& component ) { return compo
 #define HPMCLOG_FATAL(a,b) HPMCLOG_OUTPUT("[F]",a,b)
 */
 
-}
 
 #define remapCode( code ) (    \
     ((((code)>>0)&0x1)<<0) |   \
@@ -159,5 +157,4 @@ HPMCgenerateExtractVertexFunction( struct HPMCIsoSurface* h );
 
 
 /** \} */
-
-#endif // _HPMC_INTERNAL_H_
+} // of namespace glhpmc

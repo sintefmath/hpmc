@@ -1,3 +1,4 @@
+#pragma once
 /* Copyright STIFTELSEN SINTEF 2012
  *
  * This file is part of the HPMC Library.
@@ -16,10 +17,10 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef BASELEVELBUILDER_HPP
-#define BASELEVELBUILDER_HPP
 #include <glhpmc/glhpmc.hpp>
 #include <glhpmc/Field.hpp>
+
+namespace glhpmc {
 
 class HPMCIsoSurface;
 
@@ -74,5 +75,4 @@ protected:
 
 };
 
-
-#endif // BASELEVELBUILDER_HPP
+} // of namespace glhpmc

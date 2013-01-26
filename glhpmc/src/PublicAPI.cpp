@@ -28,9 +28,9 @@
 #include <glhpmc/IsoSurfaceRenderer.hpp>
 #include <glhpmc/Logger.hpp>
 
-static const std::string package = "HPMC.publicAPI";
+namespace glhpmc {
+    static const std::string package = "HPMC.publicAPI";
 
-using namespace HPMC;
 
 struct HPMCConstants*
 HPMCcreateConstants( HPMCTarget target, HPMCDebugBehaviour debug )
@@ -455,3 +455,5 @@ HPMCextractVerticesTransformFeedbackEXT( struct HPMCIsoSurfaceRenderer* th, GLbo
     glUseProgram( curr_prog );
     return true;
 }
+
+} // of namespace glhpmc

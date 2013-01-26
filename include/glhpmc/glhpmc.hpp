@@ -1,3 +1,4 @@
+#pragma once
 /* Copyright STIFTELSEN SINTEF 2012
  *
  * This file is part of the HPMC Library.
@@ -16,6 +17,7 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <GL/glew.h>
 /**
   * \mainpage
   *
@@ -278,14 +280,10 @@
 /** \defgroup hpmc_public Public API
   * \{
   */
-#ifndef _HPMC_H_
-#define _HPMC_H_
 
-#include <GL/glew.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace glhpmc {
+
 
 struct HPMCConstants;
 
@@ -604,9 +602,6 @@ HPMCextractVerticesTransformFeedbackNV( struct HPMCIsoSurfaceRenderer* th, GLboo
 bool
 HPMCextractVerticesTransformFeedbackEXT( struct HPMCIsoSurfaceRenderer* th, GLboolean flip_orientation );
 
+} // of namespace glhpmc
 
-#ifdef __cplusplus
-} // of extern "C"
-#endif
-#endif // of _HPMC_H_
 /** \} */

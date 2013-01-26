@@ -1,3 +1,4 @@
+#pragma once
 /* Copyright STIFTELSEN SINTEF 2012
  *
  * This file is part of the HPMC Library.
@@ -16,10 +17,10 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef HISTOPYRAMID_HPP
-#define HISTOPYRAMID_HPP
 #include <vector>
 #include <glhpmc/glhpmc.hpp>
+
+namespace glhpmc {
 
 class HPMCGPGPUQuad;
 
@@ -72,4 +73,4 @@ protected:
 
 };
 
-#endif // HISTOPYRAMID_HPP
+} // of namespace glhpmc

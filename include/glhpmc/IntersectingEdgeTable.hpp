@@ -1,3 +1,4 @@
+#pragma once
 /* Copyright STIFTELSEN SINTEF 2012
  *
  * This file is part of the HPMC Library.
@@ -16,9 +17,9 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef INTERSECTINGEDGETABLE_HPP
-#define INTERSECTINGEDGETABLE_HPP
 #include <glhpmc/glhpmc.hpp>
+
+namespace glhpmc {
 
 /** Marching Cubes table with vertices encoded as edge intersections.
  *
@@ -63,4 +64,5 @@ protected:
     GLuint          m_tex_normal;
     GLuint          m_tex_normal_flip;
 };
-#endif // INTERSECTINGEDGETABLE_HPP
+
+} // of namespace glhpmc

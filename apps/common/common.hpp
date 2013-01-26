@@ -53,8 +53,8 @@ extern double               aspect_y;
 extern bool                 wireframe;
 extern bool                 record;
 extern bool                 binary;
-extern HPMCTarget           hpmc_target;
-extern HPMCDebugBehaviour   hpmc_debug;
+extern glhpmc::HPMCTarget           hpmc_target;
+extern glhpmc::HPMCDebugBehaviour   hpmc_debug;
 
 
 void

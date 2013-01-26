@@ -21,7 +21,7 @@
 #include <glhpmc/IsoSurface.hpp>
 #include <glhpmc/Logger.hpp>
 
-using namespace HPMC;
+namespace glhpmc {
 static const std::string package = "HPMC.IsoSurface";
 
 HPMCIsoSurface::HPMCIsoSurface( HPMCConstants* constants )
@@ -131,3 +131,5 @@ HPMCIsoSurface::~HPMCIsoSurface()
 {
 
 }
+
+} // of namespace glhpmc

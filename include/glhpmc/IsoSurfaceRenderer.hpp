@@ -1,3 +1,4 @@
+#pragma once
 /* Copyright STIFTELSEN SINTEF 2012
  *
  * This file is part of the HPMC Library.
@@ -16,10 +17,11 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef ISOSURFACERENDERER_HPP
-#define ISOSURFACERENDERER_HPP
-#include <glhpmc/glhpmc.hpp>
+
 #include <string>
+#include <glhpmc/glhpmc.hpp>
+
+namespace glhpmc {
 
 struct HPMCIsoSurfaceRenderer
 {
@@ -52,5 +54,4 @@ protected:
 
 };
 
-
-#endif // ISOSURFACERENDERER_HPP
+} // of namespace glhpmc

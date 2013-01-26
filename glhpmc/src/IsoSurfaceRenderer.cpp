@@ -21,6 +21,7 @@
 #include <glhpmc/Constants.hpp>
 #include <glhpmc/Logger.hpp>
 
+namespace glhpmc {
 static const std::string package = "HPMC.IsoSurfaceRenderer";
 
 HPMCIsoSurfaceRenderer::HPMCIsoSurfaceRenderer(HPMCIsoSurface *iso_surface)
@@ -214,3 +215,4 @@ HPMCIsoSurfaceRenderer::draw( int transform_feedback_mode, bool flip_orientation
     return true;
 }
 
+} // of namespace glhpmc

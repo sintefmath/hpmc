@@ -69,8 +69,8 @@ double              aspect_y=1.0;
 bool                wireframe = false;
 bool                record = false;
 bool                binary = false;
-HPMCTarget          hpmc_target     = HPMC_TARGET_GL20_GLSL110;
-HPMCDebugBehaviour  hpmc_debug      = HPMC_DEBUG_NONE;
+glhpmc::HPMCTarget          hpmc_target     = glhpmc::HPMC_TARGET_GL20_GLSL110;
+glhpmc::HPMCDebugBehaviour  hpmc_debug      = glhpmc::HPMC_DEBUG_NONE;
 
 
 // === misc matrix operations ==================================================
@@ -329,7 +329,7 @@ struct frame_info
 void
 display()
 {
-    if( (hpmc_debug != HPMC_DEBUG_KHR_DEBUG) && (hpmc_debug != HPMC_DEBUG_KHR_DEBUG_VERBOSE) ) {
+    if( (hpmc_debug != glhpmc::HPMC_DEBUG_KHR_DEBUG) && (hpmc_debug != glhpmc::HPMC_DEBUG_KHR_DEBUG_VERBOSE) ) {
         GLenum error = glGetError();
         while( error != GL_NO_ERROR ) {
             std::cerr << "Render loop entered with GL error " << std::hex << error << std::endl;
@@ -432,11 +432,11 @@ display()
 
     if( floor(5.0*(t-dt)) != floor(5.0*(t)) ) {
         message = infoString( fps );
-        if( HPMC_TARGET_GL31_GLSL140 < hpmc_target ) {
+        if( glhpmc::HPMC_TARGET_GL31_GLSL140 < hpmc_target ) {
             std::cerr << message << std::endl;
         }
     }
-    if( hpmc_target <= HPMC_TARGET_GL31_GLSL140 ) {
+    if( hpmc_target <= glhpmc::HPMC_TARGET_GL31_GLSL140 ) {
         glUseProgram( 0 );
         glMatrixMode( GL_PROJECTION );
         glLoadIdentity();
@@ -453,7 +453,7 @@ display()
     pt = t;
     glutSwapBuffers();
 
-    if( (hpmc_debug != HPMC_DEBUG_KHR_DEBUG) && (hpmc_debug != HPMC_DEBUG_KHR_DEBUG_VERBOSE) ) {
+    if( (hpmc_debug != glhpmc::HPMC_DEBUG_KHR_DEBUG) && (hpmc_debug != glhpmc::HPMC_DEBUG_KHR_DEBUG_VERBOSE) ) {
         GLenum error = glGetError();
         while( error != GL_NO_ERROR ) {
             std::cerr << "Render loop produced GL error " << std::hex << error << std::endl;
@@ -543,73 +543,73 @@ main(int argc, char **argv)
     for( int i=1; i<argc; ) {
         int eat = 0;
         if( strcmp( argv[i], "--target-gl20" ) == 0 ) {
-            hpmc_target = HPMC_TARGET_GL20_GLSL110;
+            hpmc_target = glhpmc::HPMC_TARGET_GL20_GLSL110;
             eat = 1;
             target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl21" ) == 0 ) {
-            hpmc_target = HPMC_TARGET_GL21_GLSL120;
+            hpmc_target = glhpmc::HPMC_TARGET_GL21_GLSL120;
             eat = 1;
             target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl30" ) == 0 ) {
-            hpmc_target = HPMC_TARGET_GL30_GLSL130;
+            hpmc_target = glhpmc::HPMC_TARGET_GL30_GLSL130;
             eat = 1;
             target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl31" ) == 0 ) {
-            hpmc_target = HPMC_TARGET_GL31_GLSL140;
+            hpmc_target = glhpmc::HPMC_TARGET_GL31_GLSL140;
             eat = 1;
             target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl32" ) == 0 ) {
-            hpmc_target = HPMC_TARGET_GL32_GLSL150;
+            hpmc_target = glhpmc::HPMC_TARGET_GL32_GLSL150;
             eat = 1;
             target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl33" ) == 0 ) {
-            hpmc_target = HPMC_TARGET_GL33_GLSL330;
+            hpmc_target = glhpmc::HPMC_TARGET_GL33_GLSL330;
             eat = 1;
             target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl40" ) == 0 ) {
-            hpmc_target = HPMC_TARGET_GL40_GLSL400;
+            hpmc_target = glhpmc::HPMC_TARGET_GL40_GLSL400;
             eat = 1;
             target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl41" ) == 0 ) {
-            hpmc_target = HPMC_TARGET_GL41_GLSL410;
+            hpmc_target = glhpmc::HPMC_TARGET_GL41_GLSL410;
             eat = 1;
             target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl42" ) == 0 ) {
-            hpmc_target = HPMC_TARGET_GL42_GLSL420;
+            hpmc_target = glhpmc::HPMC_TARGET_GL42_GLSL420;
             eat = 1;
             target_set = true;
         }
         else if( strcmp( argv[i], "--target-gl43" ) == 0 ) {
-            hpmc_target = HPMC_TARGET_GL43_GLSL430;
+            hpmc_target = glhpmc::HPMC_TARGET_GL43_GLSL430;
             eat = 1;
             target_set = true;
         }
         else if( strcmp( argv[i], "--debug-none" ) == 0 ) {
-            hpmc_debug = HPMC_DEBUG_NONE;
+            hpmc_debug = glhpmc::HPMC_DEBUG_NONE;
             eat = 1;
         }
         else if( strcmp( argv[i], "--debug-stderr" ) == 0  ) {
-            hpmc_debug = HPMC_DEBUG_STDERR;
+            hpmc_debug = glhpmc::HPMC_DEBUG_STDERR;
             eat = 1;
         }
         else if( strcmp( argv[i], "--debug-stderr-verbose" ) == 0  ) {
-            hpmc_debug = HPMC_DEBUG_STDERR_VERBOSE;
+            hpmc_debug = glhpmc::HPMC_DEBUG_STDERR_VERBOSE;
             eat = 1;
         }
         else if( strcmp( argv[i], "--debug-khr-debug" ) == 0  ) {
-            hpmc_debug = HPMC_DEBUG_KHR_DEBUG;
+            hpmc_debug = glhpmc::HPMC_DEBUG_KHR_DEBUG;
             eat = 1;
         }
         else if( strcmp( argv[i], "--debug-khr-debug-verbose" ) == 0  ) {
-            hpmc_debug = HPMC_DEBUG_KHR_DEBUG_VERBOSE;
+            hpmc_debug = glhpmc::HPMC_DEBUG_KHR_DEBUG_VERBOSE;
             eat = 1;
         }
         else if( strcmp( argv[i], "--help" ) == 0 ) {
@@ -629,40 +629,40 @@ main(int argc, char **argv)
 
     if( target_set ) {
         switch( hpmc_target ) {
-        case HPMC_TARGET_GL20_GLSL110:
+        case glhpmc::HPMC_TARGET_GL20_GLSL110:
             glutInitContextVersion( 2, 0 );
             break;
-        case HPMC_TARGET_GL21_GLSL120:
+        case glhpmc::HPMC_TARGET_GL21_GLSL120:
             glutInitContextVersion( 2, 1 );
             break;
-        case HPMC_TARGET_GL30_GLSL130:
+        case glhpmc::HPMC_TARGET_GL30_GLSL130:
             glutInitContextVersion( 3, 0 );
             break;
-        case HPMC_TARGET_GL31_GLSL140:
+        case glhpmc::HPMC_TARGET_GL31_GLSL140:
             glutInitContextVersion( 3, 1 );
             break;
-        case HPMC_TARGET_GL32_GLSL150:
+        case glhpmc::HPMC_TARGET_GL32_GLSL150:
             glutInitContextVersion( 3, 2 );
             break;
-        case HPMC_TARGET_GL33_GLSL330:
+        case glhpmc::HPMC_TARGET_GL33_GLSL330:
             glutInitContextVersion( 3, 3 );
             break;
-        case HPMC_TARGET_GL40_GLSL400:
+        case glhpmc::HPMC_TARGET_GL40_GLSL400:
             glutInitContextVersion( 4, 0 );
             break;
-        case HPMC_TARGET_GL41_GLSL410:
+        case glhpmc::HPMC_TARGET_GL41_GLSL410:
             glutInitContextVersion( 4, 1 );
             break;
-        case HPMC_TARGET_GL42_GLSL420:
+        case glhpmc::HPMC_TARGET_GL42_GLSL420:
             glutInitContextVersion( 4, 2 );
             break;
-        case HPMC_TARGET_GL43_GLSL430:
+        case glhpmc::HPMC_TARGET_GL43_GLSL430:
             glutInitContextVersion( 4, 3 );
             break;
         }
     }
 
-    if( (hpmc_debug == HPMC_DEBUG_KHR_DEBUG) || (hpmc_debug == HPMC_DEBUG_KHR_DEBUG_VERBOSE ) ) {
+    if( (hpmc_debug == glhpmc::HPMC_DEBUG_KHR_DEBUG) || (hpmc_debug == glhpmc::HPMC_DEBUG_KHR_DEBUG_VERBOSE ) ) {
         glutInitContextFlags( GLUT_CORE_PROFILE | GLUT_DEBUG );
     }
     else {
@@ -701,91 +701,91 @@ main(int argc, char **argv)
         }
         else if( gl_major == 2 ) {
             if( gl_minor == 0 ) {
-                hpmc_target = HPMC_TARGET_GL20_GLSL110;
+                hpmc_target = glhpmc::HPMC_TARGET_GL20_GLSL110;
             }
             else {
-                hpmc_target = HPMC_TARGET_GL21_GLSL120;
+                hpmc_target = glhpmc::HPMC_TARGET_GL21_GLSL120;
             }
         }
         else if( gl_major == 3 ) {
             if( gl_minor == 0 ) {
-                hpmc_target = HPMC_TARGET_GL30_GLSL130;
+                hpmc_target = glhpmc::HPMC_TARGET_GL30_GLSL130;
             }
             else if (gl_minor == 1 ) {
-                hpmc_target = HPMC_TARGET_GL31_GLSL140;
+                hpmc_target = glhpmc::HPMC_TARGET_GL31_GLSL140;
             }
             else if (gl_minor == 2 ) {
-                hpmc_target = HPMC_TARGET_GL32_GLSL150;
+                hpmc_target = glhpmc::HPMC_TARGET_GL32_GLSL150;
             }
             else {
-                hpmc_target = HPMC_TARGET_GL33_GLSL330;
+                hpmc_target = glhpmc::HPMC_TARGET_GL33_GLSL330;
             }
         }
         else if( gl_major == 4 ) {
             if( gl_minor == 0 ) {
-                hpmc_target = HPMC_TARGET_GL40_GLSL400;
+                hpmc_target = glhpmc::HPMC_TARGET_GL40_GLSL400;
             }
             else if (gl_minor == 1 ) {
-                hpmc_target = HPMC_TARGET_GL41_GLSL410;
+                hpmc_target = glhpmc::HPMC_TARGET_GL41_GLSL410;
             }
             else if (gl_minor == 2 ) {
-                hpmc_target = HPMC_TARGET_GL42_GLSL420;
+                hpmc_target = glhpmc::HPMC_TARGET_GL42_GLSL420;
             }
             else {
-                hpmc_target = HPMC_TARGET_GL43_GLSL430;
+                hpmc_target = glhpmc::HPMC_TARGET_GL43_GLSL430;
             }
         }
         else {
-            hpmc_target = HPMC_TARGET_GL43_GLSL430;
+            hpmc_target = glhpmc::HPMC_TARGET_GL43_GLSL430;
         }
     }
 
     switch( hpmc_target ) {
-    case HPMC_TARGET_GL20_GLSL110:
+    case glhpmc::HPMC_TARGET_GL20_GLSL110:
         std::cerr << "HPMC target is OpenGL 2.0" << std::endl;
         break;
-    case HPMC_TARGET_GL21_GLSL120:
+    case glhpmc::HPMC_TARGET_GL21_GLSL120:
         std::cerr << "HPMC target is OpenGL 2.1" << std::endl;
         break;
-    case HPMC_TARGET_GL30_GLSL130:
+    case glhpmc::HPMC_TARGET_GL30_GLSL130:
         std::cerr << "HPMC target is OpenGL 3.0" << std::endl;
         break;
-    case HPMC_TARGET_GL31_GLSL140:
+    case glhpmc::HPMC_TARGET_GL31_GLSL140:
         std::cerr << "HPMC target is OpenGL 3.1" << std::endl;
         break;
-    case HPMC_TARGET_GL32_GLSL150:
+    case glhpmc::HPMC_TARGET_GL32_GLSL150:
         std::cerr << "HPMC target is OpenGL 3.2" << std::endl;
         break;
-    case HPMC_TARGET_GL33_GLSL330:
+    case glhpmc::HPMC_TARGET_GL33_GLSL330:
         std::cerr << "HPMC target is OpenGL 3.3" << std::endl;
         break;
-    case HPMC_TARGET_GL40_GLSL400:
+    case glhpmc::HPMC_TARGET_GL40_GLSL400:
         std::cerr << "HPMC target is OpenGL 4.0" << std::endl;
         break;
-    case HPMC_TARGET_GL41_GLSL410:
+    case glhpmc::HPMC_TARGET_GL41_GLSL410:
         std::cerr << "HPMC target is OpenGL 4.1" << std::endl;
         break;
-    case HPMC_TARGET_GL42_GLSL420:
+    case glhpmc::HPMC_TARGET_GL42_GLSL420:
         std::cerr << "HPMC target is OpenGL 4.2" << std::endl;
         break;
-    case HPMC_TARGET_GL43_GLSL430:
+    case glhpmc::HPMC_TARGET_GL43_GLSL430:
         std::cerr << "HPMC target is OpenGL 4.3" << std::endl;
         break;
     }
 
 
-    if( (hpmc_debug == HPMC_DEBUG_KHR_DEBUG) || (hpmc_debug == HPMC_DEBUG_KHR_DEBUG_VERBOSE) ) {
+    if( (hpmc_debug == glhpmc::HPMC_DEBUG_KHR_DEBUG) || (hpmc_debug == glhpmc::HPMC_DEBUG_KHR_DEBUG_VERBOSE) ) {
         if( glewIsSupported( "GL_KHR_debug" ) ) {
             glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
             glDebugMessageCallback( debugLogger, NULL );
             glDebugMessageControl( GL_DONT_CARE,
                                    GL_DONT_CARE,
-                                   hpmc_debug == HPMC_DEBUG_KHR_DEBUG_VERBOSE ? GL_DEBUG_SEVERITY_LOW : GL_DEBUG_SEVERITY_MEDIUM,
+                                   hpmc_debug == glhpmc::HPMC_DEBUG_KHR_DEBUG_VERBOSE ? GL_DEBUG_SEVERITY_LOW : GL_DEBUG_SEVERITY_MEDIUM,
                                    0, NULL, GL_TRUE );
         }
         else {
             std::cerr << "GL_KHR_debug extension not present, reverting to stderr.\n";
-            hpmc_debug = HPMC_DEBUG_STDERR;
+            hpmc_debug = glhpmc::HPMC_DEBUG_STDERR;
         }
     }
     error = glGetError();

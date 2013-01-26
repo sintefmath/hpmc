@@ -104,9 +104,9 @@ GLint  anim_loc_shape;
 GLuint billboard_p;
 GLint  billboard_loc_P;
 GLint  billboard_loc_color;
-struct HPMCConstants* hpmc_c;
-struct HPMCIsoSurface* hpmc_h;
-struct HPMCIsoSurfaceRenderer* hpmc_th;
+struct glhpmc::HPMCConstants* hpmc_c;
+struct glhpmc::HPMCIsoSurface* hpmc_h;
+struct glhpmc::HPMCIsoSurfaceRenderer* hpmc_th;
 
 namespace resources {
     extern std::string particles_fetch;
@@ -145,7 +145,7 @@ printHelp( const std::string& appname )
 void
 init( int argc, char** argv )
 {
-    if( hpmc_target < HPMC_TARGET_GL32_GLSL150 ) {
+    if( hpmc_target < glhpmc::HPMC_TARGET_GL32_GLSL150 ) {
         std::cerr << "This sample requires OpenGL 3.2 or better." << std::endl;
         exit( EXIT_FAILURE );
     }
@@ -176,25 +176,25 @@ init( int argc, char** argv )
 
 
     // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = HPMCcreateConstants( hpmc_target, hpmc_debug );
-    hpmc_h = HPMCcreateIsoSurface( hpmc_c );
+    hpmc_c = glhpmc::HPMCcreateConstants( hpmc_target, hpmc_debug );
+    hpmc_h = glhpmc::HPMCcreateIsoSurface( hpmc_c );
 
-    HPMCsetLatticeSize( hpmc_h,
+    glhpmc::HPMCsetLatticeSize( hpmc_h,
                         volume_size_x,
                         volume_size_y,
                         volume_size_z );
 
-    HPMCsetGridSize( hpmc_h,
+    glhpmc::HPMCsetGridSize( hpmc_h,
                      volume_size_x-1,
                      volume_size_y-1,
                      volume_size_z-1 );
 
-    HPMCsetGridExtent( hpmc_h,
+    glhpmc::HPMCsetGridExtent( hpmc_h,
                        1.0f,
                        1.0f,
                        1.0f );
 
-    HPMCsetFieldCustom( hpmc_h,
+    glhpmc::HPMCsetFieldCustom( hpmc_h,
                         resources::particles_fetch.c_str(),
                         0,
                         GL_TRUE );

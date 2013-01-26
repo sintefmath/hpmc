@@ -23,7 +23,7 @@
 #include <glhpmc/Constants.hpp>
 #include <glhpmc/Logger.hpp>
 
-using namespace HPMC;
+namespace glhpmc {
 
 static const std::string package = "HPMC.IntersectingEdgeTable";
 
@@ -196,3 +196,5 @@ HPMCIntersectingEdgeTable::~HPMCIntersectingEdgeTable()
         glDeleteTextures( 1, &m_tex_normal_flip );
     }
 }
+
+} // of namespace glhpmc

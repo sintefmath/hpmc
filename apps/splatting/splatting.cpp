@@ -80,10 +80,10 @@ GLint                           shaded_loc_color        = -1;
 GLuint                          flat_p                  = 0;
 GLint                           flat_loc_pm             = -1;
 GLint                           flat_loc_color =             -1;
-struct HPMCConstants*           hpmc_c         = NULL;
-struct HPMCIsoSurface*          hpmc_h         = NULL;
-struct HPMCIsoSurfaceRenderer*  hpmc_th_flat   = NULL;
-struct HPMCIsoSurfaceRenderer*  hpmc_th_shaded = NULL;
+struct glhpmc::HPMCConstants*           hpmc_c         = NULL;
+struct glhpmc::HPMCIsoSurface*          hpmc_h         = NULL;
+struct glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_flat   = NULL;
+struct glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_shaded = NULL;
 
 GLuint                          splat_vbo      = 0;
 GLuint                          splat_vao      = 0;
@@ -222,26 +222,26 @@ init()
     }
     // --- create HistoPyramid -------------------------------------------------
     {
-        hpmc_c = HPMCcreateConstants( hpmc_target, hpmc_debug );
-        hpmc_h = HPMCcreateIsoSurface( hpmc_c );
+        hpmc_c = glhpmc::HPMCcreateConstants( hpmc_target, hpmc_debug );
+        hpmc_h = glhpmc::HPMCcreateIsoSurface( hpmc_c );
 
-        HPMCsetLatticeSize( hpmc_h,
+        glhpmc::HPMCsetLatticeSize( hpmc_h,
                             volume_size_x,
                             volume_size_y,
                             volume_size_z );
 
-        HPMCsetGridSize( hpmc_h,
+        glhpmc::HPMCsetGridSize( hpmc_h,
                          volume_size_x-1,
                          volume_size_y-1,
                          volume_size_z-1 );
 
         float max_size = std::max( volume_size_x, std::max( volume_size_y, volume_size_z ) );
-        HPMCsetGridExtent( hpmc_h,
+        glhpmc::HPMCsetGridExtent( hpmc_h,
                            volume_size_x / max_size,
                            volume_size_y / max_size,
                            volume_size_z / max_size );
 
-        HPMCsetFieldTexture3D( hpmc_h,
+        glhpmc::HPMCsetFieldTexture3D( hpmc_h,
                                volume_tex,
                                GL_ALPHA,
                                GL_RGB );
@@ -581,7 +581,7 @@ void printHelp( const std::string& appname )
 void
 init(int argc, char **argv)
  {
-     if( hpmc_target < HPMC_TARGET_GL30_GLSL130){
+     if( hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130){
          cerr << "HPMC Splatting demo requires at least OpenGL 3.0 to run, exiting." << endl;
          exit( EXIT_FAILURE );
      }

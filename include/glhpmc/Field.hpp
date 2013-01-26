@@ -1,3 +1,4 @@
+#pragma once
 /* Copyright STIFTELSEN SINTEF 2012
  *
  * This file is part of the HPMC Library.
@@ -16,10 +17,10 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef FIELD_HPP
-#define FIELD_HPP
 #include <string>
 #include <glhpmc/glhpmc.hpp>
+
+namespace glhpmc {
 
 enum HPMCVolumeLayout {
     HPMC_VOLUME_LAYOUT_CUSTOM,
@@ -102,4 +103,4 @@ protected:
 
 };
 
-#endif // FIELD_HPP
+} // of namespace glhpmc

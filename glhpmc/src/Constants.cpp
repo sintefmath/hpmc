@@ -23,6 +23,8 @@
 #include <stdexcept>
 #include <glhpmc/Constants.hpp>
 
+namespace glhpmc {
+
 HPMCConstants::HPMCConstants( HPMCTarget target, HPMCDebugBehaviour debug )
     : m_target( target ),
       m_debug( debug ),
@@ -134,3 +136,5 @@ HPMCConstants::init()
 HPMCConstants::~HPMCConstants()
 {
 }
+
+} // of namespace glhpmc

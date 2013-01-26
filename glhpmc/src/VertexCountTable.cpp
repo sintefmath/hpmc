@@ -23,7 +23,7 @@
 #include <glhpmc/VertexCountTable.hpp>
 #include <glhpmc/Logger.hpp>
 
-using namespace HPMC;
+namespace glhpmc {
 static const std::string package = "HPMC.VertexCountTable";
 
 HPMCVertexCountTable::HPMCVertexCountTable( HPMCConstants*  constants )
@@ -81,3 +81,5 @@ HPMCVertexCountTable::~HPMCVertexCountTable()
         glDeleteTextures( 1, &m_texture );
     }
 }
+
+} // of namespace glhpmc

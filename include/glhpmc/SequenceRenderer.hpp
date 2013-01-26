@@ -1,3 +1,4 @@
+#pragma once
 /* Copyright STIFTELSEN SINTEF 2012
  *
  * This file is part of the HPMC Library.
@@ -16,9 +17,10 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef SEQUENCERENDERER_HPP
-#define SEQUENCERENDERER_HPP
+
 #include <glhpmc/glhpmc.hpp>
+
+namespace glhpmc {
 
 /** Draw a sequence of enumerated vertices.
  *
@@ -71,5 +73,4 @@ protected:
 
 };
 
-
-#endif // SEQUENCERENDERER_HPP
+} // of namespace glhpmc

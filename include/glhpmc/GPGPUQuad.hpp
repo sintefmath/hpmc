@@ -1,3 +1,4 @@
+#pragma once
 /* Copyright STIFTELSEN SINTEF 2012
  *
  * This file is part of the HPMC Library.
@@ -16,8 +17,8 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef GPGPUQUAD_HPP
-#define GPGPUQUAD_HPP
+
+namespace glhpmc {
 
 class HPMCConstants;
 
@@ -73,4 +74,4 @@ protected:
     GLuint          m_pass_through_vs;
 };
 
-#endif // GPGPUQUAD_HPP
+} // of namespace glhpmc

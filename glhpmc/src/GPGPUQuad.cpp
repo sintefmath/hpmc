@@ -23,7 +23,7 @@
 #include <glhpmc/Constants.hpp>
 #include <glhpmc/Logger.hpp>
 
-using namespace HPMC;
+namespace glhpmc {
 
 static const std::string package = "HPMC.GPGPUQuad";
 
@@ -121,3 +121,5 @@ HPMCGPGPUQuad::render() const
 {
     glDrawArrays( GL_TRIANGLE_STRIP, 0, 4 );
 }
+
+} // of namespace glhpmc

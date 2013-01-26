@@ -53,7 +53,7 @@ IF( ENABLE_GLHPMC )
     SET_SOURCE_FILES_PROPERTIES( ${GLHPMC_GLSL} PROPERTIES HEADER_FILE_ONLY TRUE )
     FOREACH( file ${GLHPMC_GLSL} )
         GET_FILENAME_COMPONENT( symbol ${file} NAME_WE)
-        ADD_RESOURCE_TXT( GLHPMC_GLSL_GEN "hpmc::resources::${symbol}" ${file} )
+        ADD_RESOURCE_TXT( GLHPMC_GLSL_GEN "glhpmc::resources::${symbol}" ${file} )
     ENDFOREACH()
 
     ADD_LIBRARY( glhpmc STATIC ${GLHPMC_SRCS} ${GLHPMC_HDRS} ${GLHPMC_GLSL_GEN} ${GLHPMC_GLSL} )

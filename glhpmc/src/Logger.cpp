@@ -26,6 +26,8 @@ extern "C" {
     void glPopDebugGroup();
 }
 
+namespace glhpmc {
+
 Logger::Logger( const HPMCConstants* constants, const std::string& where, bool force_check )
     : m_constants( constants ),
       m_where( where ),
@@ -195,3 +197,5 @@ Logger::setObjectLabel( GLenum identifier, GLuint name, const std::string label 
 
     }
 }
+
+} // of namespace glhpmc

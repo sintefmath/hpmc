@@ -21,7 +21,7 @@
 #include <glhpmc/Constants.hpp>
 #include <glhpmc/Logger.hpp>
 
-using namespace HPMC;
+namespace glhpmc {
 
 static const std::string package = "HPMC.field";
 
@@ -198,3 +198,4 @@ Field::bind( const Context& context, GLuint texture_unit ) const
     return true;
 }
 
+} // of namespace glhpmc

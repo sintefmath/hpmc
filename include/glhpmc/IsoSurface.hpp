@@ -1,3 +1,4 @@
+#pragma once
 /* Copyright STIFTELSEN SINTEF 2012
  *
  * This file is part of the HPMC Library.
@@ -16,12 +17,12 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef ISOSURFACE_HPP
-#define ISOSURFACE_HPP
 #include <glhpmc/glhpmc_internal.hpp>
 #include <glhpmc/BaseLevelBuilder.hpp>
 #include <glhpmc/HistoPyramid.hpp>
 #include <glhpmc/Field.hpp>
+
+namespace glhpmc {
 
 // -----------------------------------------------------------------------------
 /** A HistoPyramid for a particular volume configuration. */
@@ -92,4 +93,4 @@ protected:
 
 };
 
-#endif // ISOSURFACE_HPP
+} // of namespace glhpmc

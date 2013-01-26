@@ -24,6 +24,8 @@
 #include <glhpmc/glhpmc.hpp>
 #include <glhpmc/glhpmc_internal.hpp>
 
+namespace glhpmc {
+
 // -----------------------------------------------------------------------------
 int HPMC_triangle_table[256][16] =
 {
@@ -335,3 +337,5 @@ GLfloat HPMC_gpgpu_quad_vertices[3*4] =
     -1.0f,  1.0f, 0.0f,
      1.0f,  1.0f, 0.0f
 };
+
+} // of namespace glhpmc

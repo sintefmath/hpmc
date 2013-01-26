@@ -31,7 +31,8 @@
 #define log2f(x) (logf(x)*1.4426950408889634f)
 #endif
 
-using namespace HPMC;
+namespace glhpmc {
+
 static const std::string package = "HPMC.BaseLevelBuilder";
 
 HPMCBaseLevelBuilder::HPMCBaseLevelBuilder( const HPMCIsoSurface* iso_surface )
@@ -270,3 +271,5 @@ HPMCBaseLevelBuilder::fragmentSource() const
 
     return src.str();
 }
+
+} // of namespace glhpmc

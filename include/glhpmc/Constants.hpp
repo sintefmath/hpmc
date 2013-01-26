@@ -1,3 +1,4 @@
+#pragma once
 /* Copyright STIFTELSEN SINTEF 2012
  *
  * This file is part of the HPMC Library.
@@ -16,13 +17,13 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef CONSTANTS_HPP
-#define CONSTANTS_HPP
 #include <glhpmc/glhpmc_internal.hpp>
 #include <glhpmc/SequenceRenderer.hpp>
 #include <glhpmc/VertexCountTable.hpp>
 #include <glhpmc/GPGPUQuad.hpp>
 #include <glhpmc/IntersectingEdgeTable.hpp>
+
+namespace glhpmc {
 
 struct HPMCConstants
 {
@@ -66,4 +67,4 @@ protected:
     std::string                 m_version_string;
 };
 
-#endif // CONSTANTS_HPP
+} // of namespace glhpmc
