@@ -205,23 +205,12 @@ init( int argc, char** argv )
 
 
     // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = glhpmc::HPMCcreateConstants( hpmc_target, hpmc_debug );
-    hpmc_h = glhpmc::HPMCcreateIsoSurface( hpmc_c );
+    hpmc_c = glhpmc::HPMCConstants::factory( hpmc_target, hpmc_debug );
+    hpmc_h = glhpmc::HPMCIsoSurface::factory( hpmc_c );
 
-    glhpmc::HPMCsetLatticeSize( hpmc_h,
-                        volume_size_x,
-                        volume_size_y,
-                        volume_size_z );
-
-    glhpmc::HPMCsetGridSize( hpmc_h,
-                     volume_size_x-1,
-                     volume_size_y-1,
-                     volume_size_z-1 );
-
-    glhpmc::HPMCsetGridExtent( hpmc_h,
-                       1.0f,
-                       1.0f,
-                       1.0f );
+    hpmc_h->setLatticeSize( volume_size_x, volume_size_y, volume_size_z );
+    hpmc_h->setGridSize( volume_size_x-1, volume_size_y-1, volume_size_z-1 );
+    hpmc_h->setGridExtent( 1.f, 1.f, 1.f );
 
     glhpmc::HPMCsetFieldCustom( hpmc_h,
                         resources::cayley_fetch.c_str(),

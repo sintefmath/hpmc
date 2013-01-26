@@ -16,6 +16,8 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <stdexcept>
+#include <sstream>
 #include <glhpmc/glhpmc_internal.hpp>
 #include <glhpmc/Constants.hpp>
 #include <glhpmc/IsoSurface.hpp>
@@ -23,6 +25,94 @@
 
 namespace glhpmc {
 static const std::string package = "HPMC.IsoSurface";
+
+HPMCIsoSurface*
+HPMCIsoSurface::factory( HPMCConstants* constants )
+{
+    if( constants == NULL ) {
+        return NULL;
+    }
+    Logger log( constants, package + ".factory", true );
+    try {
+        HPMCIsoSurface* h = new HPMCIsoSurface( constants );
+        h->init();
+        return h;
+    }
+    catch( std::runtime_error& e ) {
+        log.errorMessage( e.what() );
+    }
+    return NULL;
+}
+
+
+void
+HPMCIsoSurface::setLatticeSize( GLsizei x_size, GLsizei y_size, GLsizei z_size )
+{
+    Logger log( m_constants, package + ".setLatticeSize", true );
+
+    m_field.m_size[0] = x_size;
+    m_field.m_size[1] = y_size;
+    m_field.m_size[2] = z_size;
+    m_field.m_cells[0] = std::max( (GLsizei)1u, m_field.m_size[0] )-(GLsizei)1u;
+    m_field.m_cells[1] = std::max( (GLsizei)1u, m_field.m_size[1] )-(GLsizei)1u;
+    m_field.m_cells[2] = std::max( (GLsizei)1u, m_field.m_size[2] )-(GLsizei)1u;
+    taint();
+
+    if( m_constants->debugBehaviour() != HPMC_DEBUG_NONE ) {
+        std::stringstream o;
+        o << "field.size = [ "
+          << m_field.m_size[0] << " x "
+          << m_field.m_size[1] << " x "
+          << m_field.m_size[2] << " ]";
+        log.debugMessage( o.str() );
+
+        o.str("");
+        o << "field.cells = [ "
+          << m_field.m_cells[0] << " x "
+          << m_field.m_cells[1] << " x "
+          << m_field.m_cells[2] << " ]";
+        log.debugMessage( o.str() );
+    }
+}
+
+
+void
+HPMCIsoSurface::setGridSize( GLsizei x_size, GLsizei y_size, GLsizei z_size )
+{
+    Logger log( m_constants, package + ".setGridSize", true );
+    m_field.m_cells[0] = x_size;
+    m_field.m_cells[1] = y_size;
+    m_field.m_cells[2] = z_size;
+    taint();
+    if( m_constants->debugBehaviour() != HPMC_DEBUG_NONE ) {
+        std::stringstream o;
+        o << "field.cells = [ "
+          << m_field.m_cells[0] << " x "
+          << m_field.m_cells[1] << " x "
+          << m_field.m_cells[2] << " ]";
+        log.debugMessage( o.str() );
+    }
+}
+
+
+void
+HPMCIsoSurface::setGridExtent( GLsizei x_extent, GLsizei y_extent, GLsizei z_extent )
+{
+    Logger log( m_constants, package + ".setGridExtent", true );
+    m_field.m_extent[0] = x_extent;
+    m_field.m_extent[1] = y_extent;
+    m_field.m_extent[2] = z_extent;
+    taint();
+    if( m_constants->debugBehaviour() != HPMC_DEBUG_NONE ) {
+        std::stringstream o;
+        o << "grid.extent = [ "
+          << m_field.m_extent[0] << " x "
+          << m_field.m_extent[1] << " x "
+          << m_field.m_extent[2] << " ]";
+        log.debugMessage( o.str() );
+    }
+}
+
 
 HPMCIsoSurface::HPMCIsoSurface( HPMCConstants* constants )
     : m_field( constants ),

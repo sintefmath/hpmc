@@ -136,24 +136,15 @@ init( int argc, char **argv )
 
 
     // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = glhpmc::HPMCcreateConstants( hpmc_target, hpmc_debug );
-    hpmc_h = glhpmc::HPMCcreateIsoSurface( hpmc_c );
+    hpmc_c = glhpmc::HPMCConstants::factory( hpmc_target, hpmc_debug );
+    hpmc_h =  glhpmc::HPMCIsoSurface::factory( hpmc_c );
 
-    glhpmc::HPMCsetLatticeSize( hpmc_h,
-                        volume_size_x,
-                        volume_size_y,
-                        volume_size_z );
-
-    glhpmc::HPMCsetGridSize( hpmc_h,
-                     volume_size_x-1,
-                     volume_size_y-1,
-                     volume_size_z-1 );
-
+    hpmc_h->setLatticeSize( volume_size_x, volume_size_y, volume_size_z );
+    hpmc_h->setGridSize( volume_size_x-1, volume_size_y-1, volume_size_z-1 );
     float max_size = std::max( volume_size_x, std::max( volume_size_y, volume_size_z ) );
-    glhpmc::HPMCsetGridExtent( hpmc_h,
-                       volume_size_x / max_size,
-                       volume_size_y / max_size,
-                       volume_size_z / max_size );
+    hpmc_h->setGridExtent( volume_size_x / max_size,
+                           volume_size_y / max_size,
+                           volume_size_z / max_size );
 
     // Setup field
     GLint alignment;

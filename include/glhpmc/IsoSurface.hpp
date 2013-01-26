@@ -29,9 +29,69 @@ namespace glhpmc {
 struct HPMCIsoSurface
 {
 public:
-    HPMCIsoSurface(HPMCConstants *constants );
+
+    /** Creates a new HistoPyramid instance on the current context.
+      *
+      * \param s  A pointer to a constant instance residing on a context sharing
+      *           resources with the current context.
+      * \return   A new HistoPyramid instance.
+      *
+      * \sideeffect None.
+      */
+    static
+    HPMCIsoSurface*
+    factory( HPMCConstants* s );
 
     ~HPMCIsoSurface();
+
+    /** Specify size of scalar field lattice.
+      *
+      * Specify the number of scalar field samples along the x,y,z-directions. If
+      * using a 3D texture, this is the same as the size of the texture.
+      *
+      * \param h       Pointer to an existing HistoPyramid instance.
+      * \param x_size  The size of the lattice along the x-axis.
+      * \param y_size  The size of the lattice along the y-axis.
+      * \param z_size  The size of the lattice along the z-axis.
+      *
+      * \sideeffect Triggers rebuilding of shaders and textures.
+      */
+    void
+    setLatticeSize( GLsizei x_size, GLsizei y_size, GLsizei z_size );
+
+    /** Specify the number of cells in the grid of Marching Cubes cells.
+      *
+      * Since the cells reside in-between the scalar field lattice points, the
+      * default size is lattice size - 1. If the gradient is not given, it is
+      * approximated using forward differences. In this case, the scalar field
+      * is sampled outside the lattice, giving shading artefacts along three of the
+      * faces of the domain. Reducing grid size to lattice size - 2 removes this
+      * artefact.
+      *
+      * \param h       Pointer to an existing HistoPyramid instance.
+      * \param x_size  The size of the grid along the x-axis.
+      * \param y_size  The size of the grid along the y-axis.
+      * \param z_size  The size of the grid along the z-axis.
+      *
+      * \sideeffect Triggers rebuilding of shaders and textures.
+      */
+    void
+    setGridSize( GLsizei x_size, GLsizei y_size, GLsizei z_size );
+
+    /** Specify the extent of the grid in object space.
+      *
+      * This specifies the grid size in object space, defaults to (1.0,1.0,1.0).
+      *
+      * \param h       Pointer to an existing HistoPyramid instance.
+      * \param x_size  The size of the grid along the x-axis.
+      * \param y_size  The size of the grid along the y-axis.
+      * \param z_size  The size of the grid along the z-axis.
+      *
+      * \sideeffect Triggers rebuilding of shaders and textures.
+      */
+    void
+    setGridExtent(GLsizei x_extent, GLsizei y_extent, GLsizei z_extent );
+
 
     bool
     init();
@@ -82,7 +142,8 @@ public:
         GLuint           m_tex_unit_2;          ///< Bound to volume texture if HPMC handles texturing of scalar field.
     }
     m_hp_build;
-protected:
+
+private:
     bool                    m_tainted;   ///< HP needs to be rebuilt.
     bool                    m_broken;    ///< True if misconfigured, fails until reconfiguration.
     struct HPMCConstants*   m_constants;
@@ -90,6 +151,8 @@ protected:
     Field                   m_field;
     HPMCBaseLevelBuilder    m_base_builder;
     HPMCHistoPyramid        m_histopyramid;
+
+    HPMCIsoSurface(HPMCConstants *constants );
 
 };
 

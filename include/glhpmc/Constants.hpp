@@ -28,7 +28,21 @@ namespace glhpmc {
 struct HPMCConstants
 {
 public:
-    HPMCConstants( HPMCTarget target, HPMCDebugBehaviour debug );
+    /** Creates a set of constants for the current context.
+      *
+      * HPMC needs a set of constants, in the form of various textures and buffer
+      * objects. This set of constants can be shared among all HP instances within a
+      * set of sharing contexts. Thus, it is highly likely that you only need one
+      * instance of constants.
+      *
+      * \param glsl_version  Target glsl version to be used. Shaders are formulated
+      *                      in different ways depending on this version.
+      *
+      * \sideeffect None.
+      */
+    static
+    HPMCConstants*
+    factory( HPMCTarget target, HPMCDebugBehaviour debug );
 
     ~HPMCConstants();
 
@@ -42,7 +56,7 @@ public:
     const std::string&
     versionString() const { return m_version_string; }
 
-    const HPMCTarget
+    HPMCTarget
     target() const { return m_target; }
 
     const HPMCVertexCountTable&
@@ -57,7 +71,7 @@ public:
     const HPMCIntersectingEdgeTable&
     edgeTable() const { return m_edge_table; }
 
-protected:
+private:
     HPMCTarget                  m_target;
     HPMCDebugBehaviour          m_debug;
     HPMCVertexCountTable        m_vertex_counts;
@@ -65,6 +79,9 @@ protected:
     HPMCSequenceRenderer        m_sequence_renderer;
     HPMCIntersectingEdgeTable   m_edge_table;
     std::string                 m_version_string;
+
+    HPMCConstants( HPMCTarget target, HPMCDebugBehaviour debug );
+
 };
 
 } // of namespace glhpmc

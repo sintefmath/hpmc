@@ -24,6 +24,9 @@
 #include <GL/freeglut.h>
 #include <GL/freeglut_ext.h>
 #include <glhpmc/glhpmc.hpp>
+#include <glhpmc/Constants.hpp>
+#include <glhpmc/IsoSurface.hpp>
+
 
 // === Prototypes for functions provided by the individual app =================
 void

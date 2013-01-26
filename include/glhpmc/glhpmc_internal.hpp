@@ -114,18 +114,6 @@ HPMCdetermineLayout( struct HPMCIsoSurface* h );
 bool
 HPMCbuildHPBuildShaders( struct HPMCIsoSurface* h );
 
-/*
-bool
-HPMCcheckFramebufferStatus( const std::string& file, const int line );
-
-bool
-HPMCcheckFramebufferStatus( HPMC::Logger log );
-*/
-//bool
-//HPMCcheckGL( HPMC::OldLogger log );
-
-//bool
-//HPMCcheckGL( const std::string& file, const int line );
 
 std::string
 HPMCaddLineNumbers( const std::string& src );
