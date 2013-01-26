@@ -39,32 +39,8 @@
 #include <GL/glut.h>
 #endif
 #include <glhpmc/glhpmc.hpp>
+#include <glhpmc/Field.hpp>
 #include "../common/common.hpp"
-
-using std::cerr;
-using std::endl;
-
-int                             volume_size_x       = 64;
-int                             volume_size_y       = 64;
-int                             volume_size_z       = 64;
-float                           iso                 = 10.f;
-GLuint                          builder_p           = 0; // Builder program from HPMC
-GLint                           builder_loc_twist   = -1;
-GLint                           builder_loc_centers = -1;
-GLuint                          shiny_p             = 0;
-GLint                           shiny_loc_pm        = -1;
-GLint                           shiny_loc_nm        = -1;
-GLint                           shiny_loc_twist     = -1;
-GLint                           shiny_loc_centers   = -1;
-GLuint                          flat_p              = 0;
-GLint                           flat_loc_pm         = -1;
-GLint                           flat_loc_color      = -1;
-GLint                           flat_loc_twist      = -1;
-GLint                           flat_loc_centers    = -1;
-struct glhpmc::HPMCConstants*           hpmc_c              = NULL;
-struct glhpmc::HPMCIsoSurface*          hpmc_h              = NULL;
-struct glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_shiny       = NULL;
-struct glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
 
 namespace resources {
     extern std::string    solid_vs_110;
@@ -78,6 +54,96 @@ namespace resources {
     extern std::string    cayley_fetch;
     extern std::string    metaballs_fetch;
 }
+
+using std::cerr;
+using std::endl;
+
+
+class MetaBallField : public glhpmc::Field
+{
+public:
+    struct ProgramContext : public glhpmc::Field::ProgramContext
+    {
+        GLint   m_loc_centers;
+        GLint   m_loc_twist;
+    };
+
+    MetaBallField( glhpmc::HPMCConstants* constants,
+                   unsigned int samples_x,
+                   unsigned int samples_y,
+                   unsigned int samples_z )
+        : glhpmc::Field( constants, samples_x, samples_y, samples_z )
+    {
+        animate( 0.f);
+    }
+
+    Field::ProgramContext*
+    createContext( GLuint program ) const
+    {
+        ProgramContext* c = new ProgramContext;
+        c->m_loc_centers = glGetUniformLocation( program, "centers" );
+        c->m_loc_twist   = glGetUniformLocation( program, "twist" );
+        return c;
+    }
+
+
+    bool
+    gradients() const
+    {
+        return false;
+    }
+
+    bool
+    bind( Field::ProgramContext* program_context ) const
+    {
+        if( ProgramContext* c = dynamic_cast<ProgramContext*>( program_context ) ) {
+            glUniform1f( c->m_loc_twist, m_twist );
+            glUniform3fv( c->m_loc_centers, 8, m_centers );
+        }
+        return true;
+    }
+
+
+    const std::string
+    fetcherSource(bool gradient) const
+    {
+        return resources::metaballs_fetch;
+    }
+
+    void
+    animate( GLfloat t )
+    {
+        for(int i=0; i<8; i++) {
+            m_centers[3*i+0] = 0.5+0.3*sin( t+sin(0.1*t)*i );
+            m_centers[3*i+1] = 0.5+0.3*cos( 0.9*t+sin(0.1*t)*i );
+            m_centers[3*i+2] = 0.5+0.3*cos( 0.7*t+sin(0.01*t)*i );
+        }
+        m_twist = 5.0*sin(0.1*t);
+    }
+
+
+private:
+    GLfloat     m_centers[ 3*8 ];
+    GLfloat     m_twist;
+
+};
+
+int                             volume_size_x       = 64;
+int                             volume_size_y       = 64;
+int                             volume_size_z       = 64;
+float                           iso                 = 10.f;
+GLuint                          shiny_p             = 0;
+GLint                           shiny_loc_pm        = -1;
+GLint                           shiny_loc_nm        = -1;
+GLuint                          flat_p              = 0;
+GLint                           flat_loc_pm         = -1;
+GLint                           flat_loc_color      = -1;
+glhpmc::HPMCConstants*           hpmc_c              = NULL;
+glhpmc::HPMCIsoSurface*          hpmc_h              = NULL;
+glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_shiny       = NULL;
+glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
+MetaBallField*                  hpmc_field          = NULL;
+
 
 // -----------------------------------------------------------------------------
 // a metaball evaluation shader, with domain twist
@@ -116,16 +182,8 @@ init( int argc, char** argv )
 
     // --- create HistoPyramid -------------------------------------------------
     hpmc_c = glhpmc::HPMCConstants::factory( hpmc_target, hpmc_debug );
-    hpmc_h =  glhpmc::HPMCIsoSurface::factory( hpmc_c );
-
-    hpmc_h->setLatticeSize( volume_size_x, volume_size_y, volume_size_z );
-    hpmc_h->setGridSize( volume_size_x-1, volume_size_y-1, volume_size_z-1 );
-    hpmc_h->setGridExtent( 1.f, 1.f, 1.f );
-
-    HPMCsetFieldCustom( hpmc_h,
-                        resources::metaballs_fetch.c_str(),
-                        0,
-                        GL_FALSE );
+    hpmc_field = new MetaBallField( hpmc_c, volume_size_x, volume_size_y, volume_size_z );
+    hpmc_h =  glhpmc::HPMCIsoSurface::factory( hpmc_c, hpmc_field );
 
 
     // --- shiny shaded render pipeline ----------------------------------------
@@ -159,8 +217,6 @@ init( int argc, char** argv )
         linkProgram( shiny_p, "shiny program" );
         shiny_loc_pm = glGetUniformLocation( shiny_p, "PM" );
         shiny_loc_nm = glGetUniformLocation( shiny_p, "NM" );
-        shiny_loc_twist = glGetUniformLocation( shiny_p, "twist" );
-        shiny_loc_centers = glGetUniformLocation( shiny_p, "centers" );
 
         HPMCsetIsoSurfaceRendererProgram( hpmc_th_shiny, shiny_p, 0, 1, 2 );
 
@@ -203,20 +259,12 @@ init( int argc, char** argv )
         linkProgram( flat_p, "flat program" );
         flat_loc_pm = glGetUniformLocation( flat_p, "PM" );
         flat_loc_color = glGetUniformLocation( flat_p, "color" );
-        flat_loc_twist = glGetUniformLocation( flat_p, "twist" );
-        flat_loc_centers = glGetUniformLocation( flat_p, "centers" );
 
         HPMCsetIsoSurfaceRendererProgram( hpmc_th_flat, flat_p, 0, 1, 2 );
 
         glDeleteShader( vs );
         glDeleteShader( fs );
         free( traversal_code );
-    }
-    // --- configure builder program of HPMC -----------------------------------
-    {
-        builder_p = HPMCgetBuilderProgram( hpmc_h );
-        builder_loc_twist = glGetUniformLocation( builder_p, "twist" );
-        builder_loc_centers = glGetUniformLocation( builder_p, "centers" );
     }
     glPolygonOffset( 1.0, 1.0 );
 }
@@ -232,24 +280,14 @@ render( float t,
         const GLfloat *NM,
         const GLfloat* MV_inv )
 {
-    // update metaballs positions
-    std::vector<GLfloat> centers( 3*8 );
-    for( size_t i=0; i<8; i++ ) {
-        centers[3*i+0] = 0.5+0.3*sin( t+sin(0.1*t)*i );
-        centers[3*i+1] = 0.5+0.3*cos( 0.9*t+sin(0.1*t)*i );
-        centers[3*i+2] = 0.5+0.3*cos( 0.7*t+sin(0.01*t)*i );
-    }
-    float twist = 5.0*sin(0.1*t);
+    hpmc_field->animate( t );
+
 
     // Clear screen
     glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
     // Build histopyramid
-    glUseProgram( builder_p );
-    glUniform1f( builder_loc_twist, twist );
-    glUniform3fv( builder_loc_centers, 8, &centers[0] );
-
     hpmc_h->build( iso );
 
     // Set up view matrices if pre 3.0
@@ -264,8 +302,6 @@ render( float t,
     if( !wireframe ) {
         // Solid shaded rendering
         glUseProgram( shiny_p );
-        glUniform1f( shiny_loc_twist, twist );
-        glUniform3fv( shiny_loc_centers, 8, &centers[0] );
         if( hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130 ) {
             glColor3f( 1.0-iso, 0.0, iso );
         }
@@ -278,8 +314,6 @@ render( float t,
     else {
         // Wireframe rendering
         glUseProgram( flat_p );
-        glUniform1f( glGetUniformLocation( flat_p, "twist" ), twist );
-        glUniform3fv( glGetUniformLocation( flat_p, "centers" ), 8, &centers[0] );
         if( hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130 ) {
             glColor3f( 0.2*(1.0-iso), 0.0, 0.2*iso );
         }

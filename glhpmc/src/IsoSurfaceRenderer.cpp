@@ -26,7 +26,8 @@ static const std::string package = "HPMC.IsoSurfaceRenderer";
 
 HPMCIsoSurfaceRenderer::HPMCIsoSurfaceRenderer(HPMCIsoSurface *iso_surface)
     : m_handle( iso_surface ),
-      m_program( 0 )
+      m_program( 0 ),
+      m_field_context( NULL )
 {
 }
 
@@ -38,7 +39,7 @@ const std::string
 HPMCIsoSurfaceRenderer::extractionSource() const
 {
     return HPMCgenerateDefines( m_handle )
-            + m_handle->field().fetcherSource( true )
+            + m_handle->field()->fetcherSource( m_handle->field()->gradients() )
             + HPMCgenerateExtractVertexFunction( m_handle );
 }
 
@@ -77,7 +78,7 @@ HPMCIsoSurfaceRenderer::setProgram( GLuint program,
         return false;
     }
 
-    if( m_handle->field().isBinary() ) {
+    if( m_handle->binary() ) {
         // Is this used anymore?
         normal_table_sampler_loc = glGetUniformLocation( program, "HPMC_normal_table" );
         //if( normal_table_sampler_loc == -1 ) {
@@ -86,7 +87,9 @@ HPMCIsoSurfaceRenderer::setProgram( GLuint program,
         //}
     }
     else {
-        if( m_handle->field().m_mode != HPMC_VOLUME_LAYOUT_CUSTOM ) {
+
+#if 0
+        if( m_handle->oldField().m_mode != HPMC_VOLUME_LAYOUT_CUSTOM ) {
             if( tex_unit_work1 == tex_unit_work3 ) {
                 log.errorMessage( "Tex unit 1 == tex unit 3" );
                 return false;
@@ -101,6 +104,7 @@ HPMCIsoSurfaceRenderer::setProgram( GLuint program,
                 return false;
             }
         }
+#endif
     }
 
     // --- get locations of uniform variables ----------------------------------
@@ -115,29 +119,33 @@ HPMCIsoSurfaceRenderer::setProgram( GLuint program,
 
     GLint threshold_uniform_loc = -1;
     threshold_uniform_loc = glGetUniformLocation( program, "HPMC_threshold" );
-    if( !m_handle->field().m_binary && threshold_uniform_loc == -1 ) {
+#if 0
+    if( !m_handle->oldField().m_binary && threshold_uniform_loc == -1 ) {
         log.errorMessage( "Unable to find uniform location of threshold variable" );
         return false;
     }
+#endif
 
     // --- store info in handle ------------------------------------------------
     m_program = program;
     m_histopyramid_unit = tex_unit_work1;
     m_edge_decode_unit = tex_unit_work2;
-    m_scalarfield_unit = tex_unit_work3;
     m_offset_loc = offset_uniform_loc;
     m_threshold_loc = threshold_uniform_loc;
 
     glUseProgram( m_program );
     glUniform1i( et_loc, m_edge_decode_unit );
     glUniform1i( hp_loc, m_histopyramid_unit );
-    if( m_handle->field().isBinary() ) {
+    if( m_handle->binary() ) {
         glUniform1i( normal_table_sampler_loc, m_scalarfield_unit );
     }
     else {
-        if( m_handle->field().m_mode != HPMC_VOLUME_LAYOUT_CUSTOM ) {
+        m_field_context = m_handle->field()->createContext( m_program );
+#if 0
+        if( m_handle->oldField().m_mode != HPMC_VOLUME_LAYOUT_CUSTOM ) {
             glUniform1i( scalar_field_sampler_loc, m_scalarfield_unit );
         }
+#endif
     }
     return true;
 }
@@ -160,14 +168,20 @@ HPMCIsoSurfaceRenderer::draw( int transform_feedback_mode, bool flip_orientation
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL,
                                     m_handle->baseLevelBuilder().log2Size() );
 
-    if( m_handle->field().m_mode != HPMC_VOLUME_LAYOUT_CUSTOM ) {
+#if 0
+    if( m_handle->oldField().m_mode != HPMC_VOLUME_LAYOUT_CUSTOM ) {
         glActiveTextureARB( GL_TEXTURE0_ARB + m_scalarfield_unit );
-        glBindTexture( GL_TEXTURE_3D, m_handle->field().m_tex );
+        glBindTexture( GL_TEXTURE_3D, m_handle->oldField().m_tex );
     }
+#endif
 
+    glUseProgram( m_program );
+    if( !m_handle->binary() ) {
+        m_handle->field()->bind( m_field_context );
+    }
     glActiveTextureARB( GL_TEXTURE0_ARB + m_edge_decode_unit );
 
-    if( m_handle->field().isBinary() ) {
+    if( m_handle->binary() ) {
         if( flip_orientation ) {
             glBindTexture( GL_TEXTURE_2D, m_handle->constants()->edgeTable().textureNormalFlip() );
         }
@@ -184,7 +198,6 @@ HPMCIsoSurfaceRenderer::draw( int transform_feedback_mode, bool flip_orientation
         }
     }
     m_handle->constants()->sequenceRenderer().bindVertexInputs();
-    glUseProgram( m_program );
     glUniform1f( m_threshold_loc, m_handle->threshold() );
 
     // --- render triangles ----------------------------------------------------
@@ -211,6 +224,9 @@ HPMCIsoSurfaceRenderer::draw( int transform_feedback_mode, bool flip_orientation
         glEndTransformFeedbackEXT( );
     }
     m_handle->constants()->sequenceRenderer().unbindVertexInputs();
+    if( !m_handle->binary() ) {
+        m_handle->field()->unbind( m_field_context );
+    }
 
     return true;
 }

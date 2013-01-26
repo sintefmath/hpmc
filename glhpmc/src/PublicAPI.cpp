@@ -32,11 +32,12 @@ namespace glhpmc {
     static const std::string package = "HPMC.publicAPI";
 
 
+#if 0
 void
 HPMCsetFieldAsBinary( struct HPMCIsoSurface*  h )
 {
     Logger log( h->constants(), package + ".setFieldAsBinary", true );
-    h->field().m_binary = true;
+    h->oldField().m_binary = true;
     h->taint();
 }
 
@@ -68,16 +69,16 @@ HPMCsetFieldTexture3D( struct HPMCIsoSurface*  h,
         return false;
     }
 
-    h->field().m_tex = texture;
-    log.setObjectLabel( GL_TEXTURE, h->field().m_tex, "field texture 3D" );
+    h->oldField().m_tex = texture;
+    log.setObjectLabel( GL_TEXTURE, h->oldField().m_tex, "field texture 3D" );
 
-    if( (h->field().m_mode != HPMC_VOLUME_LAYOUT_TEXTURE_3D ) ||
-        (h->field().m_tex_field_channel != field ) ||
-        (h->field().m_tex_gradient_channels != gradient ) )
+    if( (h->oldField().m_mode != HPMC_VOLUME_LAYOUT_TEXTURE_3D ) ||
+        (h->oldField().m_tex_field_channel != field ) ||
+        (h->oldField().m_tex_gradient_channels != gradient ) )
     {
-        h->field().m_mode = HPMC_VOLUME_LAYOUT_TEXTURE_3D;
-        h->field().m_tex_field_channel = field;
-        h->field().m_tex_gradient_channels = gradient;
+        h->oldField().m_mode = HPMC_VOLUME_LAYOUT_TEXTURE_3D;
+        h->oldField().m_tex_field_channel = field;
+        h->oldField().m_tex_gradient_channels = gradient;
         h->m_hp_build.m_tex_unit_1 = 0;
         h->m_hp_build.m_tex_unit_2 = 1;
         h->taint();
@@ -121,15 +122,16 @@ HPMCsetFieldCustom( struct HPMCIsoSurface*  h,
                     GLboolean                 gradient )
 {
     Logger log( h->constants(), package + ".setFieldCustom", true );
-    h->field().m_mode = HPMC_VOLUME_LAYOUT_CUSTOM;
-    h->field().m_shader_source = shader_source;
-    h->field().m_tex = 0;
-    h->field().m_tex_field_channel = GL_RED;
-    h->field().m_tex_gradient_channels = (gradient==GL_TRUE?GL_RGB:GL_NONE);
+    h->oldField().m_mode = HPMC_VOLUME_LAYOUT_CUSTOM;
+    h->oldField().m_shader_source = shader_source;
+    h->oldField().m_tex = 0;
+    h->oldField().m_tex_field_channel = GL_RED;
+    h->oldField().m_tex_gradient_channels = (gradient==GL_TRUE?GL_RGB:GL_NONE);
     h->m_hp_build.m_tex_unit_1 = builder_texunit;
     h->m_hp_build.m_tex_unit_2 = builder_texunit+1;
     h->taint();
 }
+#endif
 
 
 GLuint

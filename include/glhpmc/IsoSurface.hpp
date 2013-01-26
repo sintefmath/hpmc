@@ -34,63 +34,31 @@ public:
       *
       * \param s  A pointer to a constant instance residing on a context sharing
       *           resources with the current context.
+      *
       * \return   A new HistoPyramid instance.
       *
       * \sideeffect None.
       */
     static
     HPMCIsoSurface*
-    factory( HPMCConstants* s );
+    factory( HPMCConstants*     constants,
+             Field*             field,
+             bool               binary = false,
+             unsigned int       cells_x = 0,
+             unsigned int       cells_y = 0,
+             unsigned int       cells_z = 0 );
 
     ~HPMCIsoSurface();
 
-    /** Specify size of scalar field lattice.
-      *
-      * Specify the number of scalar field samples along the x,y,z-directions. If
-      * using a 3D texture, this is the same as the size of the texture.
-      *
-      * \param h       Pointer to an existing HistoPyramid instance.
-      * \param x_size  The size of the lattice along the x-axis.
-      * \param y_size  The size of the lattice along the y-axis.
-      * \param z_size  The size of the lattice along the z-axis.
-      *
-      * \sideeffect Triggers rebuilding of shaders and textures.
-      */
-    void
-    setLatticeSize( GLsizei x_size, GLsizei y_size, GLsizei z_size );
 
-    /** Specify the number of cells in the grid of Marching Cubes cells.
-      *
-      * Since the cells reside in-between the scalar field lattice points, the
-      * default size is lattice size - 1. If the gradient is not given, it is
-      * approximated using forward differences. In this case, the scalar field
-      * is sampled outside the lattice, giving shading artefacts along three of the
-      * faces of the domain. Reducing grid size to lattice size - 2 removes this
-      * artefact.
-      *
-      * \param h       Pointer to an existing HistoPyramid instance.
-      * \param x_size  The size of the grid along the x-axis.
-      * \param y_size  The size of the grid along the y-axis.
-      * \param z_size  The size of the grid along the z-axis.
-      *
-      * \sideeffect Triggers rebuilding of shaders and textures.
-      */
     void
-    setGridSize( GLsizei x_size, GLsizei y_size, GLsizei z_size );
+    build( GLfloat iso );
 
-    /** Specify the extent of the grid in object space.
-      *
-      * This specifies the grid size in object space, defaults to (1.0,1.0,1.0).
-      *
-      * \param h       Pointer to an existing HistoPyramid instance.
-      * \param x_size  The size of the grid along the x-axis.
-      * \param y_size  The size of the grid along the y-axis.
-      * \param z_size  The size of the grid along the z-axis.
-      *
-      * \sideeffect Triggers rebuilding of shaders and textures.
-      */
-    void
-    setGridExtent(GLsizei x_extent, GLsizei y_extent, GLsizei z_extent );
+    GLsizei
+    vertexCount();
+
+    GLuint
+    builderProgram();
 
 
     bool
@@ -108,11 +76,8 @@ public:
     bool
     untaint();
 
-    const Field&
+    const Field*
     field() const { return m_field; }
-
-    Field&
-    field() { return m_field; }
 
     const HPMCConstants*
     constants() const { return m_constants; }
@@ -126,13 +91,17 @@ public:
     GLfloat
     threshold() const { return m_threshold; }
 
-    void
-    build( GLfloat iso );
+    unsigned int
+    cellsX() const { return m_cells_x; }
 
+    unsigned int
+    cellsY() const { return m_cells_x; }
 
-    GLsizei
-    vertexCount();
+    unsigned int
+    cellsZ() const { return m_cells_x; }
 
+    bool
+    binary() const { return m_binary; }
 
     /** State during HistoPyramid construction */
     struct HistoPyramidBuild {
@@ -142,17 +111,26 @@ public:
     m_hp_build;
 
 private:
-    bool                    m_tainted;   ///< HP needs to be rebuilt.
-    bool                    m_broken;    ///< True if misconfigured, fails until reconfiguration.
-    struct HPMCConstants*   m_constants;
-    GLfloat                 m_threshold; ///< Cache to hold the threshold value used to build the HP.
-    Field                   m_field;
+    bool            m_tainted;   ///< HP needs to be rebuilt.
+    bool            m_broken;    ///< True if misconfigured, fails until reconfiguration.
+    HPMCConstants*  m_constants;
+    Field*          m_field;
+    unsigned int    m_cells_x;
+    unsigned int    m_cells_y;
+    unsigned int    m_cells_z;
+    bool            m_binary;
+
+    GLfloat         m_threshold; ///< Cache to hold the threshold value used to build the HP.
+
     HPMCBaseLevelBuilder    m_base_builder;
     HPMCHistoPyramid        m_histopyramid;
 
-    HPMCIsoSurface(HPMCConstants *constants );
-
-
+    HPMCIsoSurface( HPMCConstants*  constants,
+                    Field*          field,
+                    bool            binary,
+                    unsigned int    cells_x,
+                    unsigned int    cells_y,
+                    unsigned int    cells_z );
 
 };
 

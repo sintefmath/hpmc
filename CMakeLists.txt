@@ -116,23 +116,23 @@ IF( ENABLE_SAMPLES )
     # --- GLHPMC samples -------------------------------------------------------
     IF( ENABLE_GLHPMC )
 
-        ADD_EXECUTABLE( texture3d "apps/texture3d/texture3d.cpp" )
-        TARGET_LINK_LIBRARIES( texture3d hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
-
         ADD_EXECUTABLE( cayley "apps/cayley/cayley.cpp" )
         TARGET_LINK_LIBRARIES( cayley hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
-        ADD_EXECUTABLE( transform_feedback "apps/transform_feedback/transform_feedback.cpp" ${GLHPMC_APP_COMMON_SRC} )
-        TARGET_LINK_LIBRARIES( transform_feedback hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+        ADD_EXECUTABLE( texture3d "apps/texture3d/texture3d.cpp" )
+        TARGET_LINK_LIBRARIES( texture3d hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+
+        #ADD_EXECUTABLE( transform_feedback "apps/transform_feedback/transform_feedback.cpp" ${GLHPMC_APP_COMMON_SRC} )
+        #TARGET_LINK_LIBRARIES( transform_feedback hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
         ADD_EXECUTABLE( metaballs "apps/metaballs/metaballs.cpp" )
         TARGET_LINK_LIBRARIES( metaballs hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
-        ADD_EXECUTABLE( particles "apps/particles/particles.cpp" ${GLHPMC_APP_COMMON_SRC} )
-        TARGET_LINK_LIBRARIES( particles hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+        #ADD_EXECUTABLE( particles "apps/particles/particles.cpp" ${GLHPMC_APP_COMMON_SRC} )
+        #TARGET_LINK_LIBRARIES( particles hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
-        ADD_EXECUTABLE( splatting "apps/splatting/splatting.cpp" )
-        TARGET_LINK_LIBRARIES( splatting hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+        #ADD_EXECUTABLE( splatting "apps/splatting/splatting.cpp" )
+        #TARGET_LINK_LIBRARIES( splatting hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
     ENDIF( ENABLE_GLHPMC )
 
     # --- CUHPMC samples -------------------------------------------------------

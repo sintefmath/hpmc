@@ -26,15 +26,40 @@
 namespace glhpmc {
 static const std::string package = "HPMC.IsoSurface";
 
+
+
 HPMCIsoSurface*
-HPMCIsoSurface::factory( HPMCConstants* constants )
+HPMCIsoSurface::factory( HPMCConstants* constants,
+                         Field* field,
+                         bool binary,
+                         unsigned int cells_x,
+                         unsigned int cells_y,
+                         unsigned int cells_z )
 {
     if( constants == NULL ) {
         return NULL;
     }
+    if( field == NULL ) {
+        return NULL;
+    }
+    if( (cells_x == 0) || (cells_x >= field->samplesX()) ) {
+        cells_x = field->samplesX()-1;
+    }
+    if( (cells_y == 0) || (cells_y >= field->samplesY()) ) {
+        cells_y = field->samplesY()-1;
+    }
+    if( (cells_z == 0) || (cells_z >= field->samplesZ()) ) {
+        cells_z = field->samplesZ()-1;
+    }
+
     Logger log( constants, package + ".factory", true );
     try {
-        HPMCIsoSurface* h = new HPMCIsoSurface( constants );
+        HPMCIsoSurface* h = new HPMCIsoSurface( constants,
+                                                field,
+                                                binary,
+                                                cells_x,
+                                                cells_y,
+                                                cells_z );
         h->init();
         return h;
     }
@@ -45,32 +70,59 @@ HPMCIsoSurface::factory( HPMCConstants* constants )
 }
 
 
+HPMCIsoSurface::HPMCIsoSurface( HPMCConstants* constants,
+                                Field* field,
+                                bool binary,
+                                unsigned int cells_x,
+                                unsigned int cells_y,
+                                unsigned int cells_z )
+    : m_field( field ),
+      m_cells_x( cells_x ),
+      m_cells_y( cells_y ),
+      m_cells_z( cells_z ),
+      m_binary( binary ),
+      m_base_builder( this ),
+      m_histopyramid( constants )
+{
+    m_tainted = true;
+    m_broken = false;
+    m_constants = constants;
+    m_hp_build.m_tex_unit_1 = 0;
+    m_hp_build.m_tex_unit_2 = 1;
+}
+
+HPMCIsoSurface::~HPMCIsoSurface()
+{
+
+}
+
+#if 0
 void
 HPMCIsoSurface::setLatticeSize( GLsizei x_size, GLsizei y_size, GLsizei z_size )
 {
     Logger log( m_constants, package + ".setLatticeSize", true );
 
-    m_field.m_size[0] = x_size;
-    m_field.m_size[1] = y_size;
-    m_field.m_size[2] = z_size;
-    m_field.m_cells[0] = std::max( (GLsizei)1u, m_field.m_size[0] )-(GLsizei)1u;
-    m_field.m_cells[1] = std::max( (GLsizei)1u, m_field.m_size[1] )-(GLsizei)1u;
-    m_field.m_cells[2] = std::max( (GLsizei)1u, m_field.m_size[2] )-(GLsizei)1u;
+    m_old_field.m_size[0] = x_size;
+    m_old_field.m_size[1] = y_size;
+    m_old_field.m_size[2] = z_size;
+    m_old_field.m_cells[0] = std::max( (GLsizei)1u, m_old_field.m_size[0] )-(GLsizei)1u;
+    m_old_field.m_cells[1] = std::max( (GLsizei)1u, m_old_field.m_size[1] )-(GLsizei)1u;
+    m_old_field.m_cells[2] = std::max( (GLsizei)1u, m_old_field.m_size[2] )-(GLsizei)1u;
     taint();
 
     if( m_constants->debugBehaviour() != HPMC_DEBUG_NONE ) {
         std::stringstream o;
         o << "field.size = [ "
-          << m_field.m_size[0] << " x "
-          << m_field.m_size[1] << " x "
-          << m_field.m_size[2] << " ]";
+          << m_old_field.m_size[0] << " x "
+          << m_old_field.m_size[1] << " x "
+          << m_old_field.m_size[2] << " ]";
         log.debugMessage( o.str() );
 
         o.str("");
         o << "field.cells = [ "
-          << m_field.m_cells[0] << " x "
-          << m_field.m_cells[1] << " x "
-          << m_field.m_cells[2] << " ]";
+          << m_old_field.m_cells[0] << " x "
+          << m_old_field.m_cells[1] << " x "
+          << m_old_field.m_cells[2] << " ]";
         log.debugMessage( o.str() );
     }
 }
@@ -80,16 +132,16 @@ void
 HPMCIsoSurface::setGridSize( GLsizei x_size, GLsizei y_size, GLsizei z_size )
 {
     Logger log( m_constants, package + ".setGridSize", true );
-    m_field.m_cells[0] = x_size;
-    m_field.m_cells[1] = y_size;
-    m_field.m_cells[2] = z_size;
+    m_old_field.m_cells[0] = x_size;
+    m_old_field.m_cells[1] = y_size;
+    m_old_field.m_cells[2] = z_size;
     taint();
     if( m_constants->debugBehaviour() != HPMC_DEBUG_NONE ) {
         std::stringstream o;
         o << "field.cells = [ "
-          << m_field.m_cells[0] << " x "
-          << m_field.m_cells[1] << " x "
-          << m_field.m_cells[2] << " ]";
+          << m_old_field.m_cells[0] << " x "
+          << m_old_field.m_cells[1] << " x "
+          << m_old_field.m_cells[2] << " ]";
         log.debugMessage( o.str() );
     }
 }
@@ -99,19 +151,20 @@ void
 HPMCIsoSurface::setGridExtent( GLsizei x_extent, GLsizei y_extent, GLsizei z_extent )
 {
     Logger log( m_constants, package + ".setGridExtent", true );
-    m_field.m_extent[0] = x_extent;
-    m_field.m_extent[1] = y_extent;
-    m_field.m_extent[2] = z_extent;
+    m_old_field.m_extent[0] = x_extent;
+    m_old_field.m_extent[1] = y_extent;
+    m_old_field.m_extent[2] = z_extent;
     taint();
     if( m_constants->debugBehaviour() != HPMC_DEBUG_NONE ) {
         std::stringstream o;
         o << "grid.extent = [ "
-          << m_field.m_extent[0] << " x "
-          << m_field.m_extent[1] << " x "
-          << m_field.m_extent[2] << " ]";
+          << m_old_field.m_extent[0] << " x "
+          << m_old_field.m_extent[1] << " x "
+          << m_old_field.m_extent[2] << " ]";
         log.debugMessage( o.str() );
     }
 }
+#endif
 
 void
 HPMCIsoSurface::build( GLfloat iso )
@@ -157,17 +210,7 @@ HPMCIsoSurface::build( GLfloat iso )
 
 
 
-HPMCIsoSurface::HPMCIsoSurface( HPMCConstants* constants )
-    : m_field( constants ),
-      m_base_builder( this ),
-      m_histopyramid( constants )
-{
-    m_tainted = true;
-    m_broken = true;
-    m_constants = constants;
-    m_hp_build.m_tex_unit_1 = 0;
-    m_hp_build.m_tex_unit_2 = 1;
-}
+
 
 bool
 HPMCIsoSurface::init()
@@ -202,10 +245,10 @@ HPMCIsoSurface::untaint()
 
     bool retval = false;
 
-    if(!m_field.configure() ) {
-        log.errorMessage( "Failed to configure field" );
-        return false;
-    }
+//    if(!m_old_field.configure() ) {
+//        log.errorMessage( "Failed to configure field" );
+//        return false;
+//    }
 
     if( !m_base_builder.configure() ) {
         log.errorMessage( "Failed to configure base level builder.");
@@ -237,9 +280,6 @@ HPMCIsoSurface::vertexCount()
 
 
 
-HPMCIsoSurface::~HPMCIsoSurface()
-{
 
-}
 
 } // of namespace glhpmc

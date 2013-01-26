@@ -37,6 +37,7 @@ static const std::string package = "HPMC.BaseLevelBuilder";
 
 HPMCBaseLevelBuilder::HPMCBaseLevelBuilder( const HPMCIsoSurface* iso_surface )
     : m_iso_surface( iso_surface ),
+      m_field_context( NULL ),
       m_program(0),
       m_loc_threshold(-1)
 {
@@ -56,13 +57,13 @@ HPMCBaseLevelBuilder::configure()
 {
     Logger log( m_iso_surface->constants(), package + ".configure" );
 
-    m_tile_size[0] = 1u<<(GLsizei)ceilf( log2f( static_cast<float>(m_iso_surface->field().cellsX())/2.0f ) );
-    m_tile_size[1] = 1u<<(GLsizei)ceilf( log2f( static_cast<float>(m_iso_surface->field().cellsY())/2.0f ) );
+    m_tile_size[0] = 1u<<(GLsizei)ceilf( log2f( static_cast<float>(m_iso_surface->cellsX())/2.0f ) );
+    m_tile_size[1] = 1u<<(GLsizei)ceilf( log2f( static_cast<float>(m_iso_surface->cellsY())/2.0f ) );
 
     float aspect = static_cast<float>(m_tile_size[0]) / static_cast<float>(m_tile_size[1]);
 
-    m_layout[0] = 1u<<(GLsizei)std::max( 0.0f, ceilf( log2f( sqrt(static_cast<float>(m_iso_surface->field().cellsZ())/aspect ) ) ) );
-    m_layout[1] = (m_iso_surface->field().cellsX() + m_layout[0]-1)/m_layout[0];
+    m_layout[0] = 1u<<(GLsizei)std::max( 0.0f, ceilf( log2f( sqrt(static_cast<float>(m_iso_surface->cellsZ())/aspect ) ) ) );
+    m_layout[1] = (m_iso_surface->cellsX() + m_layout[0]-1)/m_layout[0];
 
     m_size_l2 = (GLsizei)ceilf( log2f( static_cast<float>( std::max( m_tile_size[0]*m_layout[0],
                                                                      m_tile_size[1]*m_layout[1] ) ) ) );
@@ -79,13 +80,18 @@ HPMCBaseLevelBuilder::configure()
 
     // rebuild program
     if( m_program != 0 ) {
+        if( m_field_context != NULL ) {
+            delete m_field_context;
+            m_field_context = NULL;
+        }
         glDeleteProgram( m_program );
         m_program = 0;
     }
 
     // fragment shader
     GLuint fs = HPMCcompileShader( m_iso_surface->constants()->versionString() +
-                                   m_iso_surface->field().fetcherSource( false ) +
+                                   m_iso_surface->field()->fetcherSource( false ) +
+//                                   m_iso_surface->oldField().fetcherSource( false ) +
                                    HPMCgenerateDefines( m_iso_surface ) +
                                    fragmentSource(),
                                    GL_FRAGMENT_SHADER );
@@ -99,6 +105,7 @@ HPMCBaseLevelBuilder::configure()
     glAttachShader( m_program, m_iso_surface->constants()->gpgpuQuad().passThroughVertexShader() );
     glAttachShader( m_program, fs );
     glDeleteShader( fs );
+
     if( m_iso_surface->constants()->target() >= HPMC_TARGET_GL30_GLSL130 ) {
         glBindFragDataLocation( m_program, 0, "fragment" );
     }
@@ -110,7 +117,7 @@ HPMCBaseLevelBuilder::configure()
 
     // set up uniforms
     glUseProgram( m_program );
-    m_iso_surface->field().setupProgram( m_field_context, m_program );
+    m_field_context = m_iso_surface->field()->createContext( m_program );
     m_loc_threshold = glGetUniformLocation( m_program, "HPMC_threshold" );
     m_loc_vertex_count_table = glGetUniformLocation( m_program, "HPMC_vertex_count" );
 
@@ -134,7 +141,7 @@ HPMCBaseLevelBuilder::build( GLuint vertex_table_sampler, GLuint field_sampler )
     // --- build base level ----------------------------------------------------
     glUseProgram( m_program );
     m_iso_surface->constants()->gpgpuQuad().bindVertexInputs();
-    m_iso_surface->field().bind( m_field_context, field_sampler );
+    m_iso_surface->field()->bind( m_field_context );
 
     // Switch to texture unit given by h->m_hp_build.m_tex_unit_1.
     glUniform1i( m_loc_vertex_count_table, vertex_table_sampler );
@@ -151,9 +158,9 @@ HPMCBaseLevelBuilder::build( GLuint vertex_table_sampler, GLuint field_sampler )
     glBindTexture( GL_TEXTURE_1D, m_iso_surface->constants()->caseVertexCounts().texture() );
 
     // Update the threshold uniform
-//    if( !m_iso_surface->field().isBinary() ) {
+    if( !m_iso_surface->binary() ) {
         glUniform1f( m_loc_threshold, m_iso_surface->threshold() );
-//    }
+    }
 
     // And trigger computation.
     if( m_iso_surface->constants()->target() < HPMC_TARGET_GL30_GLSL130 ) {
@@ -168,6 +175,7 @@ HPMCBaseLevelBuilder::build( GLuint vertex_table_sampler, GLuint field_sampler )
                 m_iso_surface->histoPyramid().size(),
                 m_iso_surface->histoPyramid().size() );
     m_iso_surface->constants()->gpgpuQuad().render();
+    m_iso_surface->field()->unbind( m_field_context );
     return true;
 }
 
@@ -191,6 +199,13 @@ HPMCBaseLevelBuilder::fragmentSource() const
         texture1D = "texture";
         texture1D_channel = "r";
     }
+    src << "float" << endl;
+    src << "HPMC_sample( vec3 p )" << endl;
+    src << "{" << endl;
+    src << "    p.z = (p.z+0.5)*(1.0/float( HPMC_FUNC_Z) );" << endl;
+    src << "    return HPMC_fetch( p );" << endl;
+    src << "}" << endl;
+
     src << "uniform sampler1D  HPMC_vertex_count;" << endl;
     src << "uniform float      HPMC_threshold;" << endl;
     src << "void" << endl;
@@ -234,8 +249,8 @@ HPMCBaseLevelBuilder::fragmentSource() const
             src << "            (HPMC_sample( tp + delta*vec3( "
                 << ((i>>1)-0.5) << ", "
                 << (c-0.5) << ", ";
-            if( m_iso_surface->field().isBinary() ) {
-                src << (float)(i&1) << ") ) < HPMC_threshold ? ";
+            if( m_iso_surface->binary() ) {
+                src << (float)(i&1) << ") ) < 0.5 ? ";
             }
             else {
                 src << (float)(i&1) << ") ) < HPMC_threshold ? ";

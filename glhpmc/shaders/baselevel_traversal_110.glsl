@@ -52,12 +52,16 @@ HPMC_baseLevelExtract( out vec3 a,
 #ifdef FIELD_BINARY
     p = 0.5*(pa+pb);
 #else
+    vec3 pa_ = pa;
+    pa_.z = (pa.z+0.5)*(1.0/HPMC_FUNC_Z_F);
+    vec3 pb_ = pb;
+    pb_.z = (pb.z+0.5)*(1.0/HPMC_FUNC_Z_F);
 #if FIELD_HAS_GRADIENT
     //          If we have gradient info, sample pa and pb.
-    vec4 fa = HPMC_sampleGrad( pa );
+    vec4 fa = HPMC_fetchGrad( pa_ );
     vec3 na = fa.xyz;
     float va = fa.w;
-    vec4 fb = HPMC_sampleGrad( pb );
+    vec4 fb = HPMC_fetchGrad( pb_ );
     vec3 nb = fb.xyz;
     float vb = fb.w;
     //          Solve linear equation to approximate point that edge pierces iso-surface.
@@ -66,13 +70,13 @@ HPMC_baseLevelExtract( out vec3 a,
     //          If we don't have gradient info, we approximate the gradient using forward
     //          differences. The sample at pb is one of the forward samples at pa, so we
     //          save one texture lookup.
-    float va = HPMC_sample( pa );
-    vec3 na = vec3( HPMC_sample( pa + vec3( 1.0/HPMC_FUNC_X_F, 0.0, 0.0 ) ),
-                    HPMC_sample( pa + vec3( 0.0, 1.0/HPMC_FUNC_Y_F, 0.0 ) ),
-                    HPMC_sample( pa + vec3( 0.0, 0.0, 1.0 ) ) );
-    vec3 nb = vec3( HPMC_sample( pb + vec3( 1.0/HPMC_FUNC_X_F, 0.0, 0.0 ) ),
-                    HPMC_sample( pb + vec3( 0.0, 1.0/HPMC_FUNC_Y_F, 0.0 ) ),
-                    HPMC_sample( pb + vec3( 0.0, 0.0, 1.0 ) ) );
+    float va = HPMC_fetch( pa_ );
+    vec3 na = vec3( HPMC_fetch( pa_ + vec3( 1.0/HPMC_FUNC_X_F, 0.0, 0.0 ) ),
+                    HPMC_fetch( pa_ + vec3( 0.0, 1.0/HPMC_FUNC_Y_F, 0.0 ) ),
+                    HPMC_fetch( pa_ + vec3( 0.0, 0.0, 1.0/HPMC_FUNC_Z_F ) ) );
+    vec3 nb = vec3( HPMC_fetch( pb_ + vec3( 1.0/HPMC_FUNC_X_F, 0.0, 0.0 ) ),
+                    HPMC_fetch( pb_ + vec3( 0.0, 1.0/HPMC_FUNC_Y_F, 0.0 ) ),
+                    HPMC_fetch( pb_ + vec3( 0.0, 0.0, 1.0/HPMC_FUNC_Z_F ) ) );
     //          Solve linear equation to approximate point that edge pierces iso-surface.
     float t = (va-HPMC_threshold)/(va-dot(na,axis));
 #endif // FIELD_HAS_GRADIENT

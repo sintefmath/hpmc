@@ -47,6 +47,7 @@
 #include <GL/glut.h>
 #endif
 #include <glhpmc/glhpmc.hpp>
+#include <glhpmc/FieldTexture3D.hpp>
 #include "../common/common.hpp"
 
 using std::ifstream;
@@ -68,10 +69,11 @@ GLuint                          flat_p              = 0;
 GLint                           flat_loc_pm         = -1;
 GLint                           flat_loc_color      = -1;
 vector<GLubyte>                 dataset;
-struct glhpmc::HPMCConstants*           hpmc_c              = NULL;
-struct glhpmc::HPMCIsoSurface*          hpmc_h              = NULL;
-struct glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
-struct glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_shaded      = NULL;
+glhpmc::HPMCConstants*           hpmc_c              = NULL;
+glhpmc::Field*                   hpmc_field         = NULL;
+glhpmc::HPMCIsoSurface*          hpmc_h              = NULL;
+glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
+glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_shaded      = NULL;
 
 namespace resources {
     extern std::string    solid_vs_110;
@@ -135,16 +137,6 @@ init( int argc, char **argv )
     // --- upload volume ------------------------------------------------------
 
 
-    // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = glhpmc::HPMCConstants::factory( hpmc_target, hpmc_debug );
-    hpmc_h =  glhpmc::HPMCIsoSurface::factory( hpmc_c );
-
-    hpmc_h->setLatticeSize( volume_size_x, volume_size_y, volume_size_z );
-    hpmc_h->setGridSize( volume_size_x-1, volume_size_y-1, volume_size_z-1 );
-    float max_size = std::max( volume_size_x, std::max( volume_size_y, volume_size_z ) );
-    hpmc_h->setGridExtent( volume_size_x / max_size,
-                           volume_size_y / max_size,
-                           volume_size_z / max_size );
 
     // Setup field
     GLint alignment;
@@ -165,11 +157,14 @@ init( int argc, char **argv )
     glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, 0 );
     glBindTexture( GL_TEXTURE_3D, 0 );
     glPixelStorei( GL_UNPACK_ALIGNMENT, alignment );
-    HPMCsetFieldTexture3D( hpmc_h,
-                           volume_tex,
-                           channel,
-                           GL_NONE );
 
+
+    // --- create HistoPyramid -------------------------------------------------
+    hpmc_c = glhpmc::HPMCConstants::factory( hpmc_target, hpmc_debug );
+    hpmc_field = new glhpmc::FieldTexture3D( hpmc_c,
+                                             3, volume_tex, false,
+                                             volume_size_x, volume_size_y, volume_size_z );
+    hpmc_h =  glhpmc::HPMCIsoSurface::factory( hpmc_c, hpmc_field, false );
 
     // --- phong shaded render pipeline ----------------------------------------
     {
@@ -273,7 +268,7 @@ render( float t,
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
     // Build histopyramid
-    iso = sin(t);
+    iso = 0.5f*(sin(t)+1.f);
     hpmc_h->build( iso );
     // Set up view matrices if pre 3.0
     glEnable( GL_DEPTH_TEST );

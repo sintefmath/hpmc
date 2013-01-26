@@ -60,10 +60,11 @@ public:
 
     GLuint              m_program;
     GLint               m_loc_threshold;
-    Field::Context      m_field_context;
+//    OldField::Context      m_field_context;
 
 protected:
     const HPMCIsoSurface*   m_iso_surface;
+    Field::ProgramContext*  m_field_context;
     GLsizei                 m_tile_size[2]; ///< The size of a tile in the base level.
     GLsizei                 m_layout[2];    ///< Number of tiles along x and y in the base level.
     GLsizei                 m_size_l2;      ///< The full log2-size of the base level.

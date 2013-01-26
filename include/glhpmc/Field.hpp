@@ -18,6 +18,7 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <string>
+#include <iostream>
 #include <glhpmc/glhpmc.hpp>
 
 namespace glhpmc {
@@ -27,80 +28,77 @@ enum HPMCVolumeLayout {
     HPMC_VOLUME_LAYOUT_TEXTURE_3D
 };
 
-/** Specifies the layout of the scalar field. */
+/** Abstract base class for field. */
 class Field
 {
 public:
-    class Context {
-        friend class Field;
-    protected:
-        GLint   m_loc_tex;
+    struct ProgramContext
+    {
+        virtual
+        ~ProgramContext() {}
     };
 
+    virtual
+    ~Field() {}
 
+    /** can assume that program is bound. */
+    virtual
+    ProgramContext*
+    createContext( GLuint program ) const { return NULL; }
 
-    Field( HPMCConstants* constants );
-
-    /** Invoked when IsoSurface is untainted.
-     *
-     * \returns true if everything is ok.
-     */
+    virtual
     bool
-    configure();
+    gradients() const = 0;
 
+    virtual
     const std::string
-    fetcherSource( bool gradient ) const;
+    fetcherSource( bool gradient ) const = 0;
 
-    /** configures a program that uses fetcher source. */
+    virtual
     bool
-    setupProgram( Context& context, GLuint program ) const;
+    bind( ProgramContext* program_context ) const { return true; }
 
-    /** binds textures and updates fetcher uniform values. */
+    virtual
     bool
-    bind(const Context& context , GLuint texture_unit) const;
+    unbind( ProgramContext* program_context ) const { return true; }
 
-    GLsizei sizeX() const { return m_size[0]; }
-    GLsizei sizeY() const { return m_size[1]; }
-    GLsizei sizeZ() const { return m_size[2]; }
+    unsigned int
+    samplesX() const { return m_samples_x; }
 
-    GLsizei cellsX() const { return m_cells[0]; }
-    GLsizei cellsY() const { return m_cells[1]; }
-    GLsizei cellsZ() const { return m_cells[2]; }
+    unsigned int
+    samplesY() const { return m_samples_y; }
 
-    GLfloat extentX() const { return m_extent[0]; }
-    GLfloat extentY() const { return m_extent[1]; }
-    GLfloat extentZ() const { return m_extent[2]; }
+    unsigned int
+    samplesZ() const { return m_samples_z; }
 
-    bool
-    hasGradient() const { return m_tex_gradient_channels != GL_NONE; }
-
-    bool
-    isBinary() const { return m_binary; }
-
-    /** The x,y,z-size of the lattice of scalar field samples. */
-    GLsizei       m_size[3];
-    /** The x,y,z-size of the MC grid, defaults to m_size-[1,1,1]. */
-    GLsizei       m_cells[3];
-    /** The extent of the MC grid when outputted from the traversal shader. */
-    GLfloat       m_extent[3];
-
-
-    /** Flag to denote if scalar field is binary (or continuous). */
-    bool                   m_binary;
-
-    HPMCVolumeLayout  m_mode;
-    /** The source code of the custom fetch shader function (if custom fetch). */
-    std::string       m_shader_source;
-    /** The texture name of the Texture3D to fetch from (if fetch from Texture3D). */
-    GLuint            m_tex;
-    /** Channel that contains the scalar field. */
-    GLenum            m_tex_field_channel;
-    /** Channels that contain the gradient, or GL_NONE. */
-    GLenum            m_tex_gradient_channels;
 
 protected:
+    Field( HPMCConstants* constants,
+           unsigned int samples_x,
+           unsigned int samples_y,
+           unsigned int samples_z )
+        : m_constants( constants ),
+          m_samples_x( samples_x ),
+          m_samples_y( samples_y ),
+          m_samples_z( samples_z )
+    {
+    }
+
+    HPMCConstants*
+    constants() { return m_constants; }
+
+    const HPMCConstants*
+    constants() const { return m_constants; }
+
+private:
     HPMCConstants*  m_constants;
+    unsigned int    m_samples_x;
+    unsigned int    m_samples_y;
+    unsigned int    m_samples_z;
 
 };
+
+
+
 
 } // of namespace glhpmc

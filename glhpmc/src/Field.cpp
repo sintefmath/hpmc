@@ -25,7 +25,12 @@ namespace glhpmc {
 
 static const std::string package = "HPMC.field";
 
-Field::Field( HPMCConstants* constants )
+
+
+
+#if 0
+
+OldField::OldField( HPMCConstants* constants )
     : m_constants( constants )
 {
     m_binary = false;
@@ -47,7 +52,7 @@ Field::Field( HPMCConstants* constants )
 }
 
 bool
-Field::configure()
+OldField::configure()
 {
     Logger log( m_constants, package + ".configure" );
 
@@ -87,10 +92,10 @@ Field::configure()
     return true;
 }
 
-
 const std::string
-Field::fetcherSource(bool gradient) const
+OldField::fetcherSource(bool gradient) const
 {
+    return "";
     using std::endl;
     std::stringstream src;
 
@@ -163,7 +168,7 @@ Field::fetcherSource(bool gradient) const
 
 /** configures a program that uses fetcher source. */
 bool
-Field::setupProgram( Field::Context& context, GLuint program ) const
+OldField::setupProgram( OldField::Context& context, GLuint program ) const
 {
     Logger log( m_constants, package + ".setupProgram" );
     bool retval = true;
@@ -178,7 +183,7 @@ Field::setupProgram( Field::Context& context, GLuint program ) const
 
 /** binds textures and updates fetcher uniform values. */
 bool
-Field::bind( const Context& context, GLuint texture_unit ) const
+OldField::bind( const Context& context, GLuint texture_unit ) const
 {
     Logger log( m_constants, package + ".bind" );
 
@@ -197,5 +202,7 @@ Field::bind( const Context& context, GLuint texture_unit ) const
     }
     return true;
 }
+
+#endif
 
 } // of namespace glhpmc

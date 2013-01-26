@@ -20,6 +20,7 @@
 
 #include <string>
 #include <glhpmc/glhpmc.hpp>
+#include <glhpmc/Field.hpp>
 
 namespace glhpmc {
 
@@ -42,7 +43,7 @@ public:
     bool
     draw( int transform_feedback_mode, bool flip_orientation );
 
-    struct HPMCIsoSurface*  m_handle;
+    HPMCIsoSurface*  m_handle;
     GLuint                    m_program;
     GLuint                    m_scalarfield_unit;
     GLuint                    m_histopyramid_unit;
@@ -51,6 +52,8 @@ public:
     GLint                     m_threshold_loc;
 
 protected:
+    Field::ProgramContext*  m_field_context;
+
 
 };
 
