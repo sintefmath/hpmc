@@ -16,10 +16,10 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <hpmc_internal.h>
-#include "Constants.hpp"
-#include "IsoSurface.hpp"
-#include "Logger.hpp"
+#include <glhpmc/glhpmc_internal.hpp>
+#include <glhpmc/Constants.hpp>
+#include <glhpmc/IsoSurface.hpp>
+#include <glhpmc/Logger.hpp>
 
 using namespace HPMC;
 static const std::string package = "HPMC.IsoSurface";

@@ -19,7 +19,7 @@
 #ifndef FIELD_HPP
 #define FIELD_HPP
 #include <string>
-#include <hpmc.h>
+#include <glhpmc/glhpmc.hpp>
 
 enum HPMCVolumeLayout {
     HPMC_VOLUME_LAYOUT_CUSTOM,

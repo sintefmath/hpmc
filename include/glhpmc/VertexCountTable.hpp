@@ -18,7 +18,7 @@
  */
 #ifndef VERTEXCOUNTTABLE_HPP
 #define VERTEXCOUNTTABLE_HPP
-#include <hpmc.h>
+#include <glhpmc/glhpmc.hpp>
 
 
 /** Table containing the number of vertices needed for each Marching Cubes case. */

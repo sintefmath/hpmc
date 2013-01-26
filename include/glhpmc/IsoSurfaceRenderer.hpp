@@ -18,7 +18,7 @@
  */
 #ifndef ISOSURFACERENDERER_HPP
 #define ISOSURFACERENDERER_HPP
-#include <hpmc.h>
+#include <glhpmc/glhpmc.hpp>
 #include <string>
 
 struct HPMCIsoSurfaceRenderer

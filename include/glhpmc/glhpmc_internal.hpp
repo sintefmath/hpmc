@@ -30,7 +30,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include <hpmc.h>
+#include <glhpmc/glhpmc.hpp>
 #include "HistoPyramid.hpp"
 
 

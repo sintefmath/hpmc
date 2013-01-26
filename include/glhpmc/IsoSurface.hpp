@@ -18,10 +18,10 @@
  */
 #ifndef ISOSURFACE_HPP
 #define ISOSURFACE_HPP
-#include <hpmc_internal.h>
-#include "BaseLevelBuilder.hpp"
-#include "HistoPyramid.hpp"
-#include "Field.hpp"
+#include <glhpmc/glhpmc_internal.hpp>
+#include <glhpmc/BaseLevelBuilder.hpp>
+#include <glhpmc/HistoPyramid.hpp>
+#include <glhpmc/Field.hpp>
 
 // -----------------------------------------------------------------------------
 /** A HistoPyramid for a particular volume configuration. */

@@ -22,11 +22,11 @@
 #include <iostream>
 #include <algorithm>
 #include <string>
-#include <hpmc.h>
-#include <hpmc_internal.h>
-#include "Constants.hpp"
-#include "IsoSurface.hpp"
-#include "HistoPyramid.hpp"
+#include <glhpmc/glhpmc.hpp>
+#include <glhpmc/glhpmc_internal.hpp>
+#include <glhpmc/Constants.hpp>
+#include <glhpmc/IsoSurface.hpp>
+#include <glhpmc/HistoPyramid.hpp>
 
 using std::endl;
 using std::max;

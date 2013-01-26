@@ -24,8 +24,8 @@
 #include <sstream>
 #include <iomanip>
 #include <vector>
-#include <hpmc.h>
-#include <hpmc_internal.h>
+#include <glhpmc/glhpmc.hpp>
+#include <glhpmc/glhpmc_internal.hpp>
 
 using std::string;
 using std::vector;

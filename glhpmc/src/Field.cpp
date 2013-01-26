@@ -17,9 +17,9 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <sstream>
-#include "Field.hpp"
-#include "Constants.hpp"
-#include "Logger.hpp"
+#include <glhpmc/Field.hpp>
+#include <glhpmc/Constants.hpp>
+#include <glhpmc/Logger.hpp>
 
 using namespace HPMC;
 

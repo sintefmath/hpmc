@@ -18,10 +18,10 @@
  */
 #include <vector>
 #include <cmath>
-#include <hpmc_internal.h>
+#include <glhpmc/glhpmc_internal.hpp>
 #include <sstream>
 #include <stdexcept>
-#include "Constants.hpp"
+#include <glhpmc/Constants.hpp>
 
 HPMCConstants::HPMCConstants( HPMCTarget target, HPMCDebugBehaviour debug )
     : m_target( target ),

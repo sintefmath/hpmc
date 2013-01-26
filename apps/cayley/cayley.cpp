@@ -108,7 +108,7 @@ init( int argc, char** argv )
     hpmc_c = HPMCcreateConstants( hpmc_target, hpmc_debug );
     hpmc_h = HPMCcreateIsoSurface( hpmc_c );
 
-    if( true || binary ) {
+    if( binary ) {
         HPMCsetFieldAsBinary( hpmc_h );
     }
 

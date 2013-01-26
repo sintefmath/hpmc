@@ -18,10 +18,10 @@
  */
 #include <GL/glew.h>
 #include <vector>
-#include <hpmc_internal.h>
-#include "GPGPUQuad.hpp"
-#include "Constants.hpp"
-#include "Logger.hpp"
+#include <glhpmc/glhpmc_internal.hpp>
+#include <glhpmc/GPGPUQuad.hpp>
+#include <glhpmc/Constants.hpp>
+#include <glhpmc/Logger.hpp>
 
 using namespace HPMC;
 

@@ -21,12 +21,12 @@
 #include <cstring>
 #include <sstream>
 #include <stdexcept>
-#include <hpmc.h>
-#include <hpmc_internal.h>
-#include "Constants.hpp"
-#include "IsoSurface.hpp"
-#include "IsoSurfaceRenderer.hpp"
-#include "Logger.hpp"
+#include <glhpmc/glhpmc.hpp>
+#include <glhpmc/glhpmc_internal.hpp>
+#include <glhpmc/Constants.hpp>
+#include <glhpmc/IsoSurface.hpp>
+#include <glhpmc/IsoSurfaceRenderer.hpp>
+#include <glhpmc/Logger.hpp>
 
 static const std::string package = "HPMC.publicAPI";
 

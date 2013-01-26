@@ -17,13 +17,13 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <cmath>
-#include <hpmc_internal.h>
+#include <glhpmc/glhpmc_internal.hpp>
 #include <iostream>
 #include <sstream>
-#include "HistoPyramid.hpp"
-#include "GPGPUQuad.hpp"
-#include "Constants.hpp"
-#include "Logger.hpp"
+#include <glhpmc/HistoPyramid.hpp>
+#include <glhpmc/GPGPUQuad.hpp>
+#include <glhpmc/Constants.hpp>
+#include <glhpmc/Logger.hpp>
 
 using namespace HPMC;
 using std::endl;

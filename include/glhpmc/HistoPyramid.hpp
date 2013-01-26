@@ -19,7 +19,7 @@
 #ifndef HISTOPYRAMID_HPP
 #define HISTOPYRAMID_HPP
 #include <vector>
-#include <hpmc.h>
+#include <glhpmc/glhpmc.hpp>
 
 class HPMCGPGPUQuad;
 

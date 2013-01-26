@@ -38,7 +38,7 @@
 #else
 #include <GL/glut.h>
 #endif
-#include "hpmc.h"
+#include <glhpmc/glhpmc.hpp>
 #include "../common/common.hpp"
 
 using std::cerr;

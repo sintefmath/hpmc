@@ -37,31 +37,27 @@ IF( WIN32 )
     ADD_DEFINITIONS( -D_USE_MATH_DEFINES )
 ENDIF( WIN32 )
 
+INCLUDE_DIRECTORIES( "./include" )
+
 # --- GLHPMC library -----------------------------------------------------------
 IF( ENABLE_GLHPMC )
-    INCLUDE_DIRECTORIES( "./hpmc/include"
-                         "./hpmc/src" )
+    FILE( GLOB GLHPMC_HDRS "include/glhpmc/*.hpp" )
+    SOURCE_GROUP( "GLHPMC headers" FILES ${GLHPMC_HDRS} )
+    SET_SOURCE_FILES_PROPERTIES( ${GLHPMC_HDRS} PROPERTIES HEADER_FILE_ONLY TRUE )
 
-    FILE( GLOB HPMC_HDRS1 "hpmc/include/*.h" )
-    FILE( GLOB HPMC_HDRS2 "hpmc/src/*.h" )
-    FILE( GLOB HPMC_HDRS3 "hpmc/src/*.hpp" )
-    SET( HPMC_HDRS ${HPMC_HDRS1} ${HPMC_HDRS2} ${HPMC_HDRS3} )
-    SOURCE_GROUP( "GLHPMC headers" FILES ${HPMC_HDRS} )
-    SET_SOURCE_FILES_PROPERTIES( ${HPMC_HDRS} PROPERTIES HEADER_FILE_ONLY TRUE )
+    FILE( GLOB GLHPMC_SRCS "glhpmc/src/*.cpp" )
+    SOURCE_GROUP( "GLHPMC sources" FILES ${GLHPMC_SRCS} )
 
-    FILE( GLOB HPMC_SRCS "hpmc/src/*.cpp" )
-    SOURCE_GROUP( "GLHPMC sources" FILES ${HPMC_SRCS} )
-
-    FILE( GLOB HPMC_GLSL "hpmc/shaders/*.glsl" )
-    SOURCE_GROUP( "GLHPMC shaders" FILES ${HPMC_GLSL} )
-    SET_SOURCE_FILES_PROPERTIES( ${HPMC_GLSL} PROPERTIES HEADER_FILE_ONLY TRUE )
-    FOREACH( file ${HPMC_GLSL} )
+    FILE( GLOB GLHPMC_GLSL "glhpmc/shaders/*.glsl" )
+    SOURCE_GROUP( "GLHPMC shaders" FILES ${GLHPMC_GLSL} )
+    SET_SOURCE_FILES_PROPERTIES( ${GLHPMC_GLSL} PROPERTIES HEADER_FILE_ONLY TRUE )
+    FOREACH( file ${GLHPMC_GLSL} )
         GET_FILENAME_COMPONENT( symbol ${file} NAME_WE)
-        ADD_RESOURCE_TXT( HPMC_GLSL_GEN "hpmc::resources::${symbol}" ${file} )
+        ADD_RESOURCE_TXT( GLHPMC_GLSL_GEN "hpmc::resources::${symbol}" ${file} )
     ENDFOREACH()
 
-    ADD_LIBRARY( hpmc STATIC ${HPMC_SRCS} ${HPMC_HDRS} ${HPMC_GLSL_GEN} ${HPMC_GLSL} )
-    TARGET_LINK_LIBRARIES( hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+    ADD_LIBRARY( glhpmc STATIC ${GLHPMC_SRCS} ${GLHPMC_HDRS} ${GLHPMC_GLSL_GEN} ${GLHPMC_GLSL} )
+    TARGET_LINK_LIBRARIES( glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 ENDIF( ENABLE_GLHPMC )
 
 # --- CUHPMC library -----------------------------------------------------------
@@ -71,7 +67,6 @@ IF( ENABLE_CUHPMC )
     ENDIF( ENABLE_CUHPMC_INTEROP )
 
     INCLUDE_DIRECTORIES( "${CUDA_TOOLKIT_ROOT_DIR}/include" )
-    INCLUDE_DIRECTORIES( "./include" )
 
     FILE( GLOB CUHPMC_HDRS1 "include/cuhpmc/*.hpp" )
     FILE( GLOB CUHPMC_HDRS2 "cuhpmc/kernels/*.hpp" )
@@ -120,23 +115,24 @@ IF( ENABLE_SAMPLES )
 
     # --- GLHPMC samples -------------------------------------------------------
     IF( ENABLE_GLHPMC )
+
         ADD_EXECUTABLE( texture3d "apps/texture3d/texture3d.cpp" )
-        TARGET_LINK_LIBRARIES( texture3d hpmc hpmc_app_common ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+        TARGET_LINK_LIBRARIES( texture3d hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
         ADD_EXECUTABLE( cayley "apps/cayley/cayley.cpp" )
-        TARGET_LINK_LIBRARIES( cayley hpmc hpmc_app_common ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+        TARGET_LINK_LIBRARIES( cayley hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
-        ADD_EXECUTABLE( transform_feedback "apps/transform_feedback/transform_feedback.cpp" ${HPMC_APP_COMMON_SRC} )
-        TARGET_LINK_LIBRARIES( transform_feedback hpmc_app_common hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+        ADD_EXECUTABLE( transform_feedback "apps/transform_feedback/transform_feedback.cpp" ${GLHPMC_APP_COMMON_SRC} )
+        TARGET_LINK_LIBRARIES( transform_feedback hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
         ADD_EXECUTABLE( metaballs "apps/metaballs/metaballs.cpp" )
-        TARGET_LINK_LIBRARIES( metaballs hpmc hpmc_app_common ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+        TARGET_LINK_LIBRARIES( metaballs hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
-        ADD_EXECUTABLE( particles "apps/particles/particles.cpp" ${HPMC_APP_COMMON_SRC} )
-        TARGET_LINK_LIBRARIES( particles hpmc_app_common hpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+        ADD_EXECUTABLE( particles "apps/particles/particles.cpp" ${GLHPMC_APP_COMMON_SRC} )
+        TARGET_LINK_LIBRARIES( particles hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
         ADD_EXECUTABLE( splatting "apps/splatting/splatting.cpp" )
-        TARGET_LINK_LIBRARIES( splatting hpmc hpmc_app_common ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+        TARGET_LINK_LIBRARIES( splatting hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
     ENDIF( ENABLE_GLHPMC )
 
     # --- CUHPMC samples -------------------------------------------------------

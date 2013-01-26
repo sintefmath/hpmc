@@ -18,10 +18,10 @@
  */
 #include <GL/glew.h>
 #include <vector>
-#include <hpmc_internal.h>
-#include "Constants.hpp"
-#include "VertexCountTable.hpp"
-#include "Logger.hpp"
+#include <glhpmc/glhpmc_internal.hpp>
+#include <glhpmc/Constants.hpp>
+#include <glhpmc/VertexCountTable.hpp>
+#include <glhpmc/Logger.hpp>
 
 using namespace HPMC;
 static const std::string package = "HPMC.VertexCountTable";

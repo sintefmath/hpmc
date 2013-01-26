@@ -18,11 +18,11 @@
  */
 #ifndef CONSTANTS_HPP
 #define CONSTANTS_HPP
-#include <hpmc_internal.h>
-#include "SequenceRenderer.hpp"
-#include "VertexCountTable.hpp"
-#include "GPGPUQuad.hpp"
-#include "IntersectingEdgeTable.hpp"
+#include <glhpmc/glhpmc_internal.hpp>
+#include <glhpmc/SequenceRenderer.hpp>
+#include <glhpmc/VertexCountTable.hpp>
+#include <glhpmc/GPGPUQuad.hpp>
+#include <glhpmc/IntersectingEdgeTable.hpp>
 
 struct HPMCConstants
 {

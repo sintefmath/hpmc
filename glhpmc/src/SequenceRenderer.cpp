@@ -17,9 +17,9 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <algorithm>
-#include "SequenceRenderer.hpp"
-#include "Constants.hpp"
-#include "Logger.hpp"
+#include <glhpmc/SequenceRenderer.hpp>
+#include <glhpmc/Constants.hpp>
+#include <glhpmc/Logger.hpp>
 
 static const std::string package = "HPMC.SequenceRenderer";
 

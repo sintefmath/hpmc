@@ -18,8 +18,8 @@
  */
 #ifndef BASELEVELBUILDER_HPP
 #define BASELEVELBUILDER_HPP
-#include <hpmc.h>
-#include "Field.hpp"
+#include <glhpmc/glhpmc.hpp>
+#include <glhpmc/Field.hpp>
 
 class HPMCIsoSurface;
 

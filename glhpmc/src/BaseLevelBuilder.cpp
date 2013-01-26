@@ -16,16 +16,16 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <hpmc.h>
-#include <hpmc_internal.h>
+#include <glhpmc/glhpmc.hpp>
+#include <glhpmc/glhpmc_internal.hpp>
 #include <algorithm>
 #include <cmath>
 #include <sstream>
-#include "BaseLevelBuilder.hpp"
-#include "IsoSurface.hpp"
-#include "Constants.hpp"
-#include "Field.hpp"
-#include "Logger.hpp"
+#include <glhpmc/BaseLevelBuilder.hpp>
+#include <glhpmc/IsoSurface.hpp>
+#include <glhpmc/Constants.hpp>
+#include <glhpmc/Field.hpp>
+#include <glhpmc/Logger.hpp>
 
 #ifdef _WIN32
 #define log2f(x) (logf(x)*1.4426950408889634f)

@@ -21,8 +21,8 @@
 #include <iostream>
 #include <algorithm>
 #include <vector>
-#include <hpmc.h>
-#include <hpmc_internal.h>
+#include <glhpmc/glhpmc.hpp>
+#include <glhpmc/glhpmc_internal.hpp>
 
 // -----------------------------------------------------------------------------
 int HPMC_triangle_table[256][16] =

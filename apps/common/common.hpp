@@ -23,7 +23,7 @@
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 #include <GL/freeglut_ext.h>
-#include <hpmc.h>
+#include <glhpmc/glhpmc.hpp>
 
 // === Prototypes for functions provided by the individual app =================
 void

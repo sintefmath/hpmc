@@ -18,7 +18,7 @@
  */
 #ifndef SEQUENCERENDERER_HPP
 #define SEQUENCERENDERER_HPP
-#include <hpmc.h>
+#include <glhpmc/glhpmc.hpp>
 
 /** Draw a sequence of enumerated vertices.
  *

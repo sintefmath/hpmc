@@ -18,7 +18,7 @@
  */
 #ifndef INTERSECTINGEDGETABLE_HPP
 #define INTERSECTINGEDGETABLE_HPP
-#include <hpmc.h>
+#include <glhpmc/glhpmc.hpp>
 
 /** Marching Cubes table with vertices encoded as edge intersections.
  *

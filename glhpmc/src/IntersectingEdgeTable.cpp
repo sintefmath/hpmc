@@ -18,10 +18,10 @@
  */
 #include <vector>
 #include <cmath>
-#include <hpmc_internal.h>
-#include "IntersectingEdgeTable.hpp"
-#include "Constants.hpp"
-#include "Logger.hpp"
+#include <glhpmc/glhpmc_internal.hpp>
+#include <glhpmc/IntersectingEdgeTable.hpp>
+#include <glhpmc/Constants.hpp>
+#include <glhpmc/Logger.hpp>
 
 using namespace HPMC;
 
