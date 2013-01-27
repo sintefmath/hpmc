@@ -46,6 +46,7 @@ public:
     FieldTexture3D( glhpmc::HPMCConstants* constants,
                     GLuint                 sample_unit,
                     GLuint                 texture,
+                    bool                   binary,
                     bool                   gradients,
                     GLsizei                samples_x,
                     GLsizei                samples_y,

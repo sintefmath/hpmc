@@ -158,7 +158,7 @@ HPMCBaseLevelBuilder::build( GLuint vertex_table_sampler, GLuint field_sampler )
     glBindTexture( GL_TEXTURE_1D, m_iso_surface->constants()->caseVertexCounts().texture() );
 
     // Update the threshold uniform
-    if( !m_iso_surface->binary() ) {
+    if( !m_iso_surface->field()->binary() ) {
         glUniform1f( m_loc_threshold, m_iso_surface->threshold() );
     }
 
@@ -249,7 +249,7 @@ HPMCBaseLevelBuilder::fragmentSource() const
             src << "            (HPMC_sample( tp + delta*vec3( "
                 << ((i>>1)-0.5) << ", "
                 << (c-0.5) << ", ";
-            if( m_iso_surface->binary() ) {
+            if( m_iso_surface->field()->binary() ) {
                 src << (float)(i&1) << ") ) < 0.5 ? ";
             }
             else {

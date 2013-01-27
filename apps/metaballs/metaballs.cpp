@@ -72,7 +72,7 @@ public:
                    unsigned int samples_x,
                    unsigned int samples_y,
                    unsigned int samples_z )
-        : glhpmc::Field( constants, samples_x, samples_y, samples_z )
+        : glhpmc::Field( constants, is_binary, samples_x, samples_y, samples_z )
     {
         animate( 0.f);
     }

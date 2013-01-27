@@ -47,7 +47,6 @@ public:
      */
     HPMCIsoSurface( HPMCConstants*  constants,
                     Field*          field,
-                    bool            binary = false,
                     unsigned int    cells_x = 0,
                     unsigned int    cells_y = 0,
                     unsigned int    cells_z = 0);
@@ -100,8 +99,6 @@ public:
     unsigned int
     cellsZ() const { return m_cells_x; }
 
-    bool
-    binary() const { return m_binary; }
 
     /** State during HistoPyramid construction */
     struct HistoPyramidBuild {
@@ -118,7 +115,6 @@ private:
     unsigned int    m_cells_x;
     unsigned int    m_cells_y;
     unsigned int    m_cells_z;
-    bool            m_binary;
 
     GLfloat         m_threshold; ///< Cache to hold the threshold value used to build the HP.
 

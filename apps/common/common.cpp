@@ -68,7 +68,7 @@ double              aspect_x=1.0;
 double              aspect_y=1.0;
 bool                wireframe = false;
 bool                record = false;
-bool                binary = false;
+bool                is_binary = false;
 glhpmc::HPMCTarget          hpmc_target     = glhpmc::HPMC_TARGET_GL20_GLSL110;
 glhpmc::HPMCDebugBehaviour  hpmc_debug      = glhpmc::HPMC_DEBUG_NONE;
 
@@ -542,77 +542,86 @@ main(int argc, char **argv)
     bool target_set = false;
     for( int i=1; i<argc; ) {
         int eat = 0;
-        if( strcmp( argv[i], "--target-gl20" ) == 0 ) {
+        std::string arg( argv[1] );
+        if( arg == "--target-gl20" ) {
             hpmc_target = glhpmc::HPMC_TARGET_GL20_GLSL110;
             eat = 1;
             target_set = true;
         }
-        else if( strcmp( argv[i], "--target-gl21" ) == 0 ) {
+        else if( arg == "--target-gl21" ) {
             hpmc_target = glhpmc::HPMC_TARGET_GL21_GLSL120;
             eat = 1;
             target_set = true;
         }
-        else if( strcmp( argv[i], "--target-gl30" ) == 0 ) {
+        else if(  arg == "--target-gl23" ) {
             hpmc_target = glhpmc::HPMC_TARGET_GL30_GLSL130;
             eat = 1;
             target_set = true;
         }
-        else if( strcmp( argv[i], "--target-gl31" ) == 0 ) {
+        else if( arg == "--target-gl31" ) {
             hpmc_target = glhpmc::HPMC_TARGET_GL31_GLSL140;
             eat = 1;
             target_set = true;
         }
-        else if( strcmp( argv[i], "--target-gl32" ) == 0 ) {
+        else if( arg == "--target-gl32" ) {
             hpmc_target = glhpmc::HPMC_TARGET_GL32_GLSL150;
             eat = 1;
             target_set = true;
         }
-        else if( strcmp( argv[i], "--target-gl33" ) == 0 ) {
+        else if( arg == "--target-gl33" ) {
             hpmc_target = glhpmc::HPMC_TARGET_GL33_GLSL330;
             eat = 1;
             target_set = true;
         }
-        else if( strcmp( argv[i], "--target-gl40" ) == 0 ) {
+        else if( arg == "--target-gl40" ) {
             hpmc_target = glhpmc::HPMC_TARGET_GL40_GLSL400;
             eat = 1;
             target_set = true;
         }
-        else if( strcmp( argv[i], "--target-gl41" ) == 0 ) {
+        else if( arg == "--target-gl41" ) {
             hpmc_target = glhpmc::HPMC_TARGET_GL41_GLSL410;
             eat = 1;
             target_set = true;
         }
-        else if( strcmp( argv[i], "--target-gl42" ) == 0 ) {
+        else if( arg == "--target-gl42" ) {
             hpmc_target = glhpmc::HPMC_TARGET_GL42_GLSL420;
             eat = 1;
             target_set = true;
         }
-        else if( strcmp( argv[i], "--target-gl43" ) == 0 ) {
+        else if( arg == "--target-gl43" ) {
             hpmc_target = glhpmc::HPMC_TARGET_GL43_GLSL430;
             eat = 1;
             target_set = true;
         }
-        else if( strcmp( argv[i], "--debug-none" ) == 0 ) {
+        else if( arg == "--debug-none" ) {
             hpmc_debug = glhpmc::HPMC_DEBUG_NONE;
             eat = 1;
         }
-        else if( strcmp( argv[i], "--debug-stderr" ) == 0  ) {
+        else if( arg == "--debug-stderr" ) {
             hpmc_debug = glhpmc::HPMC_DEBUG_STDERR;
             eat = 1;
         }
-        else if( strcmp( argv[i], "--debug-stderr-verbose" ) == 0  ) {
+        else if( arg == "--debug-stderr-verbose" ) {
             hpmc_debug = glhpmc::HPMC_DEBUG_STDERR_VERBOSE;
             eat = 1;
         }
-        else if( strcmp( argv[i], "--debug-khr-debug" ) == 0  ) {
+        else if( arg == "--debug-khr" ) {
             hpmc_debug = glhpmc::HPMC_DEBUG_KHR_DEBUG;
             eat = 1;
         }
-        else if( strcmp( argv[i], "--debug-khr-debug-verbose" ) == 0  ) {
+        else if( arg == "--debug-khr-verbose" ) {
             hpmc_debug = glhpmc::HPMC_DEBUG_KHR_DEBUG_VERBOSE;
             eat = 1;
         }
-        else if( strcmp( argv[i], "--help" ) == 0 ) {
+        else if( arg == "--binary" ) {
+            is_binary = true;
+            eat = 1;
+        }
+        else if( arg == "--no-binary" ) {
+            is_binary = false;
+            eat = 1;
+        }
+        else if(arg == "--help" ) {
             printHelp( argv[0] );
             exit( -1 );
         }

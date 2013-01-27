@@ -29,7 +29,6 @@ static const std::string package = "HPMC.IsoSurface";
 
 HPMCIsoSurface::HPMCIsoSurface( HPMCConstants* constants,
                                 Field* field,
-                                bool binary,
                                 unsigned int cells_x,
                                 unsigned int cells_y,
                                 unsigned int cells_z )
@@ -40,7 +39,6 @@ HPMCIsoSurface::HPMCIsoSurface( HPMCConstants* constants,
       m_cells_x( cells_x ),
       m_cells_y( cells_y ),
       m_cells_z( cells_z ),
-      m_binary( binary ),
       m_base_builder( this ),
       m_histopyramid( constants )
 {

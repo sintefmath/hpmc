@@ -85,7 +85,7 @@ HPMCIsoSurfaceRenderer::setProgram( GLuint program,
         return false;
     }
 
-    if( m_handle->binary() ) {
+    if( m_handle->field()->binary() ) {
         // Is this used anymore?
         normal_table_sampler_loc = glGetUniformLocation( program, "HPMC_normal_table" );
         //if( normal_table_sampler_loc == -1 ) {
@@ -143,7 +143,7 @@ HPMCIsoSurfaceRenderer::setProgram( GLuint program,
     glUseProgram( m_program );
     glUniform1i( et_loc, m_edge_decode_unit );
     glUniform1i( hp_loc, m_histopyramid_unit );
-    if( m_handle->binary() ) {
+    if( m_handle->field()->binary() ) {
         glUniform1i( normal_table_sampler_loc, m_scalarfield_unit );
     }
     else {
@@ -183,12 +183,12 @@ HPMCIsoSurfaceRenderer::draw( int transform_feedback_mode, bool flip_orientation
 #endif
 
     glUseProgram( m_program );
-    if( !m_handle->binary() ) {
+    if( !m_handle->field()->binary() ) {
         m_handle->field()->bind( m_field_context );
     }
     glActiveTextureARB( GL_TEXTURE0_ARB + m_edge_decode_unit );
 
-    if( m_handle->binary() ) {
+    if( m_handle->field()->binary() ) {
         if( flip_orientation ) {
             glBindTexture( GL_TEXTURE_2D, m_handle->constants()->edgeTable().textureNormalFlip() );
         }
@@ -231,7 +231,7 @@ HPMCIsoSurfaceRenderer::draw( int transform_feedback_mode, bool flip_orientation
         glEndTransformFeedbackEXT( );
     }
     m_handle->constants()->sequenceRenderer().unbindVertexInputs();
-    if( !m_handle->binary() ) {
+    if( !m_handle->field()->binary() ) {
         m_handle->field()->unbind( m_field_context );
     }
 

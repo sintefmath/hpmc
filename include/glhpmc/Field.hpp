@@ -32,6 +32,18 @@ namespace glhpmc {
  * HPMC provides some concrete classes, or one the developer may derive from
  * this class.
  *
+ * A field may be binary, which means that the scalar field is either 0 or 1.
+ * This is the case when, for example, visualizing segmented images where a
+ * sample is either part of a class or not. In this case, the iso-value is
+ * always 0.5, and normal vectors are found using a table, since forward
+ * differences give a bad result.
+ *
+ * If a field is not binary, it is assumed to be continious. Then, the field may
+ * provide the gradient as well, which HPMC will use instead of its standard
+ * approach of using forward differences to determine normal vectors. The result
+ * is often a smoother surface, and it might be faster as forward differences
+ * involves six extra samples of the scalar field per output vertex.
+ *
  */
 class Field
 {
@@ -81,6 +93,10 @@ public:
     virtual
     bool
     gradients() const = 0;
+
+    /** Returns true if the field is binary. */
+    bool
+    binary() const { return m_binary; }
 
     /** Returns shader source to fetch a scalar field sample.
      *
@@ -189,10 +205,12 @@ protected:
      * this constructor.
      */
     Field( HPMCConstants* constants,
+           bool binary,
            unsigned int samples_x,
            unsigned int samples_y,
            unsigned int samples_z )
         : m_constants( constants ),
+          m_binary( binary ),
           m_samples_x( samples_x ),
           m_samples_y( samples_y ),
           m_samples_z( samples_z )
@@ -209,6 +227,7 @@ protected:
 
 private:
     HPMCConstants*  m_constants;
+    bool            m_binary;
     unsigned int    m_samples_x;
     unsigned int    m_samples_y;
     unsigned int    m_samples_z;

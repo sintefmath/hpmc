@@ -81,7 +81,7 @@ HPMCgenerateDefines( const struct HPMCIsoSurface* h )
     //      histopyramid size
     src << "#define HPMC_HP_SIZE_L2  " << h->baseLevelBuilder().log2Size() << endl;
     src << "#define HPMC_HP_SIZE     " << (1<<h->baseLevelBuilder().log2Size()) << endl;
-    if( h->binary() ) {
+    if( h->field()->binary() ) {
         src << "#define FIELD_BINARY 1" << endl;
     }
     if( h->field()->gradients() ) {

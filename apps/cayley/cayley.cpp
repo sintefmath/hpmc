@@ -62,7 +62,7 @@ public:
                  unsigned int samples_x,
                  unsigned int samples_y,
                  unsigned int samples_z )
-        : glhpmc::Field( constants, samples_x, samples_y, samples_z )
+        : glhpmc::Field( constants, is_binary, samples_x, samples_y, samples_z )
     {}
 
     bool
@@ -146,7 +146,7 @@ init( int argc, char** argv )
                                     volume_size_z );
 
 
-    hpmc_h = new glhpmc::HPMCIsoSurface( hpmc_c, cayley_field, binary );
+    hpmc_h = new glhpmc::HPMCIsoSurface( hpmc_c, cayley_field );
 
 
 

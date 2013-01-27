@@ -26,11 +26,12 @@ namespace glhpmc {
 FieldTexture3D::FieldTexture3D( glhpmc::HPMCConstants* constants,
                                 GLuint                 sample_unit,
                                 GLuint                 texture,
+                                bool                   binary,
                                 bool                   gradients,
                                 GLsizei                samples_x,
                                 GLsizei                samples_y,
                                 GLsizei                samples_z )
-    : Field( constants, samples_x, samples_y, samples_z ),
+    : Field( constants, binary, samples_x, samples_y, samples_z ),
       m_sampler( sample_unit ),
       m_texture( texture ),
       m_gradients( gradients )

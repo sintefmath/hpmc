@@ -162,7 +162,7 @@ init( int argc, char **argv )
     // --- create HistoPyramid -------------------------------------------------
     hpmc_c = new glhpmc::HPMCConstants( hpmc_target, hpmc_debug );
     hpmc_field = new glhpmc::FieldTexture3D( hpmc_c,
-                                             3, volume_tex, false,
+                                             3, volume_tex, is_binary, false,
                                              volume_size_x, volume_size_y, volume_size_z );
     hpmc_h = new glhpmc::HPMCIsoSurface( hpmc_c, hpmc_field, false );
 
