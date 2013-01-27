@@ -146,7 +146,7 @@ init( int argc, char** argv )
                                     volume_size_z );
 
 
-    hpmc_h = glhpmc::HPMCIsoSurface::factory( hpmc_c, cayley_field, binary );
+    hpmc_h = new glhpmc::HPMCIsoSurface( hpmc_c, cayley_field, binary );
 
 
 

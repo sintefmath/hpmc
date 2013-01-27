@@ -183,7 +183,7 @@ init( int argc, char** argv )
     // --- create HistoPyramid -------------------------------------------------
     hpmc_c = new glhpmc::HPMCConstants( hpmc_target, hpmc_debug );
     hpmc_field = new MetaBallField( hpmc_c, volume_size_x, volume_size_y, volume_size_z );
-    hpmc_h =  glhpmc::HPMCIsoSurface::factory( hpmc_c, hpmc_field );
+    hpmc_h =  new glhpmc::HPMCIsoSurface( hpmc_c, hpmc_field );
 
 
     // --- shiny shaded render pipeline ----------------------------------------

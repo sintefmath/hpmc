@@ -31,25 +31,28 @@ struct HPMCIsoSurface
 public:
 
     /** Creates a new HistoPyramid instance on the current context.
-      *
-      * \param s  A pointer to a constant instance residing on a context sharing
-      *           resources with the current context.
-      *
-      * \return   A new HistoPyramid instance.
-      *
-      * \sideeffect None.
-      */
-    static
-    HPMCIsoSurface*
-    factory( HPMCConstants*     constants,
-             Field*             field,
-             bool               binary = false,
-             unsigned int       cells_x = 0,
-             unsigned int       cells_y = 0,
-             unsigned int       cells_z = 0 );
+     *
+     * \param constants  Constant instance residing on the GL context which this
+     *                   object will be used.
+     * \param field      The scalar field to use.
+     * \param binary     True if field is assumed to be binary.
+     * \param cells_x    Number of marching cubes cells along the X-axis,
+     *                   defaults to field->samplesX()-1.
+     * \param cells_y    Number of marching cubes cells along the X-axis,
+     *                   defaults to field->samplesY()-1.
+     * \param cells_z    Number of marching cubes cells along the X-axis,
+     *                   defaults to field->samplesZ()-1.
+     *
+     * \note May throw std::runtime_exception.
+     */
+    HPMCIsoSurface( HPMCConstants*  constants,
+                    Field*          field,
+                    bool            binary = false,
+                    unsigned int    cells_x = 0,
+                    unsigned int    cells_y = 0,
+                    unsigned int    cells_z = 0);
 
     ~HPMCIsoSurface();
-
 
     void
     build( GLfloat iso );
@@ -60,9 +63,6 @@ public:
     GLuint
     builderProgram();
 
-
-    bool
-    init();
 
     void
     taint();
@@ -125,12 +125,6 @@ private:
     HPMCBaseLevelBuilder    m_base_builder;
     HPMCHistoPyramid        m_histopyramid;
 
-    HPMCIsoSurface( HPMCConstants*  constants,
-                    Field*          field,
-                    bool            binary,
-                    unsigned int    cells_x,
-                    unsigned int    cells_y,
-                    unsigned int    cells_z );
 
 };
 

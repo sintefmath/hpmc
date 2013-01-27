@@ -164,7 +164,7 @@ init( int argc, char **argv )
     hpmc_field = new glhpmc::FieldTexture3D( hpmc_c,
                                              3, volume_tex, false,
                                              volume_size_x, volume_size_y, volume_size_z );
-    hpmc_h =  glhpmc::HPMCIsoSurface::factory( hpmc_c, hpmc_field, false );
+    hpmc_h = new glhpmc::HPMCIsoSurface( hpmc_c, hpmc_field, false );
 
     // --- phong shaded render pipeline ----------------------------------------
     {
