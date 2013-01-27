@@ -122,8 +122,8 @@ IF( ENABLE_SAMPLES )
         ADD_EXECUTABLE( texture3d "apps/texture3d/texture3d.cpp" )
         TARGET_LINK_LIBRARIES( texture3d hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
-        #ADD_EXECUTABLE( transform_feedback "apps/transform_feedback/transform_feedback.cpp" ${GLHPMC_APP_COMMON_SRC} )
-        #TARGET_LINK_LIBRARIES( transform_feedback hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+        ADD_EXECUTABLE( transform_feedback "apps/transform_feedback/transform_feedback.cpp" ${GLHPMC_APP_COMMON_SRC} )
+        TARGET_LINK_LIBRARIES( transform_feedback hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
         ADD_EXECUTABLE( metaballs "apps/metaballs/metaballs.cpp" )
         TARGET_LINK_LIBRARIES( metaballs hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )

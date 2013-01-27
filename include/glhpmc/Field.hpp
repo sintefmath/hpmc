@@ -23,10 +23,6 @@
 
 namespace glhpmc {
 
-enum HPMCVolumeLayout {
-    HPMC_VOLUME_LAYOUT_CUSTOM,
-    HPMC_VOLUME_LAYOUT_TEXTURE_3D
-};
 
 /** Abstract base class for field.
  *

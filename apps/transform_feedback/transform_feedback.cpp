@@ -60,6 +60,51 @@
 #include <sstream>
 #include "../common/common.hpp"
 
+namespace resources {
+    extern std::string plain_vs_110;
+    extern std::string plain_vs_130;
+    extern std::string solid_vs_110;
+    extern std::string solid_vs_130;
+    extern std::string solid_fs_110;
+    extern std::string solid_fs_130;
+    extern std::string phong_vs_110;
+    extern std::string phong_vs_130;
+    extern std::string phong_fs_110;
+    extern std::string phong_fs_130;
+    extern std::string cayley_fetch;
+}
+
+class CayleyField : public glhpmc::Field
+{
+public:
+    CayleyField( glhpmc::HPMCConstants* constants,
+                 unsigned int samples_x,
+                 unsigned int samples_y,
+                 unsigned int samples_z )
+        : glhpmc::Field( constants, samples_x, samples_y, samples_z )
+    {}
+
+    bool
+    gradients() const
+    {
+        return true;
+    }
+
+    const std::string
+    fetcherFieldSource() const
+    {
+        return resources::cayley_fetch;
+    }
+
+    const std::string
+    fetcherFieldAndGradientSource() const
+    {
+        return resources::cayley_fetch;
+    }
+
+};
+
+
 using std::cerr;
 using std::endl;
 using std::vector;
@@ -89,24 +134,12 @@ GLint                           plain_loc_color      = -1;
 GLuint                          mc_tri_vbo          = 0;
 GLsizei                         mc_tri_vbo_N        = 0;
 GLuint                          vao                 = 0;
-struct glhpmc::HPMCConstants*           hpmc_c              = NULL;
-struct glhpmc::HPMCIsoSurface*          hpmc_h              = NULL;
-struct glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_shaded      = NULL;
-struct glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
+glhpmc::HPMCConstants*           hpmc_c              = NULL;
+glhpmc::HPMCIsoSurface*          hpmc_h              = NULL;
+glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_shaded      = NULL;
+glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
+CayleyField*                    cayley_field        = NULL;
 
-namespace resources {
-    extern std::string plain_vs_110;
-    extern std::string plain_vs_130;
-    extern std::string solid_vs_110;
-    extern std::string solid_vs_130;
-    extern std::string solid_fs_110;
-    extern std::string solid_fs_130;
-    extern std::string phong_vs_110;
-    extern std::string phong_vs_130;
-    extern std::string phong_fs_110;
-    extern std::string phong_fs_130;
-    extern std::string cayley_fetch;
-}
 
 void
 printHelp( const std::string& appname )
@@ -206,16 +239,14 @@ init( int argc, char** argv )
 
     // --- create HistoPyramid -------------------------------------------------
     hpmc_c = glhpmc::HPMCConstants::factory( hpmc_target, hpmc_debug );
-    hpmc_h = glhpmc::HPMCIsoSurface::factory( hpmc_c );
 
-    hpmc_h->setLatticeSize( volume_size_x, volume_size_y, volume_size_z );
-    hpmc_h->setGridSize( volume_size_x-1, volume_size_y-1, volume_size_z-1 );
-    hpmc_h->setGridExtent( 1.f, 1.f, 1.f );
+    cayley_field = new CayleyField( hpmc_c,
+                                    volume_size_x,
+                                    volume_size_y,
+                                    volume_size_z );
 
-    glhpmc::HPMCsetFieldCustom( hpmc_h,
-                        resources::cayley_fetch.c_str(),
-                        0,
-                        GL_TRUE );
+
+    hpmc_h = glhpmc::HPMCIsoSurface::factory( hpmc_c, cayley_field, binary );
 
 
     // --- phong shaded render pipeline ----------------------------------------
