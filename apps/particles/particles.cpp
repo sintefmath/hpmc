@@ -49,6 +49,101 @@
 #include <sstream>
 #include "../common/common.hpp"
 
+namespace resources {
+    extern std::string particles_fetch;
+    extern std::string particles_shape_vs_150;
+    extern std::string particles_shape_fs_150;
+    extern std::string particles_emitter_vs_150;
+    extern std::string particles_emitter_gs_150;
+    extern std::string particles_anim_vs_150;
+    extern std::string particles_anim_gs_150;
+    extern std::string particles_billboard_vs_150;
+    extern std::string particles_billboard_gs_150;
+    extern std::string particles_billboard_fs_150;
+}
+
+class AlgebraicMorphField : public glhpmc::Field
+{
+public:
+    struct ProgramContext : public glhpmc::Field::ProgramContext
+    {
+        GLint   m_loc_shape;
+    };
+
+    AlgebraicMorphField( glhpmc::HPMCConstants* constants,
+                         unsigned int samples_x,
+                         unsigned int samples_y,
+                         unsigned int samples_z )
+        : glhpmc::Field( constants, is_binary, samples_x, samples_y, samples_z )
+    {
+        animate( 0.f);
+    }
+
+    Field::ProgramContext*
+    createContext( GLuint program ) const
+    {
+        ProgramContext* c = new ProgramContext;
+        c->m_loc_shape = glGetUniformLocation( program, "shape" );
+        return c;
+    }
+
+
+    bool
+    gradients() const
+    {
+        return false;
+    }
+
+    bool
+    bind( Field::ProgramContext* program_context ) const
+    {
+        if( ProgramContext* c = dynamic_cast<ProgramContext*>( program_context ) ) {
+            glUniform1fv( c->m_loc_shape, 12, m_shape );
+        }
+        return true;
+    }
+
+
+    const std::string
+    fetcherFieldSource() const
+    {
+        return resources::particles_fetch;
+    }
+
+    void
+    animate( GLfloat t )
+    {
+        static GLfloat C[7][12] = {
+            // x^5,	x^4,	y^4,	z^4,	x^2y^2,	x^2z^2,	y^2z^2,	xyz,	x^2,	y^2,	z^2,	1
+            // helix
+            { 0.0,	-2.0,	0.0,	0.0,	0.0,	0.0,	-1.0,	0.0,	6.0,	0.0,	0.0,	0.0 },
+            // some in-between shapes
+            { 0.0,	8.0,	0.5,	0.5,	4.0,	4.0,	-1.4,	0.0,	0.0,	0.0,	0.0,	0.0 },
+            { 0.0,  16.0,	1.0,	1.0,	8.0,	8.0,	-2.0,	0.0,	-6.0,	0.0,	0.0,	0.0 },
+            // daddel
+            { 0.0,	0.0,	0.0,	0.0,	0.0,	0.0,	0.0,	0.0,	1.0,	1.0,	0.3,	-0.95 },
+            // torus
+            { 0.0,	1.0,	1.0,	1.0,	2.0,	2.0,	2.0,	0.0,	-1.01125, -1.01125, 0.94875, 0.225032 },
+            // kiss
+            { -0.5,	-0.5,	0.0,	0.0,	0.0,	0.0,	0.0,	0.0,	0.0,	1.0,	1.0,	0.0 },
+            // cayley
+            { 0.0,	0.0,	0.0,	0.0,	0.0,	0.0,	0.0,	16.0,	4.0,	4.0,	4.0,	-1.0 },
+        };
+        int shape1 = static_cast<int>(t/13.0f) % 7;
+        int shape2 = static_cast<int>((t+1.0)/13.0f) % 7;
+        float u = fmodf( (t+1.0f), 13.0f );
+        for(int i=0; i<12; i++) {
+            m_shape[i] = (1.0f-u)*C[shape1][i] + u*C[shape2][i];
+        }
+    }
+
+    const GLfloat*
+    shapeCoefficients() const { return m_shape; }
+
+private:
+    GLfloat     m_shape[12];
+};
+
 using std::min;
 using std::max;
 using std::cerr;
@@ -80,7 +175,6 @@ GLuint onscreen_p;
 GLint  onscreen_loc_P;
 GLint  onscreen_loc_M;
 GLint  onscreen_loc_NM;
-GLint  onscreen_loc_shape;
 
 // -----------------------------------------------------------------------------
 GLuint emitter_p;
@@ -104,22 +198,12 @@ GLint  anim_loc_shape;
 GLuint billboard_p;
 GLint  billboard_loc_P;
 GLint  billboard_loc_color;
-struct HPMCConstants* hpmc_c;
-struct HPMCIsoSurface* hpmc_h;
-struct HPMCIsoSurfaceRenderer* hpmc_th;
+glhpmc::HPMCConstants*          hpmc_c          = NULL;
+AlgebraicMorphField*            hpmc_field      = NULL;
+glhpmc::HPMCIsoSurface*         hpmc_h          = NULL;
+glhpmc::HPMCIsoSurfaceRenderer* hpmc_th         = NULL;
 
-namespace resources {
-    extern std::string particles_fetch;
-    extern std::string particles_shape_vs_150;
-    extern std::string particles_shape_fs_150;
-    extern std::string particles_emitter_vs_150;
-    extern std::string particles_emitter_gs_150;
-    extern std::string particles_anim_vs_150;
-    extern std::string particles_anim_gs_150;
-    extern std::string particles_billboard_vs_150;
-    extern std::string particles_billboard_gs_150;
-    extern std::string particles_billboard_fs_150;
-}
+
 
 
 
@@ -145,7 +229,7 @@ printHelp( const std::string& appname )
 void
 init( int argc, char** argv )
 {
-    if( hpmc_target < HPMC_TARGET_GL32_GLSL150 ) {
+    if( hpmc_target < glhpmc::HPMC_TARGET_GL32_GLSL150 ) {
         std::cerr << "This sample requires OpenGL 3.2 or better." << std::endl;
         exit( EXIT_FAILURE );
     }
@@ -176,28 +260,9 @@ init( int argc, char** argv )
 
 
     // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = HPMCcreateConstants( hpmc_target, hpmc_debug );
-    hpmc_h = HPMCcreateIsoSurface( hpmc_c );
-
-    HPMCsetLatticeSize( hpmc_h,
-                        volume_size_x,
-                        volume_size_y,
-                        volume_size_z );
-
-    HPMCsetGridSize( hpmc_h,
-                     volume_size_x-1,
-                     volume_size_y-1,
-                     volume_size_z-1 );
-
-    HPMCsetGridExtent( hpmc_h,
-                       1.0f,
-                       1.0f,
-                       1.0f );
-
-    HPMCsetFieldCustom( hpmc_h,
-                        resources::particles_fetch.c_str(),
-                        0,
-                        GL_TRUE );
+    hpmc_c = new glhpmc::HPMCConstants( hpmc_target, hpmc_debug );
+    hpmc_field = new AlgebraicMorphField( hpmc_c, volume_size_x, volume_size_y, volume_size_z );
+    hpmc_h = new glhpmc::HPMCIsoSurface( hpmc_c, hpmc_field );
 
     // --- create traversal vertex shader --------------------------------------
     {
@@ -232,7 +297,6 @@ init( int argc, char** argv )
         onscreen_loc_P = glGetUniformLocation( onscreen_p, "P" );
         onscreen_loc_M = glGetUniformLocation( onscreen_p, "M" );
         onscreen_loc_NM = glGetUniformLocation( onscreen_p, "NM" );
-        onscreen_loc_shape = glGetUniformLocation( onscreen_p, "shape" );
 
         // associate the linked program with the traversal handle
         HPMCsetIsoSurfaceRendererProgram( hpmc_th,
@@ -440,40 +504,12 @@ render( float t,
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
     // ---- calc coefficients of shape -----------------------------------------
-
-    // the algebraic shapes we morph between
-    static GLfloat C[7][12] = {
-        // x^5,	x^4,	y^4,	z^4,	x^2y^2,	x^2z^2,	y^2z^2,	xyz,	x^2,	y^2,	z^2,	1
-        // helix
-        { 0.0,	-2.0,	0.0,	0.0,	0.0,	0.0,	-1.0,	0.0,	6.0,	0.0,	0.0,	0.0 },
-        // some in-between shapes
-        { 0.0,	8.0,	0.5,	0.5,	4.0,	4.0,	-1.4,	0.0,	0.0,	0.0,	0.0,	0.0 },
-        { 0.0,  16.0,	1.0,	1.0,	8.0,	8.0,	-2.0,	0.0,	-6.0,	0.0,	0.0,	0.0 },
-        // daddel
-        { 0.0,	0.0,	0.0,	0.0,	0.0,	0.0,	0.0,	0.0,	1.0,	1.0,	0.3,	-0.95 },
-        // torus
-        { 0.0,	1.0,	1.0,	1.0,	2.0,	2.0,	2.0,	0.0,	-1.01125, -1.01125, 0.94875, 0.225032 },
-        // kiss
-        { -0.5,	-0.5,	0.0,	0.0,	0.0,	0.0,	0.0,	0.0,	0.0,	1.0,	1.0,	0.0 },
-        // cayley
-        { 0.0,	0.0,	0.0,	0.0,	0.0,	0.0,	0.0,	16.0,	4.0,	4.0,	4.0,	-1.0 },
-    };
-
-    GLfloat CC[12];
-    int shape1 = static_cast<int>(t/13.0f) % 7;
-    int shape2 = static_cast<int>((t+1.0)/13.0f) % 7;
-    float u = fmodf( (t+1.0f), 13.0f );
-    for(int i=0; i<12; i++) {
-        CC[i] = (1.0f-u)*C[shape1][i] + u*C[shape2][i];
-    }
-
+    hpmc_field->animate( t );
 
     // --- build HistoPyramid --------------------------------------------------
     double iso = 0.001f;//sin(0.1*t);//4.0*fabs(sin(0.4*t));
-    GLuint builder = HPMCgetBuilderProgram( hpmc_h );
-    glUseProgram( builder );
-    glUniform1fv( glGetUniformLocation( builder, "shape" ), 12, &CC[0] );
-    HPMCbuildIsoSurface( hpmc_h, iso );
+
+    hpmc_h->build( iso );
 
     // Get number of vertices in MC triangulation, forces CPU-GPU sync.
     GLsizei N = HPMCacquireNumberOfVertices( hpmc_h );
@@ -503,7 +539,6 @@ render( float t,
     glUniformMatrix4fv( onscreen_loc_P, 1, GL_FALSE, P );
     glUniformMatrix4fv( onscreen_loc_M, 1, GL_FALSE, MV );
     glUniformMatrix3fv( onscreen_loc_NM, 1, GL_FALSE, NM );
-    glUniform1fv( onscreen_loc_shape, 12, CC );
     glBindBufferBase( GL_TRANSFORM_FEEDBACK_BUFFER, 0, mc_tri_vbo );
     HPMCextractVerticesTransformFeedback( hpmc_th, GL_FALSE );
 
@@ -558,7 +593,7 @@ render( float t,
     // rendering. To get more fancy effects, one would add a dedicated rendering
     // pass that expanded every particle into a billboard and do some blending.
     glUseProgram( anim_p );
-    glUniform1fv( anim_loc_shape, 12, CC );
+    glUniform1fv( anim_loc_shape, 12, hpmc_field->shapeCoefficients() );
     glUniform1f( anim_loc_dt, dt );
     glUniform1f( anim_loc_iso, iso );
     glUniformMatrix4fv( anim_loc_P, 1, GL_FALSE, P );

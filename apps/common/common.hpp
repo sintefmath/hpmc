@@ -23,7 +23,10 @@
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 #include <GL/freeglut_ext.h>
-#include <hpmc.h>
+#include <glhpmc/glhpmc.hpp>
+#include <glhpmc/Constants.hpp>
+#include <glhpmc/IsoSurface.hpp>
+
 
 // === Prototypes for functions provided by the individual app =================
 void
@@ -52,9 +55,9 @@ extern double               aspect_x;
 extern double               aspect_y;
 extern bool                 wireframe;
 extern bool                 record;
-extern bool                 binary;
-extern HPMCTarget           hpmc_target;
-extern HPMCDebugBehaviour   hpmc_debug;
+extern bool                 is_binary;
+extern glhpmc::HPMCTarget           hpmc_target;
+extern glhpmc::HPMCDebugBehaviour   hpmc_debug;
 
 
 void
