@@ -59,7 +59,10 @@ public:
     gradients() const;
 
     const std::string
-    fetcherSource( bool gradient ) const;
+    fetcherFieldSource( ) const;
+
+    const std::string
+    fetcherFieldAndGradientSource( ) const;
 
     bool
     bind( ProgramContext* program_context ) const;

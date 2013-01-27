@@ -54,7 +54,7 @@ FieldTexture3D::gradients() const
 }
 
 const std::string
-FieldTexture3D::fetcherSource( bool gradient ) const
+FieldTexture3D::fetcherFieldSource( ) const
 {
     std::stringstream o;
 
@@ -74,18 +74,25 @@ FieldTexture3D::fetcherSource( bool gradient ) const
         }
     }
     o << "}\n";
-    if( m_gradients && gradient ) {
-        o << "vec4\n";
-        o << "HPMC_fetchGrad( vec3 p )\n";
-        o << "{\n";
-        if( constants()->target() < HPMC_TARGET_GL30_GLSL130 ) {
-            o << "    return texture3D( HPMC_scalarfield, p );\n";
-        }
-        else {
-            o << "    return texture( HPMC_scalarfield, p );\n";
-        }
-        o << "}\n";
+    return o.str();
+}
+
+const std::string
+FieldTexture3D::fetcherFieldAndGradientSource() const
+{
+    std::stringstream o;
+
+    o << "uniform sampler3D HPMC_scalarfield;\n";
+    o << "vec4\n";
+    o << "HPMC_fetchGrad( vec3 p )\n";
+    o << "{\n";
+    if( constants()->target() < HPMC_TARGET_GL30_GLSL130 ) {
+        o << "    return texture3D( HPMC_scalarfield, p );\n";
     }
+    else {
+        o << "    return texture( HPMC_scalarfield, p );\n";
+    }
+    o << "}\n";
     return o.str();
 }
 

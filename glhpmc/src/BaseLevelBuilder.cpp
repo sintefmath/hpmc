@@ -90,7 +90,7 @@ HPMCBaseLevelBuilder::configure()
 
     // fragment shader
     GLuint fs = HPMCcompileShader( m_iso_surface->constants()->versionString() +
-                                   m_iso_surface->field()->fetcherSource( false ) +
+                                   m_iso_surface->field()->fetcherFieldSource() +
 //                                   m_iso_surface->oldField().fetcherSource( false ) +
                                    HPMCgenerateDefines( m_iso_surface ) +
                                    fragmentSource(),

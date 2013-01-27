@@ -38,9 +38,16 @@ HPMCIsoSurfaceRenderer::~HPMCIsoSurfaceRenderer()
 const std::string
 HPMCIsoSurfaceRenderer::extractionSource() const
 {
-    return HPMCgenerateDefines( m_handle )
-            + m_handle->field()->fetcherSource( m_handle->field()->gradients() )
-            + HPMCgenerateExtractVertexFunction( m_handle );
+    if( m_handle->field()->gradients() ) {
+        return HPMCgenerateDefines( m_handle )
+                + m_handle->field()->fetcherFieldAndGradientSource()
+                + HPMCgenerateExtractVertexFunction( m_handle );
+    }
+    else {
+        return HPMCgenerateDefines( m_handle )
+                + m_handle->field()->fetcherFieldSource( )
+                + HPMCgenerateExtractVertexFunction( m_handle );
+    }
 }
 
 bool

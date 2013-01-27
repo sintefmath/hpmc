@@ -72,7 +72,13 @@ public:
     }
 
     const std::string
-    fetcherSource(bool gradient) const
+    fetcherFieldSource() const
+    {
+        return resources::cayley_fetch;
+    }
+
+    const std::string
+    fetcherFieldAndGradientSource() const
     {
         return resources::cayley_fetch;
     }

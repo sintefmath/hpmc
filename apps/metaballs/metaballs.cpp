@@ -105,7 +105,7 @@ public:
 
 
     const std::string
-    fetcherSource(bool gradient) const
+    fetcherFieldSource() const
     {
         return resources::metaballs_fetch;
     }
