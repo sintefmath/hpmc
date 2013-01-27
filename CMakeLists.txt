@@ -131,8 +131,8 @@ IF( ENABLE_SAMPLES )
         ADD_EXECUTABLE( particles "apps/particles/particles.cpp" ${GLHPMC_APP_COMMON_SRC} )
         TARGET_LINK_LIBRARIES( particles hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 
-        #ADD_EXECUTABLE( splatting "apps/splatting/splatting.cpp" )
-        #TARGET_LINK_LIBRARIES( splatting hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
+        ADD_EXECUTABLE( splatting "apps/splatting/splatting.cpp" )
+        TARGET_LINK_LIBRARIES( splatting hpmc_app_common glhpmc ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
     ENDIF( ENABLE_GLHPMC )
 
     # --- CUHPMC samples -------------------------------------------------------

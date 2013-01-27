@@ -48,6 +48,7 @@
 #include <GL/glut.h>
 #endif
 #include <glhpmc/glhpmc.hpp>
+#include <glhpmc/FieldTexture3D.hpp>
 #include "../common/common.hpp"
 
 using std::ifstream;
@@ -79,11 +80,12 @@ GLint                           shaded_loc_nm           = -1;
 GLint                           shaded_loc_color        = -1;
 GLuint                          flat_p                  = 0;
 GLint                           flat_loc_pm             = -1;
-GLint                           flat_loc_color =             -1;
-struct glhpmc::HPMCConstants*           hpmc_c         = NULL;
-struct glhpmc::HPMCIsoSurface*          hpmc_h         = NULL;
-struct glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_flat   = NULL;
-struct glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_shaded = NULL;
+GLint                           flat_loc_color          = -1;
+glhpmc::HPMCConstants*          hpmc_c                  = NULL;
+glhpmc::FieldTexture3D*         hpmc_field              = NULL;
+glhpmc::HPMCIsoSurface*         hpmc_h                  = NULL;
+glhpmc::HPMCIsoSurfaceRenderer* hpmc_th_flat            = NULL;
+glhpmc::HPMCIsoSurfaceRenderer* hpmc_th_shaded          = NULL;
 
 GLuint                          splat_vbo      = 0;
 GLuint                          splat_vao      = 0;
@@ -222,21 +224,10 @@ init()
     }
     // --- create HistoPyramid -------------------------------------------------
     {
-        hpmc_c = glhpmc::HPMCConstants::factory( hpmc_target, hpmc_debug );
-        hpmc_h =  glhpmc::HPMCIsoSurface::factory( hpmc_c );
-
-        hpmc_h->setLatticeSize( volume_size_x, volume_size_y, volume_size_z );
-        hpmc_h->setGridSize( volume_size_x-1, volume_size_y-1, volume_size_z-1 );
-        float max_size = std::max( volume_size_x, std::max( volume_size_y, volume_size_z ) );
-        hpmc_h->setGridExtent( volume_size_x / max_size,
-                               volume_size_y / max_size,
-                               volume_size_z / max_size );
-
-
-        glhpmc::HPMCsetFieldTexture3D( hpmc_h,
-                               volume_tex,
-                               GL_ALPHA,
-                               GL_RGB );
+        hpmc_c = new glhpmc::HPMCConstants( hpmc_target, hpmc_debug );
+        hpmc_field = new glhpmc::FieldTexture3D( hpmc_c, 3, volume_tex, is_binary, true,
+                                                 volume_size_x, volume_size_y, volume_size_z );
+        hpmc_h = new glhpmc::HPMCIsoSurface( hpmc_c, hpmc_field );
 
     }
     // --- set up particle splatting program -----------------------------------
