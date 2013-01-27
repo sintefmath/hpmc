@@ -29,21 +29,6 @@ namespace glhpmc {
     static const std::string package = "hpmc.constants";
 
 
-HPMCConstants*
-HPMCConstants::factory( HPMCTarget target, HPMCDebugBehaviour debug )
-{
-    HPMCConstants *constants = NULL;
-    try {
-        constants = new HPMCConstants( target, debug );
-        Logger log( constants, package + ".factory", true );
-        constants->init();
-    }
-    catch( std::runtime_error& e ) {
-        std::cerr << e.what() << std::endl;
-    }
-    return constants;
-}
-
 
 HPMCConstants::HPMCConstants( HPMCTarget target, HPMCDebugBehaviour debug )
     : m_target( target ),
@@ -141,11 +126,7 @@ HPMCConstants::HPMCConstants( HPMCTarget target, HPMCDebugBehaviour debug )
             throw std::runtime_error( "Missing extension" );
         }
     }
-}
-
-void
-HPMCConstants::init()
-{
+    Logger log( this, package + ".constructor", true );
     m_vertex_counts.init();
     m_gpgpu_quad.init();
     m_sequence_renderer.init();

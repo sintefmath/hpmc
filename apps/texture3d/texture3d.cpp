@@ -160,7 +160,7 @@ init( int argc, char **argv )
 
 
     // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = glhpmc::HPMCConstants::factory( hpmc_target, hpmc_debug );
+    hpmc_c = new glhpmc::HPMCConstants( hpmc_target, hpmc_debug );
     hpmc_field = new glhpmc::FieldTexture3D( hpmc_c,
                                              3, volume_tex, false,
                                              volume_size_x, volume_size_y, volume_size_z );

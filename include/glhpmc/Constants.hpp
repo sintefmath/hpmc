@@ -40,17 +40,13 @@ public:
       *
       * \sideeffect None.
       */
-    static
-    HPMCConstants*
-    factory( HPMCTarget target, HPMCDebugBehaviour debug );
+    HPMCConstants( HPMCTarget target, HPMCDebugBehaviour debug );
 
     ~HPMCConstants();
 
     HPMCDebugBehaviour
     debugBehaviour() const { return m_debug; }
 
-    void
-    init();
 
     /** Return the GLSL version declaration for the current target. */
     const std::string&
@@ -80,7 +76,6 @@ private:
     HPMCIntersectingEdgeTable   m_edge_table;
     std::string                 m_version_string;
 
-    HPMCConstants( HPMCTarget target, HPMCDebugBehaviour debug );
 
 };
 

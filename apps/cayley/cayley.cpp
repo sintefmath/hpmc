@@ -138,7 +138,7 @@ init( int argc, char** argv )
     }
 
     // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = glhpmc::HPMCConstants::factory( hpmc_target, hpmc_debug );
+    hpmc_c = new glhpmc::HPMCConstants( hpmc_target, hpmc_debug );
 
     cayley_field = new CayleyField( hpmc_c,
                                     volume_size_x,
