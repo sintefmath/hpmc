@@ -46,7 +46,8 @@
 #else
 #include <GL/glut.h>
 #endif
-#include "hpmc.h"
+#include <glhpmc/glhpmc.hpp>
+#include <glhpmc/FieldTexture3D.hpp>
 #include "../common/common.hpp"
 
 using std::ifstream;
@@ -68,10 +69,11 @@ GLuint                          flat_p              = 0;
 GLint                           flat_loc_pm         = -1;
 GLint                           flat_loc_color      = -1;
 vector<GLubyte>                 dataset;
-struct HPMCConstants*           hpmc_c              = NULL;
-struct HPMCIsoSurface*          hpmc_h              = NULL;
-struct HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
-struct HPMCIsoSurfaceRenderer*  hpmc_th_shaded      = NULL;
+glhpmc::HPMCConstants*           hpmc_c              = NULL;
+glhpmc::Field*                   hpmc_field         = NULL;
+glhpmc::HPMCIsoSurface*          hpmc_h              = NULL;
+glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
+glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_shaded      = NULL;
 
 namespace resources {
     extern std::string    solid_vs_110;
@@ -135,29 +137,10 @@ init( int argc, char **argv )
     // --- upload volume ------------------------------------------------------
 
 
-    // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = HPMCcreateConstants( hpmc_target, hpmc_debug );
-    hpmc_h = HPMCcreateIsoSurface( hpmc_c );
-
-    HPMCsetLatticeSize( hpmc_h,
-                        volume_size_x,
-                        volume_size_y,
-                        volume_size_z );
-
-    HPMCsetGridSize( hpmc_h,
-                     volume_size_x-1,
-                     volume_size_y-1,
-                     volume_size_z-1 );
-
-    float max_size = std::max( volume_size_x, std::max( volume_size_y, volume_size_z ) );
-    HPMCsetGridExtent( hpmc_h,
-                       volume_size_x / max_size,
-                       volume_size_y / max_size,
-                       volume_size_z / max_size );
 
     // Setup field
     GLint alignment;
-    GLenum channel = (hpmc_target < HPMC_TARGET_GL31_GLSL140 ? GL_ALPHA : GL_RED );
+    GLenum channel = (hpmc_target < glhpmc::HPMC_TARGET_GL31_GLSL140 ? GL_ALPHA : GL_RED );
     glGetIntegerv( GL_UNPACK_ALIGNMENT, &alignment );
     glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );
     glGenTextures( 1, &volume_tex );
@@ -174,11 +157,14 @@ init( int argc, char **argv )
     glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, 0 );
     glBindTexture( GL_TEXTURE_3D, 0 );
     glPixelStorei( GL_UNPACK_ALIGNMENT, alignment );
-    HPMCsetFieldTexture3D( hpmc_h,
-                           volume_tex,
-                           channel,
-                           GL_NONE );
 
+
+    // --- create HistoPyramid -------------------------------------------------
+    hpmc_c = new glhpmc::HPMCConstants( hpmc_target, hpmc_debug );
+    hpmc_field = new glhpmc::FieldTexture3D( hpmc_c,
+                                             3, volume_tex, is_binary, false,
+                                             volume_size_x, volume_size_y, volume_size_z );
+    hpmc_h = new glhpmc::HPMCIsoSurface( hpmc_c, hpmc_field, false );
 
     // --- phong shaded render pipeline ----------------------------------------
     {
@@ -186,13 +172,13 @@ init( int argc, char **argv )
         char* traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shaded );
 
         const GLchar* vs_src[2] = {
-            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130
                            ? resources::phong_vs_110.c_str()
                            : resources::phong_vs_130.c_str(),
             traversal_code
         };
         const GLchar* fs_src[1] = {
-            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130
             ? resources::phong_fs_110.c_str()
             : resources::phong_fs_130.c_str()
         };
@@ -207,7 +193,7 @@ init( int argc, char **argv )
         shaded_p = glCreateProgram();
         glAttachShader( shaded_p, vs );
         glAttachShader( shaded_p, fs );
-        if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+        if( glhpmc::HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
             glBindFragDataLocation( shaded_p, 0, "fragment" );
         }
         linkProgram( shaded_p, "shaded program" );
@@ -228,13 +214,13 @@ init( int argc, char **argv )
         char* traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_flat );
 
         const GLchar* vs_src[2] = {
-            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130
             ? resources::solid_vs_110.c_str()
             : resources::solid_vs_130.c_str(),
             traversal_code
         };
         const GLchar* fs_src[1] = {
-            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130
             ? resources::solid_fs_110.c_str()
             : resources::solid_fs_130.c_str()
         };
@@ -250,7 +236,7 @@ init( int argc, char **argv )
         flat_p = glCreateProgram();
         glAttachShader( flat_p, vs );
         glAttachShader( flat_p, fs );
-        if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+        if( glhpmc::HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
             glBindFragDataLocation( flat_p, 0, "fragment" );
         }
         linkProgram( flat_p, "flat program" );
@@ -282,11 +268,11 @@ render( float t,
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
     // Build histopyramid
-    iso = sin(t);
-    HPMCbuildIsoSurface( hpmc_h, iso );
+    iso = 0.5f*(sin(t)+1.f);
+    hpmc_h->build( iso );
     // Set up view matrices if pre 3.0
     glEnable( GL_DEPTH_TEST );
-    if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+    if( hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130 ) {
         glMatrixMode( GL_PROJECTION );
         glLoadMatrixf( P );
         glMatrixMode( GL_MODELVIEW );
@@ -296,7 +282,7 @@ render( float t,
     if( !wireframe ) {
         // Solid shaded rendering
         glUseProgram( shaded_p );
-        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+        if( hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130 ) {
             glColor3f( 1.0-iso, 0.0, iso );
         }
         else {
@@ -309,7 +295,7 @@ render( float t,
     else {
         // Wireframe rendering
         glUseProgram( flat_p );
-        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+        if( hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130 ) {
             glColor3f( 0.2*(1.0-iso), 0.0, 0.2*iso );
         }
         else {
@@ -323,7 +309,7 @@ render( float t,
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE );
         glUseProgram( flat_p );
-        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+        if( hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130 ) {
             glColor3f( 1.0, 1.0, 1.0 );
         }
         else {

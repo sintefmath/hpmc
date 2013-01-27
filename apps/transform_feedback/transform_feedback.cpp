@@ -60,6 +60,51 @@
 #include <sstream>
 #include "../common/common.hpp"
 
+namespace resources {
+    extern std::string plain_vs_110;
+    extern std::string plain_vs_130;
+    extern std::string solid_vs_110;
+    extern std::string solid_vs_130;
+    extern std::string solid_fs_110;
+    extern std::string solid_fs_130;
+    extern std::string phong_vs_110;
+    extern std::string phong_vs_130;
+    extern std::string phong_fs_110;
+    extern std::string phong_fs_130;
+    extern std::string cayley_fetch;
+}
+
+class CayleyField : public glhpmc::Field
+{
+public:
+    CayleyField( glhpmc::HPMCConstants* constants,
+                 unsigned int samples_x,
+                 unsigned int samples_y,
+                 unsigned int samples_z )
+        : glhpmc::Field( constants, is_binary, samples_x, samples_y, samples_z )
+    {}
+
+    bool
+    gradients() const
+    {
+        return true;
+    }
+
+    const std::string
+    fetcherFieldSource() const
+    {
+        return resources::cayley_fetch;
+    }
+
+    const std::string
+    fetcherFieldAndGradientSource() const
+    {
+        return resources::cayley_fetch;
+    }
+
+};
+
+
 using std::cerr;
 using std::endl;
 using std::vector;
@@ -89,24 +134,12 @@ GLint                           plain_loc_color      = -1;
 GLuint                          mc_tri_vbo          = 0;
 GLsizei                         mc_tri_vbo_N        = 0;
 GLuint                          vao                 = 0;
-struct HPMCConstants*           hpmc_c              = NULL;
-struct HPMCIsoSurface*          hpmc_h              = NULL;
-struct HPMCIsoSurfaceRenderer*  hpmc_th_shaded      = NULL;
-struct HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
+glhpmc::HPMCConstants*           hpmc_c              = NULL;
+glhpmc::HPMCIsoSurface*          hpmc_h              = NULL;
+glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_shaded      = NULL;
+glhpmc::HPMCIsoSurfaceRenderer*  hpmc_th_flat        = NULL;
+CayleyField*                    cayley_field        = NULL;
 
-namespace resources {
-    extern std::string plain_vs_110;
-    extern std::string plain_vs_130;
-    extern std::string solid_vs_110;
-    extern std::string solid_vs_130;
-    extern std::string solid_fs_110;
-    extern std::string solid_fs_130;
-    extern std::string phong_vs_110;
-    extern std::string phong_vs_130;
-    extern std::string phong_fs_110;
-    extern std::string phong_fs_130;
-    extern std::string cayley_fetch;
-}
 
 void
 printHelp( const std::string& appname )
@@ -196,7 +229,7 @@ init( int argc, char** argv )
         }
         break;
     case USE_CORE:
-        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+        if( hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130 ) {
             cerr << "Insufficient target for core transform feedback." << endl;
             exit( EXIT_FAILURE );
         }
@@ -205,28 +238,14 @@ init( int argc, char** argv )
 
 
     // --- create HistoPyramid -------------------------------------------------
-    hpmc_c = HPMCcreateConstants( hpmc_target, hpmc_debug );
-    hpmc_h = HPMCcreateIsoSurface( hpmc_c );
+    hpmc_c = new glhpmc::HPMCConstants( hpmc_target, hpmc_debug );
 
-    HPMCsetLatticeSize( hpmc_h,
-                        volume_size_x,
-                        volume_size_y,
-                        volume_size_z );
+    cayley_field = new CayleyField( hpmc_c,
+                                    volume_size_x,
+                                    volume_size_y,
+                                    volume_size_z );
 
-    HPMCsetGridSize( hpmc_h,
-                     volume_size_x-1,
-                     volume_size_y-1,
-                     volume_size_z-1 );
-
-    HPMCsetGridExtent( hpmc_h,
-                       1.0f,
-                       1.0f,
-                       1.0f );
-
-    HPMCsetFieldCustom( hpmc_h,
-                        resources::cayley_fetch.c_str(),
-                        0,
-                        GL_TRUE );
+    hpmc_h = new glhpmc::HPMCIsoSurface( hpmc_c, cayley_field );
 
 
     // --- phong shaded render pipeline ----------------------------------------
@@ -235,13 +254,13 @@ init( int argc, char** argv )
         char* traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_shaded );
 
         const GLchar* vs_src[2] = {
-            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130
             ? resources::phong_vs_110.c_str()
             : resources::phong_vs_130.c_str(),
             traversal_code
         };
         const GLchar* fs_src[1] = {
-            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130
             ? resources::phong_fs_110.c_str()
             : resources::phong_fs_130.c_str()
         };
@@ -257,7 +276,7 @@ init( int argc, char** argv )
         shaded_p = glCreateProgram();
         glAttachShader( shaded_p, vs );
         glAttachShader( shaded_p, fs );
-        if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+        if( glhpmc::HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
             glBindFragDataLocation( shaded_p, 0, "fragment" );
         }
         linkProgram( shaded_p, "shaded program" );
@@ -273,17 +292,17 @@ init( int argc, char** argv )
     }
     // --- flat-shaded render pipeline with transform feedback capture ---------
     {
-        hpmc_th_flat = HPMCcreateIsoSurfaceRenderer( hpmc_h );
-        char* traversal_code = HPMCisoSurfaceRendererShaderSource( hpmc_th_flat );
+        hpmc_th_flat = glhpmc::HPMCcreateIsoSurfaceRenderer( hpmc_h );
+        char* traversal_code = glhpmc::HPMCisoSurfaceRendererShaderSource( hpmc_th_flat );
 
         const GLchar* vs_src[2] = {
-            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130
             ? resources::solid_vs_110.c_str()
             : resources::solid_vs_130.c_str(),
             traversal_code
         };
         const GLchar* fs_src[1] = {
-            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130
             ? resources::solid_fs_110.c_str()
             : resources::solid_fs_130.c_str()
         };
@@ -302,7 +321,7 @@ init( int argc, char** argv )
         flat_p = glCreateProgram();
         glAttachShader( flat_p, vs );
         glAttachShader( flat_p, fs );
-        if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+        if( glhpmc::HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
             glBindFragDataLocation( flat_p, 0, "fragment" );
         }
         // When using the EXT extension (or 3.0 core), we can directly tag varyings
@@ -347,12 +366,12 @@ init( int argc, char** argv )
     // --- plain rendering of a triangle set in a VBO --------------------------
     {
         const GLchar* vs_src[1] = {
-            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130
             ? resources::plain_vs_110.c_str()
             : resources::plain_vs_130.c_str()
         };
         const GLchar* fs_src[1] = {
-            hpmc_target < HPMC_TARGET_GL30_GLSL130
+            hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130
             ? resources::solid_fs_110.c_str()
             : resources::solid_fs_130.c_str()
         };
@@ -368,7 +387,7 @@ init( int argc, char** argv )
         plain_p = glCreateProgram();
         glAttachShader( plain_p, vs );
         glAttachShader( plain_p, fs );
-        if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+        if( glhpmc::HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
             glBindAttribLocation( plain_p, 0, "position" );
             glBindFragDataLocation( plain_p, 0, "fragment" );
         }
@@ -394,7 +413,7 @@ init( int argc, char** argv )
     glBindBuffer( GL_ARRAY_BUFFER, 0 );
 
     // If >= 3.0, set up vertex attrib array
-    if( HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
+    if( glhpmc::HPMC_TARGET_GL30_GLSL130 <= hpmc_target ) {
         glGenVertexArrays( 1, &vao );
         glBindVertexArray( vao );
 
@@ -422,13 +441,13 @@ render( float t,
 {
     // --- build HistoPyramid --------------------------------------------------
     float iso = sin(t);
-    HPMCbuildIsoSurface( hpmc_h, iso );
+    hpmc_h->build( iso );
 
     // --- clear screen and set up view ----------------------------------------
     glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glEnable( GL_DEPTH_TEST );
-    if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+    if( hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130 ) {
         glMatrixMode( GL_PROJECTION );
         glLoadMatrixf( P );
         glMatrixMode( GL_MODELVIEW );
@@ -441,7 +460,7 @@ render( float t,
     if(!wireframe) {
         // Solid shaded rendering
         glUseProgram( shaded_p );
-        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+        if( hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130 ) {
             glColor3f( 1.0-iso, 0.0, iso );
         }
         else {
@@ -466,7 +485,7 @@ render( float t,
         }
 
         glUseProgram( flat_p );
-        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+        if( hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130 ) {
             glColor3f( 0.2*(1.0-iso), 0.0, 0.2*iso );
         }
         else {
@@ -506,7 +525,7 @@ render( float t,
         // --- render wireframe ------------------------------------------------
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE );
         glUseProgram( plain_p );
-        if( hpmc_target < HPMC_TARGET_GL30_GLSL130 ) {
+        if( hpmc_target < glhpmc::HPMC_TARGET_GL30_GLSL130 ) {
             glPushClientAttrib( GL_CLIENT_VERTEX_ARRAY_BIT );
             glColor3f( 1.0, 1.0, 1.0 );
             glBindBuffer( GL_ARRAY_BUFFER, mc_tri_vbo );
