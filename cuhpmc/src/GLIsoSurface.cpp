@@ -26,7 +26,7 @@
 #include <stdexcept>
 #include <cuhpmc/GLIsoSurface.hpp>
 #include <cuhpmc/Field.hpp>
-#include <cuhpmc/GLFieldUCharBuffer.hpp>
+#include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/Constants.hpp>
 #include <cuhpmc/CUDAErrorException.hpp>
 

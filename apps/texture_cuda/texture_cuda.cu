@@ -28,7 +28,7 @@
 #include "../common/common.hpp"
 #include <cuhpmc/Constants.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
-#include <cuhpmc/GLFieldUCharBuffer.hpp>
+#include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/IsoSurface.hpp>
 #include <cuhpmc/GLIsoSurface.hpp>
 #include <cuhpmc/TriangleVertexWriter.hpp>
@@ -294,7 +294,7 @@ init( int argc, char** argv )
                       GL_STATIC_DRAW );
         glBindBuffer( GL_TEXTURE_BUFFER, 0 );
 
-        field = new cuhpmc::GLFieldUCharBuffer( constants,
+        field = new cuhpmc::FieldGLBufferUChar( constants,
                                                 gl_field_buffer,
                                                 volume_size_x,
                                                 volume_size_y,

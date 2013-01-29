@@ -22,7 +22,7 @@
 #include <iomanip>
 #include <stdexcept>
 #include <cuhpmc/Constants.hpp>
-#include <cuhpmc/GLFieldUCharBuffer.hpp>
+#include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/GLWriter.hpp>
 #include <cuhpmc/GLIsoSurface.hpp>
 
@@ -135,7 +135,7 @@ GLWriter::render( const GLfloat* modelview_projection,
 
     glActiveTexture( GL_TEXTURE0 );
     glBindTexture( GL_TEXTURE_2D, m_constants->caseIntersectEdgeGL() );
-    if( GLFieldUCharBuffer* f = dynamic_cast<GLFieldUCharBuffer*>( m_field ) ) {
+    if( FieldGLBufferUChar* f = dynamic_cast<FieldGLBufferUChar*>( m_field ) ) {
         glActiveTexture( GL_TEXTURE1 );
         glBindTexture( GL_TEXTURE_BUFFER, f->fieldGLTex() );
         if( GLIsoSurface* i = dynamic_cast<GLIsoSurface*>( m_iso_surface ) ) {

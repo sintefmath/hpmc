@@ -23,16 +23,16 @@
 
 namespace cuhpmc {
 
-class GLFieldUCharBuffer : public Field
+class FieldGLBufferUChar : public Field
 {
 public:
-    GLFieldUCharBuffer( Constants*     constants,
+    FieldGLBufferUChar( Constants*     constants,
                         GLuint         field_buf,
                         uint           width,
                         uint           height,
                         uint           depth );
 
-    ~GLFieldUCharBuffer();
+    ~FieldGLBufferUChar();
 
     GLuint
     fieldGLTex() const { return m_field_gl_tex; }

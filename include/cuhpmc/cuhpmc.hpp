@@ -27,7 +27,7 @@ class Constants;
 
 class Field;
 class FieldGlobalMemUChar;
-class GLFieldUCharBuffer;
+class FieldGLBufferUChar;
 
 class AbstractIsoSurface;
 class IsoSurface;

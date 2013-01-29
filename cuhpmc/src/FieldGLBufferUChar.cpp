@@ -20,11 +20,11 @@
 #include <cuda_gl_interop.h>
 #include <cuhpmc/cuhpmc.hpp>
 #include <cuhpmc/CUDAErrorException.hpp>
-#include <cuhpmc/GLFieldUCharBuffer.hpp>
+#include <cuhpmc/FieldGLBufferUChar.hpp>
 
 namespace cuhpmc {
 
-GLFieldUCharBuffer::GLFieldUCharBuffer( Constants*     constants,
+FieldGLBufferUChar::FieldGLBufferUChar( Constants*     constants,
                                         GLuint         field_buf,
                                         uint           width,
                                         uint           height,
@@ -52,7 +52,7 @@ GLFieldUCharBuffer::GLFieldUCharBuffer( Constants*     constants,
     }
 }
 
-GLFieldUCharBuffer::~GLFieldUCharBuffer()
+FieldGLBufferUChar::~FieldGLBufferUChar()
 {
     glDeleteTextures( 1, &m_field_gl_tex );
     if( m_field_resource != NULL ) {
@@ -62,7 +62,7 @@ GLFieldUCharBuffer::~GLFieldUCharBuffer()
 }
 
 const unsigned char*
-GLFieldUCharBuffer::mapFieldBuffer( cudaStream_t stream )
+FieldGLBufferUChar::mapFieldBuffer( cudaStream_t stream )
 {
     cudaError_t error;
     if( m_mapped ) {
@@ -83,7 +83,7 @@ GLFieldUCharBuffer::mapFieldBuffer( cudaStream_t stream )
 }
 
 void
-GLFieldUCharBuffer::unmapFieldBuffer( cudaStream_t stream )
+FieldGLBufferUChar::unmapFieldBuffer( cudaStream_t stream )
 {
     if( !m_mapped ) {
         throw std::runtime_error( "buffer not mapped" );

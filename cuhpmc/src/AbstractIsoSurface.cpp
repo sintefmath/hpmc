@@ -26,7 +26,7 @@
 #include <cuhpmc/Field.hpp>
 #include <cuhpmc/AbstractIsoSurface.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
-#include <cuhpmc/GLFieldUCharBuffer.hpp>
+#include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/Constants.hpp>
 #include "../kernels/hp5_buildup_base_triple_gb.hpp"
 #include "../kernels/hp5_buildup_level_double.hpp"
@@ -191,7 +191,7 @@ AbstractIsoSurface::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* 
 
 
     }
-    else if( GLFieldUCharBuffer* field = dynamic_cast<GLFieldUCharBuffer*>( m_field ) ) {
+    else if( FieldGLBufferUChar* field = dynamic_cast<FieldGLBufferUChar*>( m_field ) ) {
         const unsigned char* field_d = field->mapFieldBuffer( stream );
         run_hp5_buildup_base_triple_gb_ub( hp5_hp_d + m_hp5_offsets[ m_hp5_levels-3 ],
                                            m_hp5_sb_d + m_hp5_offsets[ m_hp5_levels-3 ],
