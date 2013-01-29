@@ -35,6 +35,88 @@ Constants::Constants()
     unsigned char eisec[256*16];
 
     for(uint j=0; j<256; j++) {
+        // case bits:
+        // bit 0: p000 is inside
+        // bit 1: p100 is inside
+        // bit 2: p010 is inside
+        // bit 3: p110 is inside
+        // bit 4: p001 is inside
+        // bit 5: p101 is inside
+        // bit 6: p011 is inside
+        // bit 7: p111 is inside
+
+        const uint mask = 0x16; // 00010110
+        uint t0 = (j&0x1==1?mask:0);
+        uint t1 = j & mask;
+        uint t2 = t0 ^ t1;
+        uint s = (t2>>1) - (t2>>2) - (t2>>3) - (t2>>4);  // popcnt_4
+
+
+        std::cerr << "case " << j << "\tcasebits="
+                  << (j&128?'+':'-')
+                  << (j&64?'+':'-')
+                  << (j&32?'+':'-')
+                  << (j&16?'Z':'z')
+                  << (j&8?'+':'-')
+                  << (j&4?'Y':'y')
+                  << (j&2?'X':'x')
+                  << (j&1?'O':'o')
+                  << ", axis isecs="
+                  << (t2&128?'+':'-')
+                  << (t2&64?'+':'-')
+                  << (t2&32?'+':'-')
+                  << (t2&16?'Z':'-')
+                  << (t2&8?'+':'-')
+                  << (t2&4?'Y':'-')
+                  << (t2&2?'X':'-')
+                  << (t2&1?'+':'-')
+                  << ", # isecs="
+                  << s << "\n";
+
+        // Find which bit is the nth bit
+        for(int k=0; k<s; k++ ) {
+            const uint mask = 0x16; // 00010110
+            uint t0 = (j&0x1==1?mask:0);
+            uint t1 = j & mask;
+            uint t2 = t0 ^ t1;
+
+            uint t3 = t2;
+            t3 = (k>0? (t3&(t3-1)) : t3 );  // conditionally kill rightmost bit
+            t3 = (k>1? (t3&(t3-1)) : t3 );  // conditionally kill rightmost bit
+            t3 = t3 & (-t3);                // isolate rightmost bit
+
+
+            // Then, given a bit in t3 and edge mask in t2, which index is it?
+            uint t4 = t2 & (t3-1); // mask out all bits before t3
+            uint l = (t4>>1) - (t4>>2);  // popcnt_2(x>>1)
+            std::cerr << "  axis="
+                      << (t3&128?'+':'-')
+                      << (t3&64?'+':'-')
+                      << (t3&32?'+':'-')
+                      << (t3&16?'Z':'-')
+                      << (t3&8?'+':'-')
+                      << (t3&4?'Y':'-')
+                      << (t3&2?'X':'-')
+                      << (t3&1?'+':'-')
+                      << ", done="
+                      << (t4&128?'+':'-')
+                      << (t4&64?'+':'-')
+                      << (t4&32?'+':'-')
+                      << (t4&16?'z':'-')
+                      << (t4&8?'+':'-')
+                      << (t4&4?'y':'-')
+                      << (t4&2?'x':'-')
+                      << (t4&1?'+':'-')
+                      << ", off="
+                      << l
+                      << "\n";
+
+
+        }
+
+
+
+
         for(uint i=0; i<16; i++) {
             int m = triangle_table[ j ][ i ];
             if( triangle_table[j][i] == -1 ) {

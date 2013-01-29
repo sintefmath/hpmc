@@ -115,8 +115,12 @@ hp5_buildup_base_triple_gb( hp5_buildup_base_triple_gb_args<T> a )
     bool znocare = cp.z+5 < a.cells.z;
 
     // Fetch scalar field values and determine inside-outside for 5 slices
-    uint bp0, bp1, bp2, bp3, bp4, bp5;
 
+    // bp0 = { 0, 0, 0, 0, 0, 0, 0, p_000 }
+    // bp1 = { 0, 0, 0, 0, 0, 0, 0, p_001 }
+    // ...
+    // bp5 = { 0, 0, 0, 0, 0, 0, 0, p_005}
+    uint bp0, bp1, bp2, bp3, bp4, bp5;
     fetchFromField( bp0, bp1, bp2, bp3, bp4, bp5,
                     lfield, a.field_end, a.field_row_pitch, a.field_slice_pitch,
                     a.iso,
@@ -124,12 +128,21 @@ hp5_buildup_base_triple_gb( hp5_buildup_base_triple_gb_args<T> a )
 
     for(uint q=0; q<5; q++) {
         // Move along y to build up masks
+
+        // bc0 = { 0, 0, 0, 0, 0, 0, 0, p_010 }
+        // bc1 = { 0, 0, 0, 0, 0, 0, 0, p_011 }
+        // ...
+        // bc5 = { 0, 0, 0, 0, 0, 0, 0, p_015}
         uint bc0, bc1, bc2, bc3, bc4, bc5;
         fetchFromField( bc0, bc1, bc2, bc3, bc4, bc5,
                         lfield + (q+1)*a.field_row_pitch, a.field_end, a.field_row_pitch, a.field_slice_pitch,
                         a.iso, no_check );
 
         // Merge
+        // b0 = { 0, 0, 0, 0, 0, p_010, 0, p_000 }
+        // b1 = { 0, 0, 0, 0, 0, p_011, 0, p_001 }
+        // ...
+        // b5 = { 0, 0, 0, 0, 0, p_015, 0, p_005}
         uint b0 = bp0 + (bc0<<2);
         uint b1 = bp1 + (bc1<<2);
         uint b2 = bp2 + (bc2<<2);
@@ -145,6 +158,11 @@ hp5_buildup_base_triple_gb( hp5_buildup_base_triple_gb_args<T> a )
         bp5 = bc5;
 
         // build case
+        // m0_1 = { 0, p_011, 0, p_001, 0, p_010, 0, p_000 }
+        // m1_1 = { 0, p_012, 0, p_002, 0, p_011, 0, p_001 }
+        // m2_1 = { 0, p_013, 0, p_003, 0, p_012, 0, p_002 }
+        // m3_1 = { 0, p_014, 0, p_004, 0, p_013, 0, p_003 }
+        // m4_1 = { 0, p_015, 0, p_005, 0, p_014, 0, p_004 }
         uint m0_1 = b0 + (b1<<4);
         uint m1_1 = b1 + (b2<<4);
         uint m2_1 = b2 + (b3<<4);
@@ -162,6 +180,12 @@ hp5_buildup_base_triple_gb( hp5_buildup_base_triple_gb_args<T> a )
         uint sum;
 
         if( xmask && ymask && wt < 31 ) { // if-test needed to avoid syncthreads??
+            // m0_1 = {  p_111, p_011, p_101, p_001, p_110, p_010, p_100, p_000 }
+            // m1_1 = {  p_112, p_012, p_102, p_002, p_111, p_011, p_101, p_001 }
+            // m2_1 = {  p_113, p_013, p_103, p_003, p_112, p_012, p_102, p_002 }
+            // m3_1 = {  p_114, p_014, p_104, p_004, p_113, p_013, p_103, p_003 }
+            // m4_1 = {  p_115, p_015, p_105, p_005, p_114, p_014, p_104, p_004 }
+
             m0_1 += (sh[ 0*160 + threadIdx.x + 1]<<1);
             m1_1 += (sh[ 1*160 + threadIdx.x + 1]<<1);
             m2_1 += (sh[ 2*160 + threadIdx.x + 1]<<1);
