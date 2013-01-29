@@ -23,7 +23,7 @@
 #include <stdexcept>
 #include <cuhpmc/Constants.hpp>
 #include <cuhpmc/FieldGLBufferUChar.hpp>
-#include <cuhpmc/GLWriter.hpp>
+#include <cuhpmc/EmitterTriVtxGL.hpp>
 #include <cuhpmc/IsoSurfaceGL.hpp>
 
 namespace cuhpmc {

@@ -32,7 +32,7 @@
 #include <cuhpmc/IsoSurfaceCUDA.hpp>
 #include <cuhpmc/IsoSurfaceGL.hpp>
 #include <cuhpmc/TriangleVertexWriter.hpp>
-#include <cuhpmc/GLWriter.hpp>
+#include <cuhpmc/EmitterTriVtxGL.hpp>
 
 using std::cerr;
 using std::endl;
