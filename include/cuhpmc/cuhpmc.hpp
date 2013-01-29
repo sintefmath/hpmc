@@ -30,7 +30,7 @@ class FieldGlobalMemUChar;
 class FieldGLBufferUChar;
 
 class AbstractIsoSurface;
-class IsoSurface;
+class IsoSurfaceCUDA;
 class IsoSurfaceGL;
 
 class AbstractWriter;

@@ -22,12 +22,12 @@
 
 namespace cuhpmc {
 
-class IsoSurface : public AbstractIsoSurface
+class IsoSurfaceCUDA : public AbstractIsoSurface
 {
 public:
-    IsoSurface( Field* field );
+    IsoSurfaceCUDA( Field* field );
 
-    ~IsoSurface( );
+    ~IsoSurfaceCUDA( );
 
     void
     build( float iso, cudaStream_t stream );

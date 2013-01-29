@@ -21,14 +21,14 @@
 #include <builtin_types.h>
 #include <vector_functions.h>
 #include <stdexcept>
-#include <cuhpmc/IsoSurface.hpp>
+#include <cuhpmc/IsoSurfaceCUDA.hpp>
 #include <cuhpmc/Field.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/Constants.hpp>
 
 namespace cuhpmc {
 
-IsoSurface::IsoSurface( Field* field )
+IsoSurfaceCUDA::IsoSurfaceCUDA( Field* field )
     : AbstractIsoSurface( field )
 {
 
@@ -42,13 +42,13 @@ IsoSurface::IsoSurface( Field* field )
 
 }
 
-IsoSurface::~IsoSurface( )
+IsoSurfaceCUDA::~IsoSurfaceCUDA( )
 {
 }
 
 
 void
-IsoSurface::build( float iso, cudaStream_t stream )
+IsoSurfaceCUDA::build( float iso, cudaStream_t stream )
 {
     buildNonIndexed( iso, m_hp5_hp_d, m_case_d, stream );
 

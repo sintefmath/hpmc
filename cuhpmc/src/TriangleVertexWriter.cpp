@@ -20,7 +20,7 @@
 #include <cuda.h>
 #include <builtin_types.h>
 #include <vector_functions.h>
-#include <cuhpmc/IsoSurface.hpp>
+#include <cuhpmc/IsoSurfaceCUDA.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/TriangleVertexWriter.hpp>
 #include "../kernels/hp5_writer.hpp"
@@ -34,7 +34,7 @@ TriangleVertexWriter::TriangleVertexWriter( AbstractIsoSurface* iso_surface )
 void
 TriangleVertexWriter::writeInterleavedNormalPosition( float* interleaved_buffer_d, uint triangles, cudaStream_t stream )
 {
-    if( IsoSurface* iso_surface = dynamic_cast<IsoSurface*>( m_iso_surface ) ) {
+    if( IsoSurfaceCUDA* iso_surface = dynamic_cast<IsoSurfaceCUDA*>( m_iso_surface ) ) {
 
         if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
 

@@ -29,7 +29,7 @@
 #include <cuhpmc/Constants.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/FieldGLBufferUChar.hpp>
-#include <cuhpmc/IsoSurface.hpp>
+#include <cuhpmc/IsoSurfaceCUDA.hpp>
 #include <cuhpmc/IsoSurfaceGL.hpp>
 #include <cuhpmc/TriangleVertexWriter.hpp>
 #include <cuhpmc/GLWriter.hpp>
@@ -310,7 +310,7 @@ init( int argc, char** argv )
                                                  volume_size_x,
                                                  volume_size_y,
                                                  volume_size_z );
-        iso_surface = new cuhpmc::IsoSurface( field );
+        iso_surface = new cuhpmc::IsoSurfaceCUDA( field );
         writer = new cuhpmc::TriangleVertexWriter( iso_surface );
     }
 
