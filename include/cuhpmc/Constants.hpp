@@ -40,6 +40,7 @@ public:
 
 private:
     unsigned char*  m_vtxcnt_dev;
+    unsigned char*  m_case_intersect_edge_d;
     GLuint          m_case_intersect_edge_tex;
 
 

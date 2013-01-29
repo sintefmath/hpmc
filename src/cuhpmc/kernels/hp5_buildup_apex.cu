@@ -57,7 +57,7 @@ hp5_buildup_apex( hp5_buildup_apex_args a /*uint4* __restrict__  d_hp_012,
         uint4 sums = make_uint4( sb[0], sb[1], sb[2],sb[3] );
         uint sum = sums.x+sums.y+sums.z+sums.w+sb[ 4 ];
         hp_012[1] = sums;
-        hp_012[0] = make_uint4( sum/3, 1, 0, 0 );
+        hp_012[0] = make_uint4( sum, 1, 0, 0 );
         *a.sum_d = sum;
     }
     if( tid < 32 ) {

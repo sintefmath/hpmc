@@ -65,7 +65,7 @@ float                           write_ms            = 0.f;
 uint                            runs                = 0;
 
 bool                            profile             = false;
-bool                            gl_direct_draw      = true;
+bool                            gl_direct_draw      = false;
 GLuint                          gl_field_buffer     = 0;
 
 template<class type, bool clamp, bool half_float>

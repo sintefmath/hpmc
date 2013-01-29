@@ -40,21 +40,21 @@ __constant__ uint  hp5_const_offsets[32];
 template<bool use_texfetch,bool use_constmem>
 __global__
 void
-dummy_writer( float* __restrict__       output_d,
-              const uint4* __restrict__ hp5_d,
-              const uint3               chunks,
-              const uint                triangles,
-              const uint                max_level,
-//              const unsigned char*      mccase_d,
-              const unsigned char*      field_d,
-              const float3              scale )
+dummy_writer( float* __restrict__               output_d,
+              const uint4* __restrict__         hp5_d,
+              const unsigned char* __restrict__ mc_cases_d,
+              const uint3                       chunks,
+              const uint                        triangles,
+              const uint                        max_level,
+              const unsigned char*              field_d,
+              const float3                      scale )
 {
 
     uint triangle = 256*blockIdx.x + threadIdx.x;
 
     if( triangle < triangles ) {
 
-        uint key = 3*triangle;
+        uint key = triangle;
         uint pos = 0;
         int l = 0;
         if( use_constmem ) {
@@ -108,15 +108,20 @@ dummy_writer( float* __restrict__       output_d,
             }
         }
 
+        // calc 3D grid pos of hp5 chunk
         uint c_lix = pos / 800u;
         uint t_lix = pos % 800u;
-
         uint3 ci = make_uint3( 31*( c_lix % chunks.x ),
                                5*( (c_lix/chunks.x) % chunks.y ),
                                5*( (c_lix/chunks.x) / chunks.y ) );
+
+        // calc 3D pos within cunk
         uint3 i0 = make_uint3( ci.x + ((t_lix / 5)%32),
                                ci.y + ((t_lix / 5)/32),
                                ci.z + ( t_lix%5 ) );
+
+        uint mc_case = mc_cases_d[ pos ];
+//        uint isec =
 
  //       if( key >= 15 ) {
  //           i0 = make_uint3( 64 + key, 64, 0 );
@@ -138,6 +143,7 @@ dummy_writer( float* __restrict__       output_d,
 void
 run_dummy_writer( float*                output_d,
                   const uint4*          hp5_pyramid_d,
+                  const unsigned char*  mc_cases_d,
                   const uint*           hp5_level_offsets_d,
                   const uint3           hp5_chunks,
                   const uint            hp5_size,
@@ -184,6 +190,7 @@ run_dummy_writer( float*                output_d,
         if( use_constmem ) {
             dummy_writer<true,true><<<gs,bs,0,stream>>>( output_d,
                                                          hp5_pyramid_d,
+                                                         mc_cases_d,
                                                          hp5_chunks,
                                                          triangles,
                                                          hp5_max_level,
@@ -195,6 +202,7 @@ run_dummy_writer( float*                output_d,
         else {
             dummy_writer<true,false><<<gs,bs,0,stream>>>( output_d,
                                                           hp5_pyramid_d,
+                                                          mc_cases_d,
                                                           hp5_chunks,
                                                           triangles,
                                                           hp5_max_level,
@@ -208,6 +216,7 @@ run_dummy_writer( float*                output_d,
         if( use_constmem ) {
             dummy_writer<false,true><<<gs,bs,0,stream>>>( output_d,
                                                           hp5_pyramid_d,
+                                                          mc_cases_d,
                                                           hp5_chunks,
                                                           triangles,
                                                           hp5_max_level,
@@ -219,6 +228,7 @@ run_dummy_writer( float*                output_d,
         else {
             dummy_writer<false,false><<<gs,bs,0,stream>>>( output_d,
                                                            hp5_pyramid_d,
+                                                           mc_cases_d,
                                                            hp5_chunks,
                                                            triangles,
                                                            hp5_max_level,
@@ -232,43 +242,4 @@ run_dummy_writer( float*                output_d,
 
 
 
-#if 0
-
-
-{
-
-}
-
-
-switch( path ) {
-case 0:
-    hp5_traverse<false,false><<<gs,bs>>>( d_hp5_output,
-                                          d_hp5_hp,
-                                          M,
-                                          hp5_levels,
-                                          d_input );
-    break;
-case 1:
-    hp5_traverse<false,true><<<gs,bs>>>( d_hp5_output,
-                                         d_hp5_hp,
-                                         M,
-                                         hp5_levels,
-                                         d_input );
-    break;
-case 2:
-    hp5_traverse<true,false><<<gs,bs>>>( d_hp5_output,
-                                         d_hp5_hp,
-                                         M,
-                                         hp5_levels,
-                                         d_input );
-    break;
-case 3:
-    hp5_traverse<true,true><<<gs,bs>>>( d_hp5_output,
-                                        d_hp5_hp,
-                                        M,
-                                        hp5_levels,
-                                        d_input );
-    break;
-}
-#endif
 } // of namespace cuhpmc

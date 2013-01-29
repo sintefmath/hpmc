@@ -165,7 +165,7 @@ uint
 IsoSurface::triangles()
 {
     cudaEventSynchronize( m_buildup_event );
-    return m_hp5_top_h[0]/3;
+    return m_hp5_top_h[0];
 }
 
 void

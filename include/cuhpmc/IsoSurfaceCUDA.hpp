@@ -41,6 +41,9 @@ public:
     const uint*
     hp5LevelOffsetsDev() const { return m_hp5_offsets_d; }
 
+    const unsigned char*
+    mcCasesDev() const { return m_case_d; }
+
 protected:
     uint*               m_hp5_offsets_d;
     uint4*              m_hp5_hp_d;

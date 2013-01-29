@@ -34,8 +34,8 @@ main()
 {
     uint t_pos;
     uint t_remainder;
-    hp5_downtraverse( t_pos, t_remainder, 3*gl_VertexID );
-    out_v.remainder = t_remainder;
+    hp5_downtraverse( t_pos, t_remainder, gl_VertexID );
+    out_v.remainder = 3*t_remainder;
 
     uvec3 t_i0;
     uint t_mc_case;

@@ -17,6 +17,7 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stdexcept>
+#include <iostream>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <builtin_types.h>
@@ -37,7 +38,7 @@ Constants::Constants()
         for(uint i=0; i<16; i++) {
             int m = triangle_table[ j ][ i ];
             if( triangle_table[j][i] == -1 ) {
-                vtxcnt[j] = i;
+                vtxcnt[j] = i/3;
                 break;
             }
             else {
@@ -56,6 +57,8 @@ Constants::Constants()
         m_vtxcnt_dev = NULL;
         throw std::runtime_error( std::string( cudaGetErrorString( cudaGetLastError() ) ) );
     }
+
+//    if( cudaMalloc( (void**)(&m_case_intersect_edge_d), sizeof(unsigned char)*16*256,   ))
 
 #ifdef ENABLE_CUHPMC_INTEROP
     glGenTextures( 1, &m_case_intersect_edge_tex );

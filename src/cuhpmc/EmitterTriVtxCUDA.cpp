@@ -40,6 +40,7 @@ EmitterTriVtxCUDA::writeInterleavedNormalPosition( float* interleaved_buffer_d, 
 
             run_dummy_writer( interleaved_buffer_d,
                               iso_surface->hp5Dev(),
+                              iso_surface->mcCasesDev(),
                               iso_surface->hp5LevelOffsetsDev(),
                               iso_surface->hp5Chunks(),
                               iso_surface->hp5Size(),
