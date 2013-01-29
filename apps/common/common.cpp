@@ -213,29 +213,58 @@ compileShader( GLuint shader, const string& what )
     }
 }
 
+
+GLuint
+compileShader( const std::string source, GLenum type )
+{
+    GLint shader = glCreateShader( type );
+    const GLchar* src[1] = {
+        source.c_str()
+    };
+    glShaderSource( shader, 1, src, NULL );
+    glCompileShader( shader );
+
+    GLint logsize;
+    glGetShaderiv( shader, GL_INFO_LOG_LENGTH, &logsize );
+    if( logsize > 1 ) {
+        vector<GLchar> infolog( logsize+1 );
+        glGetShaderInfoLog( shader, logsize, NULL, &infolog[0] );
+        std::cerr << "Shader log:" << endl;
+        std::cerr << std::string( infolog.data() );
+        std::cerr << "--- source code ---" << endl;
+        std::cerr << source;
+    }
+
+    GLint status;
+    glGetShaderiv( shader, GL_COMPILE_STATUS, &status );
+    if( status != GL_TRUE ) {
+        glDeleteShader( shader );
+        shader = 0;
+        std::cerr << "Shader failed to compile, exiting.\n";
+        exit( EXIT_FAILURE );
+    }
+    return shader;
+}
+
 // --- compile program and check for errors ------------------------------------
 void
 linkProgram( GLuint program, const string& what )
 {
     glLinkProgram( program );
 
+    GLint logsize;
+    glGetProgramiv( program, GL_INFO_LOG_LENGTH, &logsize );
+
+    if( logsize > 1 ) {
+        vector<GLchar> infolog( logsize+1 );
+        glGetProgramInfoLog( program, logsize, NULL, &infolog[0] );
+        cerr << string( infolog.data() ) << endl;
+    }
+
     GLint linkstatus;
     glGetProgramiv( program, GL_LINK_STATUS, &linkstatus );
     if( linkstatus != GL_TRUE ) {
-        cerr << "Linking of " << what << " failed, infolog:" << endl;
-
-        GLint logsize;
-        glGetProgramiv( program, GL_INFO_LOG_LENGTH, &logsize );
-
-        if( logsize > 0 ) {
-            vector<GLchar> infolog( logsize+1 );
-            glGetProgramInfoLog( program, logsize, NULL, &infolog[0] );
-            cerr << string( infolog.begin(), infolog.end() ) << endl;
-        }
-        else {
-            cerr << "Empty log message" << endl;
-        }
-        cerr << "Exiting." << endl;
+        cerr << "Linking of " << what << " failed, exiting" << endl;
         exit( EXIT_FAILURE );
     }
 }

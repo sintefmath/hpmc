@@ -87,6 +87,10 @@ checkFramebufferStatus( const std::string& file, const int line );
 void
 compileShader( GLuint shader, const std::string& what );
 
+GLuint
+compileShader( const std::string source, GLenum type );
+
+
 void
 linkProgram( GLuint program, const std::string& what );
 

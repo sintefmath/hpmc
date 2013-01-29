@@ -49,6 +49,7 @@ Constants::Constants()
         }
     }
 
+    // copy vtx cnt table to device
     if( cudaMalloc( (void**)(&m_vtxcnt_dev), sizeof(vtxcnt) ) != cudaSuccess ) {
         throw std::runtime_error( std::string( cudaGetErrorString( cudaGetLastError() ) ) );
     }
@@ -58,7 +59,14 @@ Constants::Constants()
         throw std::runtime_error( std::string( cudaGetErrorString( cudaGetLastError() ) ) );
     }
 
-//    if( cudaMalloc( (void**)(&m_case_intersect_edge_d), sizeof(unsigned char)*16*256,   ))
+    // copy edge intersection table to device
+    if( cudaMalloc( (void**)(&m_case_intersect_edge_d), sizeof(unsigned char)*16*256 ) != cudaSuccess ) {
+        throw std::runtime_error( std::string( cudaGetErrorString( cudaGetLastError() ) ) );
+    }
+    if( cudaMemcpy( m_case_intersect_edge_d, eisec, sizeof(unsigned char)*16*256, cudaMemcpyHostToDevice ) != cudaSuccess ) {
+        throw std::runtime_error( std::string( cudaGetErrorString( cudaGetLastError() ) ) );
+    }
+
 
 #ifdef ENABLE_CUHPMC_INTEROP
     glGenTextures( 1, &m_case_intersect_edge_tex );

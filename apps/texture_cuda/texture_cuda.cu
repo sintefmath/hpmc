@@ -34,6 +34,12 @@
 #include <cuhpmc/EmitterTriVtxCUDA.hpp>
 #include <cuhpmc/EmitterTriVtxGL.hpp>
 
+namespace resources {
+    extern std::string phong_vbo_vs_420;
+    extern std::string phong_fs_130;
+    extern std::string cayley_fetch;
+}
+
 using std::cerr;
 using std::endl;
 
@@ -67,6 +73,12 @@ uint                            runs                = 0;
 bool                            profile             = false;
 bool                            gl_direct_draw      = false;
 GLuint                          gl_field_buffer     = 0;
+
+
+GLuint                          vbo_render_prog     = 0;
+GLint                           vbo_render_loc_pm   = -1;
+GLint                           vbo_render_loc_nm   = -1;
+GLint                           vbo_render_loc_col  = -1;
 
 template<class type, bool clamp, bool half_float>
 __global__
@@ -312,8 +324,19 @@ init( int argc, char** argv )
                                                  volume_size_z );
         iso_surface = new cuhpmc::IsoSurfaceCUDA( field );
         writer = new cuhpmc::EmitterTriVtxCUDA( iso_surface );
-    }
 
+        // Create shader program to render the VBO results
+
+        GLuint vs = compileShader( resources::phong_vbo_vs_420, GL_VERTEX_SHADER );
+        GLuint fs = compileShader( resources::phong_fs_130, GL_FRAGMENT_SHADER );
+        vbo_render_prog = glCreateProgram();
+        glAttachShader( vbo_render_prog, vs );
+        glAttachShader( vbo_render_prog, fs );
+        linkProgram( vbo_render_prog, "phong_vbo" );
+        vbo_render_loc_pm = glGetUniformLocation( vbo_render_prog, "PM" );
+        vbo_render_loc_nm = glGetUniformLocation( vbo_render_prog, "NM" );
+        vbo_render_loc_col = glGetUniformLocation( vbo_render_prog, "color" );
+    }
 
     cudaError_t error = cudaGetLastError();
     if( error != cudaSuccess ) {
@@ -337,7 +360,7 @@ render( float t,
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glEnable( GL_DEPTH_TEST );
 
-    iso = 0.5f;//*(sin(t)+1.f);
+    iso = 0.48f*(sin(t)+1.f)+0.01f;
 
     // build histopyramid
     if( profile ) {
@@ -379,8 +402,7 @@ render( float t,
 
                 cudaGraphicsGLRegisterBuffer( &surface_resource,
                                               surface_vbo,
-                                              cudaGraphicsRegisterFlagsNone ) /*,
-                                              cudaGraphicsRegisterFlagsWriteDiscard )*/;
+                                              cudaGraphicsRegisterFlagsWriteDiscard );
             }
             std::cerr << "Resized VBO to hold " << triangles << " triangles (" << (3*2*3*sizeof(GLfloat)*surface_vbo_n) << " bytes)\n";
         }
@@ -421,14 +443,15 @@ render( float t,
                 }
                 cudaGraphicsUnmapResources( 1, &surface_resource, stream );
             }
-            glMatrixMode( GL_PROJECTION );
-            glLoadMatrixf( P );
-            glMatrixMode( GL_MODELVIEW );
-            glLoadMatrixf( MV );
+            glUseProgram( vbo_render_prog );
+            glUniformMatrix4fv( vbo_render_loc_pm, 1, GL_FALSE, PM );
+            glUniformMatrix3fv( vbo_render_loc_nm, 1, GL_FALSE, NM );
+            glUniform4f( vbo_render_loc_col, 0.8f, 0.8f, 1.f, 1.f );
 
             glBindVertexArray( surface_vao );
-            glDrawArrays( GL_POINTS, 0, 3*triangles );
+            glDrawArrays( GL_TRIANGLES, 0, 3*triangles );
             glBindVertexArray( 0 );
+            glUseProgram( 0 );
         }
     }
 

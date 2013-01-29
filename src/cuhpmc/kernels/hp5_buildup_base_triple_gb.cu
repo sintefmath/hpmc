@@ -235,7 +235,7 @@ run_hp5_buildup_base_triple_gb_ub( uint4*               hp_c_d,
     args.d_hp_b             = hp_b_d;
     args.d_hp_a             = hp_a_d;
     args.d_case             = case_d;
-    args.iso                = 255.f*iso;
+    args.iso                = 256.f*iso;
     args.cells              = cells;
     args.chunks             = chunks;
     args.field              = field;

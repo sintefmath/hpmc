@@ -1,4 +1,4 @@
-#pragma once
+#version 420
 /* Copyright STIFTELSEN SINTEF 2012
  *
  * This file is part of the HPMC Library.
@@ -17,39 +17,16 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
+layout(location=0)  in      vec3 vbo_pos;
+layout(location=1)  in      vec3 vbo_nrm;
+                    out     vec3 normal;
+                    uniform mat4 PM;
+                    uniform mat3 NM;
 
-#include <GL/glew.h>
-#include <cuhpmc/cuhpmc.hpp>
-#include <cuhpmc/NonCopyable.hpp>
-
-namespace cuhpmc {
-
-/** Per device constants. */
-class Constants : public NonCopyable
+void
+main()
 {
-public:
-    Constants();
+    gl_Position = PM * vec4( vbo_pos, 1.0 );
+    normal = NM * vbo_nrm;
+}
 
-    ~Constants();
-
-    const unsigned char*
-    triangleIndexCountDev() const { return m_vtxcnt_dev; }
-
-    const unsigned char*
-    caseIntersectEdgeDev() const { return m_case_intersect_edge_d; }
-
-    GLuint
-    caseIntersectEdgeGL() { return m_case_intersect_edge_tex; }
-
-
-
-private:
-    unsigned char*  m_vtxcnt_dev;
-    unsigned char*  m_case_intersect_edge_d;
-    GLuint          m_case_intersect_edge_tex;
-
-
-};
-
-
-} // of namespace cuhpmc

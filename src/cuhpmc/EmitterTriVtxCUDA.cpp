@@ -20,6 +20,7 @@
 #include <cuda.h>
 #include <builtin_types.h>
 #include <vector_functions.h>
+#include <cuhpmc/Constants.hpp>
 #include <cuhpmc/IsoSurfaceCUDA.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/EmitterTriVtxCUDA.hpp>
@@ -41,11 +42,13 @@ EmitterTriVtxCUDA::writeInterleavedNormalPosition( float* interleaved_buffer_d, 
             run_dummy_writer( interleaved_buffer_d,
                               iso_surface->hp5Dev(),
                               iso_surface->mcCasesDev(),
+                              m_constants->caseIntersectEdgeDev(),
                               iso_surface->hp5LevelOffsetsDev(),
                               iso_surface->hp5Chunks(),
                               iso_surface->hp5Size(),
                               iso_surface->hp5Levels(),
                               triangles,
+                              iso_surface->iso(),
                               field->fieldDev(),
                               make_uint3( field->width(),
                                           field->height(),
