@@ -23,9 +23,8 @@
 #include <builtin_types.h>
 #include <vector_functions.h>
 #include <cuhpmc/CUDAErrorException.hpp>
-#include <cuhpmc/AbstractField.hpp>
+#include <cuhpmc/Field.hpp>
 #include <cuhpmc/AbstractIsoSurface.hpp>
-#include <cuhpmc/AbstractField.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/GLFieldUCharBuffer.hpp>
 #include <cuhpmc/Constants.hpp>
@@ -36,7 +35,7 @@
 
 namespace cuhpmc {
 
-AbstractIsoSurface::AbstractIsoSurface( AbstractField* field )
+AbstractIsoSurface::AbstractIsoSurface( Field* field )
     : m_constants( field->constants() ),
       m_field( field )
 {

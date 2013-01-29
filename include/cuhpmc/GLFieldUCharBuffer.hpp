@@ -19,11 +19,11 @@
  */
 #include <GL/glew.h>
 #include <cuhpmc/cuhpmc.hpp>
-#include <cuhpmc/AbstractField.hpp>
+#include <cuhpmc/Field.hpp>
 
 namespace cuhpmc {
 
-class GLFieldUCharBuffer : public AbstractField
+class GLFieldUCharBuffer : public Field
 {
 public:
     GLFieldUCharBuffer( Constants*     constants,

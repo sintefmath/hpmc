@@ -17,12 +17,12 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stdexcept>
-#include <cuhpmc/AbstractField.hpp>
+#include <cuhpmc/Field.hpp>
 
 namespace cuhpmc {
 
 
-AbstractField::AbstractField(  Constants* constants, uint width, uint height, uint depth )
+Field::Field(  Constants* constants, uint width, uint height, uint depth )
     : m_constants( constants ),
       m_width( width ),
       m_height( height ),
@@ -43,12 +43,12 @@ AbstractField::AbstractField(  Constants* constants, uint width, uint height, ui
 }
 
 Constants*
-AbstractField::constants()
+Field::constants()
 {
     return m_constants;
 }
 
-AbstractField::~AbstractField()
+Field::~Field()
 {
 }
 

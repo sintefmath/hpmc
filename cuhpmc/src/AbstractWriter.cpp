@@ -18,7 +18,7 @@
  */
 
 #include <cuhpmc/AbstractWriter.hpp>
-#include <cuhpmc/AbstractField.hpp>
+#include <cuhpmc/Field.hpp>
 #include <cuhpmc/AbstractIsoSurface.hpp>
 
 namespace cuhpmc {

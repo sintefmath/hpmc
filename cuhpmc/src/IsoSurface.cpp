@@ -22,13 +22,13 @@
 #include <vector_functions.h>
 #include <stdexcept>
 #include <cuhpmc/IsoSurface.hpp>
-#include <cuhpmc/AbstractField.hpp>
+#include <cuhpmc/Field.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/Constants.hpp>
 
 namespace cuhpmc {
 
-IsoSurface::IsoSurface( AbstractField* field )
+IsoSurface::IsoSurface( Field* field )
     : AbstractIsoSurface( field )
 {
 

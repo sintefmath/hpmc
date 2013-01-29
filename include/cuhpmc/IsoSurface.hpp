@@ -25,7 +25,7 @@ namespace cuhpmc {
 class IsoSurface : public AbstractIsoSurface
 {
 public:
-    IsoSurface( AbstractField* field );
+    IsoSurface( Field* field );
 
     ~IsoSurface( );
 

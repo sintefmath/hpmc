@@ -25,7 +25,7 @@ namespace cuhpmc {
 
 class Constants;
 
-class AbstractField;
+class Field;
 class FieldGlobalMemUChar;
 class GLFieldUCharBuffer;
 

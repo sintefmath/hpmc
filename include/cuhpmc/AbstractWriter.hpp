@@ -32,7 +32,7 @@ public:
 
 protected:
     Constants*          m_constants;
-    AbstractField*      m_field;
+    Field*      m_field;
     AbstractIsoSurface* m_iso_surface;
 
 

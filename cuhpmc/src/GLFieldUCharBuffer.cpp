@@ -29,7 +29,7 @@ GLFieldUCharBuffer::GLFieldUCharBuffer( Constants*     constants,
                                         uint           width,
                                         uint           height,
                                         uint           depth )
-    : AbstractField( constants, width, height, depth ),
+    : Field( constants, width, height, depth ),
       m_mapped(false ),
       m_field_buf( field_buf ),
       m_field_resource( NULL )

@@ -28,7 +28,7 @@ namespace cuhpmc {
 class GLIsoSurface : public AbstractIsoSurface
 {
 public:
-    GLIsoSurface( AbstractField* field );
+    GLIsoSurface( Field* field );
 
     ~GLIsoSurface( );
 

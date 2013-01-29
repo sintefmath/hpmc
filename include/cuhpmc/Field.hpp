@@ -22,12 +22,12 @@
 
 namespace cuhpmc {
 
-class AbstractField : public NonCopyable
+class Field : public NonCopyable
 {
 public:
 
     virtual
-    ~AbstractField();
+    ~Field();
 
     Constants*
     constants();
@@ -47,7 +47,7 @@ protected:
     uint        m_height;
     uint        m_depth;
 
-    AbstractField( Constants* constants, uint width, uint height, uint depth );
+    Field( Constants* constants, uint width, uint height, uint depth );
 
 
 };

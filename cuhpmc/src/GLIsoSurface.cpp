@@ -25,14 +25,14 @@
 #include <iostream>
 #include <stdexcept>
 #include <cuhpmc/GLIsoSurface.hpp>
-#include <cuhpmc/AbstractField.hpp>
+#include <cuhpmc/Field.hpp>
 #include <cuhpmc/GLFieldUCharBuffer.hpp>
 #include <cuhpmc/Constants.hpp>
 #include <cuhpmc/CUDAErrorException.hpp>
 
 namespace cuhpmc {
 
-GLIsoSurface::GLIsoSurface( AbstractField* field )
+GLIsoSurface::GLIsoSurface( Field* field )
     : AbstractIsoSurface( field )
 {
     glGenBuffers( 1, &m_hp5_hp_buf );

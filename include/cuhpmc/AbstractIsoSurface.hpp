@@ -37,7 +37,7 @@ public:
     Constants*
     constants() { return m_constants; }
 
-    AbstractField*
+    Field*
     field() { return m_field; }
 
     /** Returns the size of the hp5 histopyramid. */
@@ -62,7 +62,7 @@ public:
 
 protected:
     Constants*          m_constants;
-    AbstractField*      m_field;
+    Field*      m_field;
     uint3               m_cells;
     float               m_iso;
     uint3               m_hp5_chunks;
@@ -82,7 +82,7 @@ protected:
     uint*               m_hp5_top_h;    // populated using zero-copy
     uint*               m_hp5_top_d;
 
-    AbstractIsoSurface( AbstractField* field );
+    AbstractIsoSurface( Field* field );
 
     void
     buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, cudaStream_t stream );
