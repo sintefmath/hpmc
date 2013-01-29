@@ -19,11 +19,11 @@
 
 #include <cuhpmc/AbstractWriter.hpp>
 #include <cuhpmc/Field.hpp>
-#include <cuhpmc/AbstractIsoSurface.hpp>
+#include <cuhpmc/IsoSurface.hpp>
 
 namespace cuhpmc {
 
-AbstractWriter::AbstractWriter( AbstractIsoSurface* iso_surface )
+AbstractWriter::AbstractWriter( IsoSurface* iso_surface )
     : m_constants( iso_surface->constants() ),
       m_field( iso_surface->field() ),
       m_iso_surface( iso_surface )

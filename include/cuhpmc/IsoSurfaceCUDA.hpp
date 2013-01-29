@@ -18,11 +18,11 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <cuhpmc/cuhpmc.hpp>
-#include <cuhpmc/AbstractIsoSurface.hpp>
+#include <cuhpmc/IsoSurface.hpp>
 
 namespace cuhpmc {
 
-class IsoSurfaceCUDA : public AbstractIsoSurface
+class IsoSurfaceCUDA : public IsoSurface
 {
 public:
     IsoSurfaceCUDA( Field* field );

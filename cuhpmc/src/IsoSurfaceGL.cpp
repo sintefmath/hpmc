@@ -33,7 +33,7 @@
 namespace cuhpmc {
 
 IsoSurfaceGL::IsoSurfaceGL( Field* field )
-    : AbstractIsoSurface( field )
+    : IsoSurface( field )
 {
     glGenBuffers( 1, &m_hp5_hp_buf );
     glBindBuffer( GL_TEXTURE_BUFFER, m_hp5_hp_buf );

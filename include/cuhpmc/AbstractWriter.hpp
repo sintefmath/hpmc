@@ -25,7 +25,7 @@ namespace cuhpmc {
 class AbstractWriter : public NonCopyable
 {
 public:
-    AbstractWriter( AbstractIsoSurface* iso_surface );
+    AbstractWriter( IsoSurface* iso_surface );
 
     virtual
     ~AbstractWriter();
@@ -33,7 +33,7 @@ public:
 protected:
     Constants*          m_constants;
     Field*      m_field;
-    AbstractIsoSurface* m_iso_surface;
+    IsoSurface* m_iso_surface;
 
 
 };

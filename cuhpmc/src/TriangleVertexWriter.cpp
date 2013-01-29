@@ -27,7 +27,7 @@
 
 namespace cuhpmc {
 
-TriangleVertexWriter::TriangleVertexWriter( AbstractIsoSurface* iso_surface )
+TriangleVertexWriter::TriangleVertexWriter( IsoSurface* iso_surface )
     : AbstractWriter( iso_surface )
 {}
 

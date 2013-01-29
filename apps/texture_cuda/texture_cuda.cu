@@ -45,7 +45,7 @@ float                           iso                 = 0.5f;
 cuhpmc::Constants*              constants           = NULL;
 unsigned char*                  field_data_dev      = NULL;
 cuhpmc::Field*          field               = NULL;
-cuhpmc::AbstractIsoSurface*     iso_surface         = NULL;
+cuhpmc::IsoSurface*     iso_surface         = NULL;
 cuhpmc::AbstractWriter*         writer              = NULL;
 
 GLuint                          surface_vao         = 0;

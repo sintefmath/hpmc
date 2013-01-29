@@ -26,7 +26,7 @@ namespace cuhpmc {
 class TriangleVertexWriter : public AbstractWriter
 {
 public:
-    TriangleVertexWriter( AbstractIsoSurface* iso_surface );
+    TriangleVertexWriter( IsoSurface* iso_surface );
 
 
     void

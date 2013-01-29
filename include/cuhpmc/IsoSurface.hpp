@@ -23,12 +23,12 @@
 
 namespace cuhpmc {
 
-class AbstractIsoSurface : public NonCopyable
+class IsoSurface : public NonCopyable
 {
 public:
 
     virtual
-    ~AbstractIsoSurface( );
+    ~IsoSurface( );
 
     virtual
     void
@@ -82,7 +82,7 @@ protected:
     uint*               m_hp5_top_h;    // populated using zero-copy
     uint*               m_hp5_top_d;
 
-    AbstractIsoSurface( Field* field );
+    IsoSurface( Field* field );
 
     void
     buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, cudaStream_t stream );

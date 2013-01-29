@@ -29,7 +29,7 @@
 namespace cuhpmc {
 
 IsoSurfaceCUDA::IsoSurfaceCUDA( Field* field )
-    : AbstractIsoSurface( field )
+    : IsoSurface( field )
 {
 
 

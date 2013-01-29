@@ -24,7 +24,7 @@
 #include <vector_functions.h>
 #include <cuhpmc/CUDAErrorException.hpp>
 #include <cuhpmc/Field.hpp>
-#include <cuhpmc/AbstractIsoSurface.hpp>
+#include <cuhpmc/IsoSurface.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/Constants.hpp>
@@ -35,7 +35,7 @@
 
 namespace cuhpmc {
 
-AbstractIsoSurface::AbstractIsoSurface( Field* field )
+IsoSurface::IsoSurface( Field* field )
     : m_constants( field->constants() ),
       m_field( field )
 {
@@ -148,7 +148,7 @@ AbstractIsoSurface::AbstractIsoSurface( Field* field )
     }
 }
 
-AbstractIsoSurface::~AbstractIsoSurface( )
+IsoSurface::~IsoSurface( )
 {
     cudaError_t error;
     if( m_hp5_top_h != NULL ) {
@@ -162,14 +162,14 @@ AbstractIsoSurface::~AbstractIsoSurface( )
 }
 
 uint
-AbstractIsoSurface::triangles()
+IsoSurface::triangles()
 {
     cudaEventSynchronize( m_buildup_event );
     return m_hp5_top_h[0]/3;
 }
 
 void
-AbstractIsoSurface::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, cudaStream_t stream )
+IsoSurface::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, cudaStream_t stream )
 {
 
     m_iso = iso;

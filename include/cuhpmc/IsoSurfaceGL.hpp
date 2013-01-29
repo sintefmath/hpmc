@@ -19,13 +19,13 @@
  */
 #include <GL/glew.h>
 #include <cuhpmc/cuhpmc.hpp>
-#include <cuhpmc/AbstractIsoSurface.hpp>
+#include <cuhpmc/IsoSurface.hpp>
 
 namespace cuhpmc {
 
 /** Iso-surface that keeps the buffers needed for direct renderering in OpenGL.
  */
-class IsoSurfaceGL : public AbstractIsoSurface
+class IsoSurfaceGL : public IsoSurface
 {
 public:
     IsoSurfaceGL( Field* field );
