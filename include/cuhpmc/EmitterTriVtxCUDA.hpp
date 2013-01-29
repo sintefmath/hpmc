@@ -23,10 +23,10 @@
 
 namespace cuhpmc {
 
-class TriangleVertexWriter : public EmitterTriVtx
+class EmitterTriVtxCUDA : public EmitterTriVtx
 {
 public:
-    TriangleVertexWriter( IsoSurface* iso_surface );
+    EmitterTriVtxCUDA( IsoSurface* iso_surface );
 
 
     void

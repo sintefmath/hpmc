@@ -34,7 +34,7 @@ class IsoSurfaceCUDA;
 class IsoSurfaceGL;
 
 class EmitterTriVtx;
-class TriangleVertexWriter;
+class EmitterTriVtxCUDA;
 class GLWriter;
 
 

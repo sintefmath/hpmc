@@ -22,17 +22,17 @@
 #include <vector_functions.h>
 #include <cuhpmc/IsoSurfaceCUDA.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
-#include <cuhpmc/TriangleVertexWriter.hpp>
+#include <cuhpmc/EmitterTriVtxCUDA.hpp>
 #include "../kernels/hp5_writer.hpp"
 
 namespace cuhpmc {
 
-TriangleVertexWriter::TriangleVertexWriter( IsoSurface* iso_surface )
+EmitterTriVtxCUDA::EmitterTriVtxCUDA( IsoSurface* iso_surface )
     : EmitterTriVtx( iso_surface )
 {}
 
 void
-TriangleVertexWriter::writeInterleavedNormalPosition( float* interleaved_buffer_d, uint triangles, cudaStream_t stream )
+EmitterTriVtxCUDA::writeInterleavedNormalPosition( float* interleaved_buffer_d, uint triangles, cudaStream_t stream )
 {
     if( IsoSurfaceCUDA* iso_surface = dynamic_cast<IsoSurfaceCUDA*>( m_iso_surface ) ) {
 

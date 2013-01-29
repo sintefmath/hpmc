@@ -31,7 +31,7 @@
 #include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/IsoSurfaceCUDA.hpp>
 #include <cuhpmc/IsoSurfaceGL.hpp>
-#include <cuhpmc/TriangleVertexWriter.hpp>
+#include <cuhpmc/EmitterTriVtxCUDA.hpp>
 #include <cuhpmc/EmitterTriVtxGL.hpp>
 
 using std::cerr;
@@ -311,7 +311,7 @@ init( int argc, char** argv )
                                                  volume_size_y,
                                                  volume_size_z );
         iso_surface = new cuhpmc::IsoSurfaceCUDA( field );
-        writer = new cuhpmc::TriangleVertexWriter( iso_surface );
+        writer = new cuhpmc::EmitterTriVtxCUDA( iso_surface );
     }
 
 
@@ -400,7 +400,7 @@ render( float t,
     }
     // Let CUDA write, but don't use interop (i.e., no rendering)
     else if( wireframe ) {
-        if( cuhpmc::TriangleVertexWriter* w = dynamic_cast<cuhpmc::TriangleVertexWriter*> ( writer ) ) {
+        if( cuhpmc::EmitterTriVtxCUDA* w = dynamic_cast<cuhpmc::EmitterTriVtxCUDA*> ( writer ) ) {
             if( surface_cuda_d == NULL ) {
                 cudaMalloc( &surface_cuda_d, 3*2*3*sizeof(GLfloat)*surface_vbo_n );
             }
@@ -409,7 +409,7 @@ render( float t,
     }
     // Let CUDA write and let GL render the resulting buffer
     else {
-        if( cuhpmc::TriangleVertexWriter* w = dynamic_cast<cuhpmc::TriangleVertexWriter*> ( writer ) ) {
+        if( cuhpmc::EmitterTriVtxCUDA* w = dynamic_cast<cuhpmc::EmitterTriVtxCUDA*> ( writer ) ) {
             if( cudaGraphicsMapResources( 1, &surface_resource, stream ) == cudaSuccess ) {
                 float* surface_d = NULL;
                 size_t surface_size = 0;
