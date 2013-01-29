@@ -24,7 +24,7 @@
 #include <cuhpmc/Constants.hpp>
 #include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/GLWriter.hpp>
-#include <cuhpmc/GLIsoSurface.hpp>
+#include <cuhpmc/IsoSurfaceGL.hpp>
 
 namespace cuhpmc {
     namespace resources {
@@ -36,7 +36,7 @@ namespace cuhpmc {
         extern std::string gl_direct_fs_430;
     } // of namespace resources
 
-GLWriter::GLWriter( GLIsoSurface* iso_surface )
+GLWriter::GLWriter( IsoSurfaceGL* iso_surface )
     : AbstractWriter( iso_surface ),
       m_conf_constmem_apex( true ),
       m_program( 0 )
@@ -138,7 +138,7 @@ GLWriter::render( const GLfloat* modelview_projection,
     if( FieldGLBufferUChar* f = dynamic_cast<FieldGLBufferUChar*>( m_field ) ) {
         glActiveTexture( GL_TEXTURE1 );
         glBindTexture( GL_TEXTURE_BUFFER, f->fieldGLTex() );
-        if( GLIsoSurface* i = dynamic_cast<GLIsoSurface*>( m_iso_surface ) ) {
+        if( IsoSurfaceGL* i = dynamic_cast<IsoSurfaceGL*>( m_iso_surface ) ) {
             glActiveTexture( GL_TEXTURE2 );
             glBindTexture( GL_TEXTURE_BUFFER, i->hp5GLTex() );
             glActiveTexture( GL_TEXTURE3 );

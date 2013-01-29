@@ -28,7 +28,7 @@ namespace cuhpmc {
 class GLWriter : public AbstractWriter
 {
 public:
-    GLWriter( GLIsoSurface* iso_surface );
+    GLWriter( IsoSurfaceGL* iso_surface );
 
     ~GLWriter();
 

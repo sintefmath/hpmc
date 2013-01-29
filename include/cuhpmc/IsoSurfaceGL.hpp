@@ -25,12 +25,12 @@ namespace cuhpmc {
 
 /** Iso-surface that keeps the buffers needed for direct renderering in OpenGL.
  */
-class GLIsoSurface : public AbstractIsoSurface
+class IsoSurfaceGL : public AbstractIsoSurface
 {
 public:
-    GLIsoSurface( Field* field );
+    IsoSurfaceGL( Field* field );
 
-    ~GLIsoSurface( );
+    ~IsoSurfaceGL( );
 
     void
     build( float iso, cudaStream_t stream );

@@ -31,7 +31,7 @@ class FieldGLBufferUChar;
 
 class AbstractIsoSurface;
 class IsoSurface;
-class GLIsoSurface;
+class IsoSurfaceGL;
 
 class AbstractWriter;
 class TriangleVertexWriter;

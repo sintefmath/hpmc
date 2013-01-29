@@ -24,7 +24,7 @@
 #include <vector_functions.h>
 #include <iostream>
 #include <stdexcept>
-#include <cuhpmc/GLIsoSurface.hpp>
+#include <cuhpmc/IsoSurfaceGL.hpp>
 #include <cuhpmc/Field.hpp>
 #include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/Constants.hpp>
@@ -32,7 +32,7 @@
 
 namespace cuhpmc {
 
-GLIsoSurface::GLIsoSurface( Field* field )
+IsoSurfaceGL::IsoSurfaceGL( Field* field )
     : AbstractIsoSurface( field )
 {
     glGenBuffers( 1, &m_hp5_hp_buf );
@@ -72,7 +72,7 @@ GLIsoSurface::GLIsoSurface( Field* field )
 */
 }
 
-GLIsoSurface::~GLIsoSurface( )
+IsoSurfaceGL::~IsoSurfaceGL( )
 {
     cudaGraphicsUnregisterResource( m_resources[0] );
     cudaGraphicsUnregisterResource( m_resources[1] );
@@ -82,7 +82,7 @@ GLIsoSurface::~GLIsoSurface( )
 
 
 void
-GLIsoSurface::build( float iso, cudaStream_t stream )
+IsoSurfaceGL::build( float iso, cudaStream_t stream )
 {
     cudaError_t error;
 
