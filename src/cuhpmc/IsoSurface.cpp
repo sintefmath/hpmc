@@ -28,10 +28,10 @@
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/Constants.hpp>
-#include "../kernels/hp5_buildup_base_triple_gb.hpp"
-#include "../kernels/hp5_buildup_level_double.hpp"
-#include "../kernels/hp5_buildup_level_single.hpp"
-#include "../kernels/hp5_buildup_apex.hpp"
+#include "kernels/hp5_buildup_base_triple_gb.hpp"
+#include "kernels/hp5_buildup_level_double.hpp"
+#include "kernels/hp5_buildup_level_single.hpp"
+#include "kernels/hp5_buildup_apex.hpp"
 
 namespace cuhpmc {
 

@@ -23,7 +23,7 @@
 #include <cuhpmc/IsoSurfaceCUDA.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/EmitterTriVtxCUDA.hpp>
-#include "../kernels/hp5_writer.hpp"
+#include "kernels/hp5_writer.hpp"
 
 namespace cuhpmc {
 
