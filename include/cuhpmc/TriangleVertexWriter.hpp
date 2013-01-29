@@ -19,11 +19,11 @@
  */
 
 #include <cuhpmc/cuhpmc.hpp>
-#include <cuhpmc/AbstractWriter.hpp>
+#include <cuhpmc/EmitterTriVtx.hpp>
 
 namespace cuhpmc {
 
-class TriangleVertexWriter : public AbstractWriter
+class TriangleVertexWriter : public EmitterTriVtx
 {
 public:
     TriangleVertexWriter( IsoSurface* iso_surface );

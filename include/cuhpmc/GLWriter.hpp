@@ -21,11 +21,11 @@
 #include <iosfwd>
 #include <string>
 #include <cuhpmc/cuhpmc.hpp>
-#include <cuhpmc/AbstractWriter.hpp>
+#include <cuhpmc/EmitterTriVtx.hpp>
 
 namespace cuhpmc {
 
-class GLWriter : public AbstractWriter
+class GLWriter : public EmitterTriVtx
 {
 public:
     GLWriter( IsoSurfaceGL* iso_surface );

@@ -46,7 +46,7 @@ cuhpmc::Constants*              constants           = NULL;
 unsigned char*                  field_data_dev      = NULL;
 cuhpmc::Field*          field               = NULL;
 cuhpmc::IsoSurface*     iso_surface         = NULL;
-cuhpmc::AbstractWriter*         writer              = NULL;
+cuhpmc::EmitterTriVtx*         writer              = NULL;
 
 GLuint                          surface_vao         = 0;
 GLuint                          surface_vbo         = 0;

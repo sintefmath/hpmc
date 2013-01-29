@@ -37,7 +37,7 @@ namespace cuhpmc {
     } // of namespace resources
 
 GLWriter::GLWriter( IsoSurfaceGL* iso_surface )
-    : AbstractWriter( iso_surface ),
+    : EmitterTriVtx( iso_surface ),
       m_conf_constmem_apex( true ),
       m_program( 0 )
 {

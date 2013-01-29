@@ -33,7 +33,7 @@ class IsoSurface;
 class IsoSurfaceCUDA;
 class IsoSurfaceGL;
 
-class AbstractWriter;
+class EmitterTriVtx;
 class TriangleVertexWriter;
 class GLWriter;
 

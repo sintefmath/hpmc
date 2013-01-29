@@ -22,13 +22,13 @@
 
 namespace cuhpmc {
 
-class AbstractWriter : public NonCopyable
+class EmitterTriVtx : public NonCopyable
 {
 public:
-    AbstractWriter( IsoSurface* iso_surface );
+    EmitterTriVtx( IsoSurface* iso_surface );
 
     virtual
-    ~AbstractWriter();
+    ~EmitterTriVtx();
 
 protected:
     Constants*          m_constants;

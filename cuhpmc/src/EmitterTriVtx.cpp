@@ -17,20 +17,20 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cuhpmc/AbstractWriter.hpp>
+#include <cuhpmc/EmitterTriVtx.hpp>
 #include <cuhpmc/Field.hpp>
 #include <cuhpmc/IsoSurface.hpp>
 
 namespace cuhpmc {
 
-AbstractWriter::AbstractWriter( IsoSurface* iso_surface )
+EmitterTriVtx::EmitterTriVtx( IsoSurface* iso_surface )
     : m_constants( iso_surface->constants() ),
       m_field( iso_surface->field() ),
       m_iso_surface( iso_surface )
 {
 }
 
-AbstractWriter::~AbstractWriter()
+EmitterTriVtx::~EmitterTriVtx()
 {
 }
 
