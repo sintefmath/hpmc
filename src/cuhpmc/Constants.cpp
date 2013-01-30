@@ -28,10 +28,11 @@ namespace cuhpmc {
 
 
 Constants::Constants()
-    : m_vtxcnt_dev( NULL ),
+    : m_triangle_count_dev( NULL ),
       m_case_intersect_edge_tex(0)
 {
-    unsigned char vtxcnt[256];
+    unsigned char vtxtricnt[256];
+    unsigned char tricnt[256];
     unsigned char eisec[256*16];
 
     for(uint j=0; j<256; j++) {
@@ -49,8 +50,10 @@ Constants::Constants()
         uint t0 = (j&0x1==1?mask:0);
         uint t1 = j & mask;
         uint t2 = t0 ^ t1;
-        uint s = (t2>>1) - (t2>>2) - (t2>>3) - (t2>>4);  // popcnt_4
+        uint vtx_cnt = (t2>>1) - (t2>>2) - (t2>>3) - (t2>>4);  // popcnt_4
 
+
+        /*
 
         std::cerr << "case " << j << "\tcasebits="
                   << (j&128?'+':'-')
@@ -114,13 +117,14 @@ Constants::Constants()
 
         }
 
-
+*/
 
 
         for(uint i=0; i<16; i++) {
             int m = triangle_table[ j ][ i ];
             if( triangle_table[j][i] == -1 ) {
-                vtxcnt[j] = i/3;
+                vtxtricnt[j] = (vtx_cnt<<4) | (i/3);
+                tricnt[j] = (i/3);
                 break;
             }
             else {
@@ -131,13 +135,23 @@ Constants::Constants()
         }
     }
 
-    // copy vtx cnt table to device
-    if( cudaMalloc( (void**)(&m_vtxcnt_dev), sizeof(vtxcnt) ) != cudaSuccess ) {
+    // copy tri cnt table to device
+    if( cudaMalloc( (void**)(&m_vertex_triangle_count_dev), sizeof(vtxtricnt) ) != cudaSuccess ) {
         throw std::runtime_error( std::string( cudaGetErrorString( cudaGetLastError() ) ) );
     }
-    if( cudaMemcpy( m_vtxcnt_dev, vtxcnt, sizeof(vtxcnt), cudaMemcpyHostToDevice ) != cudaSuccess ) {
-        cudaFree( m_vtxcnt_dev );
-        m_vtxcnt_dev = NULL;
+    if( cudaMemcpy( m_vertex_triangle_count_dev, vtxtricnt, sizeof(vtxtricnt), cudaMemcpyHostToDevice ) != cudaSuccess ) {
+        cudaFree( m_vertex_triangle_count_dev );
+        m_vertex_triangle_count_dev = NULL;
+        throw std::runtime_error( std::string( cudaGetErrorString( cudaGetLastError() ) ) );
+    }
+
+    // copy tri cnt table to device
+    if( cudaMalloc( (void**)(&m_triangle_count_dev), sizeof(tricnt) ) != cudaSuccess ) {
+        throw std::runtime_error( std::string( cudaGetErrorString( cudaGetLastError() ) ) );
+    }
+    if( cudaMemcpy( m_triangle_count_dev, tricnt, sizeof(tricnt), cudaMemcpyHostToDevice ) != cudaSuccess ) {
+        cudaFree( m_triangle_count_dev );
+        m_triangle_count_dev = NULL;
         throw std::runtime_error( std::string( cudaGetErrorString( cudaGetLastError() ) ) );
     }
 
@@ -170,8 +184,8 @@ Constants::Constants()
 
 Constants::~Constants()
 {
-    if( m_vtxcnt_dev != NULL ) {
-        cudaFree( m_vtxcnt_dev );
+    if( m_triangle_count_dev != NULL ) {
+        cudaFree( m_triangle_count_dev );
     }
 #ifdef ENABLE_CUHPMC_INTEROP
     glDeleteTextures( 1, &m_case_intersect_edge_tex );

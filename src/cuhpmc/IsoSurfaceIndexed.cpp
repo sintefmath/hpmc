@@ -203,7 +203,7 @@ IsoSurfaceIndexed::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* c
                                            m_hp5_chunks,
                                            field->fieldDev(),
                                            field_size,
-                                           m_constants->triangleIndexCountDev(),
+                                           m_constants->triangleCountDev(),
                                            stream );
 
 
@@ -220,7 +220,7 @@ IsoSurfaceIndexed::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* c
                                            m_hp5_chunks,
                                            field_d,
                                            field_size,
-                                           m_constants->triangleIndexCountDev(),
+                                           m_constants->triangleCountDev(),
                                            stream );
         field->unmapFieldBuffer( stream );
     }
