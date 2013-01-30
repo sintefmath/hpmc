@@ -17,28 +17,24 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include <cuda.h>
-#include <cuda_runtime_api.h>
 #include <builtin_types.h>
 
 namespace cuhpmc {
 
-class Constants;
-
-class Field;
-class FieldGlobalMemUChar;
-class FieldGLBufferUChar;
-
-class IsoSurface;
-class IsoSurfaceCUDA;
-class IsoSurfaceGL;
-
-class IsoSurfaceIndexed;
-
-class EmitterTriIdx;
-class EmitterTriVtx;
-class EmitterTriVtxCUDA;
-class GLWriter;
-
+void
+run_hp5_buildup_base_indexed_triple_gb_ub( uint4*               hp_c_d,
+                                           uint*                sb_c_d,
+                                           const uint           hp2_N,
+                                           uint4*               hp_b_d,
+                                           uint4*               hp_a_d,
+                                           unsigned char*       case_d,
+                                           const float          iso,
+                                           const uint3          chunks,
+                                           const unsigned char* field,
+                                           const uint3          field_size,
+                                           const unsigned char* case_vtxcnt,
+                                           cudaStream_t         stream );
 
 } // of namespace cuhpmc

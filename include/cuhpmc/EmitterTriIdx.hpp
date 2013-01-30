@@ -17,28 +17,29 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <cuda.h>
-#include <cuda_runtime_api.h>
-#include <builtin_types.h>
+#include <cuhpmc/cuhpmc.hpp>
+#include <cuhpmc/NonCopyable.hpp>
 
 namespace cuhpmc {
 
-class Constants;
+class EmitterTriIdx : public NonCopyable
+{
+public:
+    EmitterTriIdx( IsoSurfaceIndexed* iso_surface );
 
-class Field;
-class FieldGlobalMemUChar;
-class FieldGLBufferUChar;
+    virtual
+    ~EmitterTriIdx();
 
-class IsoSurface;
-class IsoSurfaceCUDA;
-class IsoSurfaceGL;
+    void
+    writeTriangleIndices( float* interleaved_buffer_d, uint triangles, cudaStream_t stream  );
 
-class IsoSurfaceIndexed;
+protected:
+    Constants*          m_constants;
+    Field*              m_field;
+    IsoSurfaceIndexed*  m_iso_surface;
 
-class EmitterTriIdx;
-class EmitterTriVtx;
-class EmitterTriVtxCUDA;
-class GLWriter;
+
+};
 
 
 } // of namespace cuhpmc

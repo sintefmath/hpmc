@@ -33,6 +33,8 @@
 #include <cuhpmc/IsoSurfaceGL.hpp>
 #include <cuhpmc/EmitterTriVtxCUDA.hpp>
 #include <cuhpmc/EmitterTriVtxGL.hpp>
+#include <cuhpmc/IsoSurfaceIndexed.hpp>
+#include <cuhpmc/EmitterTriIdx.hpp>
 
 namespace resources {
     extern std::string phong_vbo_vs_420;
@@ -50,9 +52,12 @@ float                           iso                 = 0.5f;
 
 cuhpmc::Constants*              constants           = NULL;
 unsigned char*                  field_data_dev      = NULL;
-cuhpmc::Field*          field               = NULL;
-cuhpmc::IsoSurface*     iso_surface         = NULL;
-cuhpmc::EmitterTriVtx*         writer              = NULL;
+cuhpmc::Field*                  field               = NULL;
+cuhpmc::IsoSurface*             iso_surface         = NULL;
+cuhpmc::EmitterTriVtx*          writer              = NULL;
+
+cuhpmc::IsoSurfaceIndexed*      isurf_idx           = NULL;
+cuhpmc::EmitterTriIdx*          emitter_idx         = NULL;
 
 GLuint                          surface_vao         = 0;
 GLuint                          surface_vbo         = 0;
@@ -210,6 +215,7 @@ init( int argc, char** argv )
         exit( EXIT_FAILURE );
     }
 
+
     int device_n = 0;
     cudaGetDeviceCount( &device_n );
     if( device_n == 0 ) {
@@ -322,8 +328,9 @@ init( int argc, char** argv )
                                                  volume_size_x,
                                                  volume_size_y,
                                                  volume_size_z );
-        iso_surface = new cuhpmc::IsoSurfaceCUDA( field );
-        writer = new cuhpmc::EmitterTriVtxCUDA( iso_surface );
+
+        isurf_idx = new cuhpmc::IsoSurfaceIndexed( field );
+        emitter_idx = new cuhpmc::EmitterTriIdx( isurf_idx );
 
         // Create shader program to render the VBO results
 
@@ -366,7 +373,12 @@ render( float t,
     if( profile ) {
         cudaEventRecord( pre_buildup, stream );
     }
-    iso_surface->build( iso, stream );
+    if( gl_direct_draw ) {
+        iso_surface->build( iso, stream );
+    }
+    else {
+        isurf_idx->build( iso, stream );
+    }
     if( profile ) {
         cudaEventRecord( post_buildup, stream );
     }
@@ -375,7 +387,8 @@ render( float t,
     uint triangles = 0;
     if( !gl_direct_draw ) {
 
-        triangles = iso_surface->triangles();
+//        triangles = iso_surface->triangles();
+        triangles = isurf_idx->triangles();
         if( surface_vbo_n < triangles ) {
             if( cudaGraphicsUnregisterResource( surface_resource ) == cudaSuccess ) {
                 if( surface_cuda_d != NULL ) {
@@ -431,6 +444,25 @@ render( float t,
     }
     // Let CUDA write and let GL render the resulting buffer
     else {
+        float* surface_d = NULL;
+        size_t surface_s = 0;
+        if( cudaGraphicsMapResources( 1, &surface_resource, stream ) != cudaSuccess ) {
+            std::cerr << __FILE__ << '@' << __LINE__ << std::endl;
+            exit( EXIT_FAILURE );
+        }
+        if( cudaGraphicsResourceGetMappedPointer( (void**)&surface_d, &surface_s, surface_resource ) != cudaSuccess ) {
+            std::cerr << __FILE__ << '@' << __LINE__ << std::endl;
+            exit( EXIT_FAILURE );
+        }
+
+        emitter_idx->writeTriangleIndices( surface_d, triangles, stream );
+
+        if( cudaGraphicsUnmapResources( 1, &surface_resource, stream ) != cudaSuccess ) {
+            std::cerr << __FILE__ << '@' << __LINE__ << std::endl;
+            exit( EXIT_FAILURE );
+        }
+
+#if 0
         if( cuhpmc::EmitterTriVtxCUDA* w = dynamic_cast<cuhpmc::EmitterTriVtxCUDA*> ( writer ) ) {
             if( cudaGraphicsMapResources( 1, &surface_resource, stream ) == cudaSuccess ) {
                 float* surface_d = NULL;
@@ -443,16 +475,17 @@ render( float t,
                 }
                 cudaGraphicsUnmapResources( 1, &surface_resource, stream );
             }
-            glUseProgram( vbo_render_prog );
-            glUniformMatrix4fv( vbo_render_loc_pm, 1, GL_FALSE, PM );
-            glUniformMatrix3fv( vbo_render_loc_nm, 1, GL_FALSE, NM );
-            glUniform4f( vbo_render_loc_col, 0.8f, 0.8f, 1.f, 1.f );
-
-            glBindVertexArray( surface_vao );
-            glDrawArrays( GL_TRIANGLES, 0, 3*triangles );
-            glBindVertexArray( 0 );
-            glUseProgram( 0 );
         }
+#endif
+        glUseProgram( vbo_render_prog );
+        glUniformMatrix4fv( vbo_render_loc_pm, 1, GL_FALSE, PM );
+        glUniformMatrix3fv( vbo_render_loc_nm, 1, GL_FALSE, NM );
+        glUniform4f( vbo_render_loc_col, 0.8f, 0.8f, 1.f, 1.f );
+
+        glBindVertexArray( surface_vao );
+        glDrawArrays( GL_TRIANGLES, 0, 3*triangles );
+        glBindVertexArray( 0 );
+        glUseProgram( 0 );
     }
 
     if( profile ) {
@@ -495,8 +528,13 @@ infoString( float fps )
         o << "build=" << avg_buildup << "ms, "
           << "write=" << avg_write << "ms, ";
     }
-    o << iso_surface->triangles()
-      << " triangles, iso=" << iso
+    if( gl_direct_draw ) {
+        o << iso_surface->triangles() << "triangles, ";
+    }
+    else {
+        o << isurf_idx->triangles() << " triangles, ";
+    }
+    o << "iso=" << iso
       << (wireframe?"[wireframe]":"");
     return o.str();
 }
