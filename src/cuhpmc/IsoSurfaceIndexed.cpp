@@ -28,7 +28,7 @@
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/Constants.hpp>
-#include "kernels/hp5_buildup_base_triple_gb.hpp"
+#include "kernels/hp5_buildup_base_indexed_triple_gb.hpp"
 #include "kernels/hp5_buildup_level_double.hpp"
 #include "kernels/hp5_buildup_level_single.hpp"
 #include "kernels/hp5_buildup_apex.hpp"
@@ -193,7 +193,7 @@ IsoSurfaceIndexed::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* c
     uint3 field_size = make_uint3( m_field->width(), m_field->height(), m_field->depth() );
 
     if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
-        run_hp5_buildup_base_triple_gb_ub( hp5_hp_d + m_hp5_offsets[ m_hp5_levels-3 ],
+        run_hp5_buildup_base_indexed_triple_gb_ub( hp5_hp_d + m_hp5_offsets[ m_hp5_levels-3 ],
                                            m_hp5_sb_d + m_hp5_offsets[ m_hp5_levels-3 ],
                                            m_hp5_level_sizes[ m_hp5_levels-1 ],
                                            hp5_hp_d + m_hp5_offsets[ m_hp5_levels-2 ],
@@ -203,26 +203,10 @@ IsoSurfaceIndexed::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* c
                                            m_hp5_chunks,
                                            field->fieldDev(),
                                            field_size,
-                                           m_constants->triangleCountDev(),
+                                           m_constants->vertexTriangleCountDev(),
                                            stream );
 
 
-    }
-    else if( FieldGLBufferUChar* field = dynamic_cast<FieldGLBufferUChar*>( m_field ) ) {
-        const unsigned char* field_d = field->mapFieldBuffer( stream );
-        run_hp5_buildup_base_triple_gb_ub( hp5_hp_d + m_hp5_offsets[ m_hp5_levels-3 ],
-                                           m_hp5_sb_d + m_hp5_offsets[ m_hp5_levels-3 ],
-                                           m_hp5_level_sizes[ m_hp5_levels-1 ],
-                                           hp5_hp_d + m_hp5_offsets[ m_hp5_levels-2 ],
-                                           hp5_hp_d + m_hp5_offsets[ m_hp5_levels-1 ],
-                                           case_d,
-                                           m_iso,
-                                           m_hp5_chunks,
-                                           field_d,
-                                           field_size,
-                                           m_constants->triangleCountDev(),
-                                           stream );
-        field->unmapFieldBuffer( stream );
     }
     else {
         throw std::runtime_error( "Unsupported field type" );

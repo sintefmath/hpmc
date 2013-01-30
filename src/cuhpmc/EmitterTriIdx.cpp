@@ -46,7 +46,7 @@ void
 EmitterTriIdx::writeTriangleIndices( float* interleaved_buffer_d, uint triangles, cudaStream_t stream  )
 {
     if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
-        run_dummy_writer( interleaved_buffer_d,
+        run_index_writer( interleaved_buffer_d,
                           m_iso_surface->hp5Dev(),
                           m_iso_surface->mcCasesDev(),
                           m_constants->caseIntersectEdgeDev(),

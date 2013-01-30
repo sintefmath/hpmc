@@ -34,7 +34,7 @@ run_hp5_buildup_base_indexed_triple_gb_ub( uint4*               hp_c_d,
                                            const uint3          chunks,
                                            const unsigned char* field,
                                            const uint3          field_size,
-                                           const unsigned char* case_vtxcnt,
+                                           const unsigned char* case_vtxtricnt,
                                            cudaStream_t         stream );
 
 } // of namespace cuhpmc

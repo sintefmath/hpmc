@@ -367,7 +367,7 @@ render( float t,
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glEnable( GL_DEPTH_TEST );
 
-    iso = 0.48f*(sin(t)+1.f)+0.01f;
+    iso = 0.5f;//0.48f*(sin(t)+1.f)+0.01f;
 
     // build histopyramid
     if( profile ) {

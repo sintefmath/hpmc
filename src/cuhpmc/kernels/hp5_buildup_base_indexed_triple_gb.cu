@@ -17,6 +17,8 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
+
 namespace cuhpmc {
 
 template<class T>
@@ -80,7 +82,7 @@ struct hp5_buildup_base_indexed_triple_gb_args
     const T* __restrict__           field_end;
     size_t                    field_row_pitch;
     size_t                    field_slice_pitch;
-    const unsigned char*                  case_vtxcnt;
+    const unsigned char*                  case_vtxtricnt;
 };
 
 template<class T>
@@ -168,25 +170,30 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
             m3_1 += (sh[ 3*160 + threadIdx.x + 1]<<1);
             m4_1 += (sh[ 4*160 + threadIdx.x + 1]<<1);
 
-            uint s0_1 = a.case_vtxcnt[ m0_1 ]; // Faster to fetch from glob. mem than tex.
-            uint s1_1 = a.case_vtxcnt[ m1_1 ];
-            uint s2_1 = a.case_vtxcnt[ m2_1 ];
-            uint s3_1 = a.case_vtxcnt[ m3_1 ];
-            uint s4_1 = a.case_vtxcnt[ m4_1 ];
+            uint s0_1 = a.case_vtxtricnt[ m0_1 ]; // Faster to fetch from glob. mem than tex.
+            uint s1_1 = a.case_vtxtricnt[ m1_1 ];
+            uint s2_1 = a.case_vtxtricnt[ m2_1 ];
+            uint s3_1 = a.case_vtxtricnt[ m3_1 ];
+            uint s4_1 = a.case_vtxtricnt[ m4_1 ];
 
+            // expand from 4-bit sums to 8-bit sums
+            uint q0_1 = ((s0_1<<4u)|s0_1) & 0x0f0fu;
+            uint q1_1 = ((s1_1<<4u)|s1_1) & 0x0f0fu;
+            uint q2_1 = ((s2_1<<4u)|s2_1) & 0x0f0fu;
+            uint q3_1 = ((s3_1<<4u)|s3_1) & 0x0f0fu;
+            uint q4_1 = ((s4_1<<4u)|s4_1) & 0x0f0fu;
 
             if( znocare ) {
-                sum = s0_1 + s1_1 + s2_1 + s3_1 + s4_1;
+                sum = q0_1 + q1_1 + q2_1 + q3_1 + q4_1;
             }
             else {
-                sum = (cp.z+0 < a.cells.z ? s0_1 : 0) +
-                      (cp.z+1 < a.cells.z ? s1_1 : 0) +
-                      (cp.z+2 < a.cells.z ? s2_1 : 0) +
-                      (cp.z+3 < a.cells.z ? s3_1 : 0) +
-                      (cp.z+4 < a.cells.z ? s4_1 : 0);
+                sum = (cp.z+0 < a.cells.z ? q0_1 : 0) +
+                      (cp.z+1 < a.cells.z ? q1_1 : 0) +
+                      (cp.z+2 < a.cells.z ? q2_1 : 0) +
+                      (cp.z+3 < a.cells.z ? q3_1 : 0) +
+                      (cp.z+4 < a.cells.z ? q4_1 : 0);
             }
             sb[ ix_o_1 ] = sum;
-
 
             if( sum > 0 ) {
                 a.d_hp_a[ 5*160*blockIdx.x + ix_o_1 ] = make_uint4( s0_1, s1_1, s2_1, s3_1 );
@@ -201,10 +208,17 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
             sb[ ix_o_1 ] = 0;
         }
     }
+    // second reduction
     uint4 bu = make_uint4( sb[sh_i+0],  sb[sh_i+1], sb[sh_i+2], sb[sh_i+3] );
     a.d_hp_b[ hp_b_o ] = bu;
     __syncthreads();
-    sh[ 32*w + wt ] = bu.x + bu.y + bu.z + bu.w + sb[ sh_i + 4 ];
+    uint e1_0 = bu.x & 0x00ffu;
+    uint e1_1 = bu.y & 0x00ffu;
+    uint e1_2 = bu.z & 0x00ffu;
+    uint e1_3 = bu.w & 0x00ffu;
+    uint e1_4 = sb[ sh_i + 4 ] & 0x00ffu;
+    sh[ 32*w + wt ] = e1_0 + e1_1 + e1_2 + e1_3 + e1_4;
+    // third reduction
     __syncthreads();
     if( w == 0 ) {
         uint4 bu = make_uint4( sh[5*wt+0], sh[5*wt+1], sh[5*wt+2], sh[5*wt+3] );
@@ -224,7 +238,7 @@ run_hp5_buildup_base_indexed_triple_gb_ub( uint4*               hp_c_d,
                                            const uint3          chunks,
                                            const unsigned char* field,
                                            const uint3          field_size,
-                                           const unsigned char *case_vtxcnt,
+                                           const unsigned char *case_vtxtricnt,
                                            cudaStream_t         stream )
 {
     const uint3 cells = make_uint3( field_size.x-1, field_size.y-1, field_size.z-1 );
@@ -242,7 +256,7 @@ run_hp5_buildup_base_indexed_triple_gb_ub( uint4*               hp_c_d,
     args.field_end          = field + field_size.x*field_size.y*field_size.z;
     args.field_row_pitch    = field_size.x;
     args.field_slice_pitch  = field_size.x*field_size.y;
-    args.case_vtxcnt        = case_vtxcnt;
+    args.case_vtxtricnt        = case_vtxtricnt;
 
     uint gs = (hp2_N+3999)/4000;
     uint bs = 160;
