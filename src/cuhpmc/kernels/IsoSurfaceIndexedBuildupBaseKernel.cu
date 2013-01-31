@@ -206,11 +206,20 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
             // sb  = %00000000 0000vvvv 00000000 000ttttt
             sb[ ix_o_1 ] = ((sum<<11)&0xf0000u) | (sum&0x1fu);
             if( sum > 0 ) {
+                // triangle count stored as 4 x 4 bits = 16 bits
                 ((short1*)(a.tri_pyramid_level_a_d))[ 5*160*blockIdx.x + ix_o_1 ] =
                         make_short1( ((cnt_a_0 & 0xf)) |
                                      ((cnt_a_1 & 0xf)<<4) |
                                      ((cnt_a_2 & 0xf)<<8) |
                                      ((cnt_a_3 & 0xf)<<12) );
+
+                // vertex count stored as 4 x 2 bits = 8 bits
+                ((unsigned char*)(a.vtx_pyramid_level_a_d))[ 5*160*blockIdx.x + ix_o_1 ]
+                        = ((cnt_a_0>>5u)
+                        |  (cnt_a_1>>3u)
+                        |  ((cnt_a_2>>1u)&0x30u)
+                        |  ((cnt_a_3<<1u)&0xc0u) ) & 0xffu;
+
 
                         //   a.tri_pyramid_level_a_d[ 5*160*blockIdx.x + ix_o_1 ] = make_uint4( s0_1, s1_1, s2_1, s3_1 );
                 a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 0 ] = m0_1;
@@ -231,10 +240,18 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
     uint cnt_b_3 = sb[ sh_i + 3 ];
     uint cnt_b_4 = sb[ sh_i + 4 ];
 
+    // triangle count as 4 x 8 bits = 32 bits
     ((uchar4*)a.tri_pyramid_level_b_d)[ hp_b_o ] = make_uchar4( cnt_b_0,
                                                                 cnt_b_1,
                                                                 cnt_b_2,
                                                                 cnt_b_3 );
+
+    // vertex count stored as 4 x 4 bits = 16 bits
+    ((short1*)a.vtx_pyramid_level_b_d)[ hp_b_o ] = make_short1( (cnt_b_0>>16u) |
+                                                                (cnt_b_1>>12u) |
+                                                                (cnt_b_2>>8u)  |
+                                                                (cnt_b_3>>4u) );
+
 
     __syncthreads();
     // third reduction
@@ -251,10 +268,18 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
         uint cnt_c_2 = sh[5*wt+2];
         uint cnt_c_3 = sh[5*wt+3];
         uint cnt_c_4 = sh[5*wt+4];
+
+        // triangle count stored as 4 x 8 bits
         ((uchar4*)a.tri_pyramid_level_c_d)[ 32*blockIdx.x + wt ] = make_uchar4( cnt_c_0,
                                                                                 cnt_c_1,
                                                                                 cnt_c_2,
                                                                                 cnt_c_3 );
+        // vertex count stored as 4 x 8 bits
+        ((uchar4*)a.vtx_pyramid_level_c_d)[ 32*blockIdx.x + wt ] = make_uchar4( (cnt_c_0>>16),
+                                                                                (cnt_c_1>>16),
+                                                                                (cnt_c_2>>16),
+                                                                                (cnt_c_3>>16) );
+
         // sum = %0000000v vvvvvvvv 000000tt tttttttt
         uint sum = cnt_c_0
                  + cnt_c_1
