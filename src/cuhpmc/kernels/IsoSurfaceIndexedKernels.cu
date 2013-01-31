@@ -18,6 +18,7 @@
  */
 
 #include <assert.h>
+#include <iostream>
 #include <stdexcept>
 #include <cuhpmc/Constants.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
@@ -179,34 +180,39 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
             m3_1 += (sh[ 3*160 + threadIdx.x + 1]<<1);
             m4_1 += (sh[ 4*160 + threadIdx.x + 1]<<1);
 
-            uint s0_1 = a.case_vtxtricnt[ m0_1 ]; // Faster to fetch from glob. mem than tex.
-            uint s1_1 = a.case_vtxtricnt[ m1_1 ];
-            uint s2_1 = a.case_vtxtricnt[ m2_1 ];
-            uint s3_1 = a.case_vtxtricnt[ m3_1 ];
-            uint s4_1 = a.case_vtxtricnt[ m4_1 ];
+            // cnt_a_X = %00000000 0vv00ttt
+            uint cnt_a_0 = a.case_vtxtricnt[ m0_1 ]; // Faster to fetch from glob. mem than tex.
+            uint cnt_a_1 = a.case_vtxtricnt[ m1_1 ];
+            uint cnt_a_2 = a.case_vtxtricnt[ m2_1 ];
+            uint cnt_a_3 = a.case_vtxtricnt[ m3_1 ];
+            uint cnt_a_4 = a.case_vtxtricnt[ m4_1 ];
 
-            // expand from 4-bit sums to 8-bit sums
-            uint q0_1 = ((s0_1<<4u)|s0_1) & 0x0f0fu;
-            uint q1_1 = ((s1_1<<4u)|s1_1) & 0x0f0fu;
-            uint q2_1 = ((s2_1<<4u)|s2_1) & 0x0f0fu;
-            uint q3_1 = ((s3_1<<4u)|s3_1) & 0x0f0fu;
-            uint q4_1 = ((s4_1<<4u)|s4_1) & 0x0f0fu;
 
             if( znocare ) {
-                sum = q0_1 + q1_1 + q2_1 + q3_1 + q4_1;
+                sum = cnt_a_0
+                    + cnt_a_1
+                    + cnt_a_2
+                    + cnt_a_3
+                    + cnt_a_4;
             }
             else {
-                sum = (cp.z+0 < a.cells.z ? q0_1 : 0) +
-                      (cp.z+1 < a.cells.z ? q1_1 : 0) +
-                      (cp.z+2 < a.cells.z ? q2_1 : 0) +
-                      (cp.z+3 < a.cells.z ? q3_1 : 0) +
-                      (cp.z+4 < a.cells.z ? q4_1 : 0);
+                sum = (cp.z+0 < a.cells.z ? cnt_a_0 : 0) +
+                      (cp.z+1 < a.cells.z ? cnt_a_1 : 0) +
+                      (cp.z+2 < a.cells.z ? cnt_a_2 : 0) +
+                      (cp.z+3 < a.cells.z ? cnt_a_3 : 0) +
+                      (cp.z+4 < a.cells.z ? cnt_a_4 : 0);
             }
-            sb[ ix_o_1 ] = sum;
-
+            // sum = %00000000 00000000 0000000v vvvttttt
+            // sb  = %00000000 0000vvvv 00000000 000ttttt
+            sb[ ix_o_1 ] = ((sum<<11)&0xf0000u) | (sum&0x1fu);
             if( sum > 0 ) {
+                ((short1*)(a.tri_pyramid_level_a_d))[ 5*160*blockIdx.x + ix_o_1 ] =
+                        make_short1( ((cnt_a_0 & 0xf)) |
+                                     ((cnt_a_1 & 0xf)<<4) |
+                                     ((cnt_a_2 & 0xf)<<8) |
+                                     ((cnt_a_3 & 0xf)<<12) );
 
-                a.tri_pyramid_level_a_d[ 5*160*blockIdx.x + ix_o_1 ] = make_uint4( s0_1, s1_1, s2_1, s3_1 );
+                        //   a.tri_pyramid_level_a_d[ 5*160*blockIdx.x + ix_o_1 ] = make_uint4( s0_1, s1_1, s2_1, s3_1 );
                 a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 0 ] = m0_1;
                 a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 1 ] = m1_1;
                 a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 2 ] = m2_1;
@@ -219,28 +225,52 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
         }
     }
     // second reduction
-    uint4 bu = make_uint4( sb[sh_i+0],  sb[sh_i+1], sb[sh_i+2], sb[sh_i+3] );
-    a.tri_pyramid_level_b_d[ hp_b_o ] = bu;
+    uint cnt_b_0 = sb[ sh_i + 0 ];
+    uint cnt_b_1 = sb[ sh_i + 1 ];
+    uint cnt_b_2 = sb[ sh_i + 2 ];
+    uint cnt_b_3 = sb[ sh_i + 3 ];
+    uint cnt_b_4 = sb[ sh_i + 4 ];
+
+    ((uchar4*)a.tri_pyramid_level_b_d)[ hp_b_o ] = make_uchar4( cnt_b_0 & 0xffu,
+                                                                cnt_b_1 & 0xffu,
+                                                                cnt_b_2 & 0xffu,
+                                                                cnt_b_3 & 0xffu );
+
     __syncthreads();
-    uint e1_0 = bu.x & 0x00ffu;
-    uint e1_1 = bu.y & 0x00ffu;
-    uint e1_2 = bu.z & 0x00ffu;
-    uint e1_3 = bu.w & 0x00ffu;
-    uint e1_4 = sb[ sh_i + 4 ] & 0x00ffu;
-    sh[ 32*w + wt ] = e1_0 + e1_1 + e1_2 + e1_3 + e1_4;
     // third reduction
+    // sh = %00000000 0vvvvvvv 00000000 0ttttttt
+    sh[ 32*w + wt ] = cnt_b_0
+                    + cnt_b_1
+                    + cnt_b_2
+                    + cnt_b_3
+                    + cnt_b_4;
     __syncthreads();
     if( w == 0 ) {
-        uint4 bu = make_uint4( sh[5*wt+0], sh[5*wt+1], sh[5*wt+2], sh[5*wt+3] );
-        a.tri_pyramid_level_c_d[ 32*blockIdx.x + wt ] = bu;
-        a.tri_sideband_level_c_d[ 32*blockIdx.x + wt ] = bu.x + bu.y + bu.z + bu.w + sh[ 5*wt + 4 ];
+        uint cnt_c_0 = sh[5*wt+0];
+        uint cnt_c_1 = sh[5*wt+1];
+        uint cnt_c_2 = sh[5*wt+2];
+        uint cnt_c_3 = sh[5*wt+3];
+        uint cnt_c_4 = sh[5*wt+4];
+
+        ((uchar4*)a.tri_pyramid_level_c_d)[ 32*blockIdx.x + wt ] = make_uchar4( cnt_c_0 & 0xffu,
+                                                                                cnt_c_1 & 0xffu,
+                                                                                cnt_c_2 & 0xffu,
+                                                                                cnt_c_3 & 0xffu );
+        // sum = %0000000v vvvvvvvv 000000tt tttttttt
+        uint sum = cnt_c_0
+                 + cnt_c_1
+                 + cnt_c_2
+                 + cnt_c_3
+                 + cnt_c_4;
+
+//        a.tri_pyramid_level_c_d[ 32*blockIdx.x + wt ] = bu;
+        a.tri_sideband_level_c_d[ 32*blockIdx.x + wt ] = sum & 0xffffu;//bu.x + bu.y + bu.z + bu.w + sh[ 5*wt + 4 ];
     }
 }
 
 void
 IsoSurfaceIndexed::invokeBaseBuildup( cudaStream_t stream )
 {
-
     if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
 
         hp5_buildup_base_indexed_triple_gb_args<unsigned char> args;

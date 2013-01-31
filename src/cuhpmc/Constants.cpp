@@ -123,7 +123,7 @@ Constants::Constants()
         for(uint i=0; i<16; i++) {
             int m = triangle_table[ j ][ i ];
             if( triangle_table[j][i] == -1 ) {
-                vtxtricnt[j] =  (vtx_cnt<<4) | (i/3);
+                vtxtricnt[j] =  (vtx_cnt<<5) | (i/3);
                 tricnt[j] = (i/3);
                 break;
             }

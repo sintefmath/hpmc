@@ -111,20 +111,33 @@ zindex_writer( float* __restrict__               output_d,
         uint key = triangle;
         uint pos = 0;
         int l = 0;
-        for(; l<max_level-2; l++) {
+        for(; l<max_level-3; l++) {
             uint4 val = hp5_d[ hp5_const_offsets[l] + pos ];
             downTraversalStep( pos, key, val );
         }
-        {   // l1 -> fetch lower byte of 16-bit value
-            uint4 val = hp5_d[ hp5_const_offsets[ max_level-2 ] + pos ];
+        for(; l<max_level-1; l++) {
+            // l1 -> fetch lower byte of 16-bit value
+            uchar4 val_ = ((uchar4*)(hp5_d + hp5_const_offsets[ l ]))[pos];
+            uint4 val = make_uint4( val_.x,
+                                    val_.y,
+                                    val_.z,
+                                    val_.w );
+            /*
+            hp5_d[ hp5_const_offsets[ max_level-2 ] + pos ];
             val.x = val.x & 0xffu;
             val.y = val.y & 0xffu;
             val.z = val.z & 0xffu;
-            val.w = val.w & 0xffu;
+            val.w = val.w & 0xffu;*/
             downTraversalStep( pos, key, val );
         }
         {   // l0 -> fetch lower nibble of 8-bit value
-            uint4 val = hp5_d[ hp5_const_offsets[ max_level-1 ] + pos ];
+            short1 val_ = ((short1*)(hp5_d + hp5_const_offsets[ max_level-1 ] ))[ pos ];
+            uint4 val = make_uint4( val_.x & 0xfu,
+                                    (val_.x>>4) & 0xfu,
+                                    (val_.x>>8) & 0xfu,
+                                    (val_.x>>12) & 0xfu );
+
+           // uint4 val = hp5_d[ hp5_const_offsets[ max_level-1 ] + pos ];
             val.x = val.x & 0xfu;
             val.y = val.y & 0xfu;
             val.z = val.z & 0xfu;

@@ -386,7 +386,6 @@ render( float t,
     // resize buffers if we run unless we do direct GL rendering
     uint triangles = 0;
     if( !gl_direct_draw ) {
-
 //        triangles = iso_surface->triangles();
         triangles = isurf_idx->triangles();
         if( surface_vbo_n < triangles ) {
