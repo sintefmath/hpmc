@@ -18,6 +18,11 @@
  */
 
 #include <assert.h>
+#include <stdexcept>
+#include <cuhpmc/Constants.hpp>
+#include <cuhpmc/FieldGlobalMemUChar.hpp>
+#include <cuhpmc/IsoSurface.hpp>
+#include <cuhpmc/IsoSurfaceIndexed.hpp>
 
 namespace cuhpmc {
 
@@ -70,10 +75,14 @@ fetchFromField( uint&           bp0,                // Bit mask for slice 0
 template<class T>
 struct hp5_buildup_base_indexed_triple_gb_args
 {
-    uint4* __restrict__             d_hp_c;
-    uint*  __restrict__             d_sb_c;
-    uint4* __restrict__             d_hp_b;
-    uint4* __restrict__             d_hp_a;
+    uint4* __restrict__             tri_pyramid_level_a_d;
+    uint4* __restrict__             vtx_pyramid_level_a_d;
+    uint4* __restrict__             tri_pyramid_level_b_d;
+    uint4* __restrict__             vtx_pyramid_level_b_d;
+    uint4* __restrict__             tri_pyramid_level_c_d;
+    uint4* __restrict__             vtx_pyramid_level_c_d;
+    uint*  __restrict__             tri_sideband_level_c_d;
+    uint*  __restrict__             vtx_sideband_level_c_d;
     unsigned char* __restrict__     d_case;
     float                     iso;
     uint3                     cells;
@@ -196,7 +205,8 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
             sb[ ix_o_1 ] = sum;
 
             if( sum > 0 ) {
-                a.d_hp_a[ 5*160*blockIdx.x + ix_o_1 ] = make_uint4( s0_1, s1_1, s2_1, s3_1 );
+
+                a.tri_pyramid_level_a_d[ 5*160*blockIdx.x + ix_o_1 ] = make_uint4( s0_1, s1_1, s2_1, s3_1 );
                 a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 0 ] = m0_1;
                 a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 1 ] = m1_1;
                 a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 2 ] = m2_1;
@@ -210,7 +220,7 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
     }
     // second reduction
     uint4 bu = make_uint4( sb[sh_i+0],  sb[sh_i+1], sb[sh_i+2], sb[sh_i+3] );
-    a.d_hp_b[ hp_b_o ] = bu;
+    a.tri_pyramid_level_b_d[ hp_b_o ] = bu;
     __syncthreads();
     uint e1_0 = bu.x & 0x00ffu;
     uint e1_1 = bu.y & 0x00ffu;
@@ -222,46 +232,47 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
     __syncthreads();
     if( w == 0 ) {
         uint4 bu = make_uint4( sh[5*wt+0], sh[5*wt+1], sh[5*wt+2], sh[5*wt+3] );
-        a.d_hp_c[ 32*blockIdx.x + wt ] = bu;
-        a.d_sb_c[ 32*blockIdx.x + wt ] = bu.x + bu.y + bu.z + bu.w + sh[ 5*wt + 4 ];
+        a.tri_pyramid_level_c_d[ 32*blockIdx.x + wt ] = bu;
+        a.tri_sideband_level_c_d[ 32*blockIdx.x + wt ] = bu.x + bu.y + bu.z + bu.w + sh[ 5*wt + 4 ];
     }
 }
 
 void
-run_hp5_buildup_base_indexed_triple_gb_ub( uint4*               hp_c_d,
-                                           uint*                sb_c_d,
-                                           const uint           hp2_N,
-                                           uint4*               hp_b_d,
-                                           uint4*               hp_a_d,
-                                           unsigned char*       case_d,
-                                           const float          iso,
-                                           const uint3          chunks,
-                                           const unsigned char* field,
-                                           const uint3          field_size,
-                                           const unsigned char *case_vtxtricnt,
-                                           cudaStream_t         stream )
+IsoSurfaceIndexed::invokeBaseBuildup( cudaStream_t stream )
 {
-    const uint3 cells = make_uint3( field_size.x-1, field_size.y-1, field_size.z-1 );
 
-    hp5_buildup_base_indexed_triple_gb_args<unsigned char> args;
-    args.d_hp_c             = hp_c_d;
-    args.d_sb_c             = sb_c_d;
-    args.d_hp_b             = hp_b_d;
-    args.d_hp_a             = hp_a_d;
-    args.d_case             = case_d;
-    args.iso                = 256.f*iso;
-    args.cells              = cells;
-    args.chunks             = chunks;
-    args.field              = field;
-    args.field_end          = field + field_size.x*field_size.y*field_size.z;
-    args.field_row_pitch    = field_size.x;
-    args.field_slice_pitch  = field_size.x*field_size.y;
-    args.case_vtxtricnt        = case_vtxtricnt;
+    if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
 
-    uint gs = (hp2_N+3999)/4000;
-    uint bs = 160;
-    hp5_buildup_base_indexed_triple_gb<unsigned char><<<gs,bs,0, stream >>>( args );
+        hp5_buildup_base_indexed_triple_gb_args<unsigned char> args;
+        args.tri_pyramid_level_a_d  = m_triangle_pyramid_d + m_hp5_offsets[ m_hp5_levels-1 ];
+        args.vtx_pyramid_level_a_d  = m_vertex_pyramid_d   + m_hp5_offsets[ m_hp5_levels-1 ];
+        args.tri_pyramid_level_b_d  = m_triangle_pyramid_d + m_hp5_offsets[ m_hp5_levels-2 ];
+        args.vtx_pyramid_level_b_d  = m_vertex_pyramid_d   + m_hp5_offsets[ m_hp5_levels-2 ];
+        args.tri_pyramid_level_c_d  = m_triangle_pyramid_d + m_hp5_offsets[ m_hp5_levels-3 ];
+        args.vtx_pyramid_level_c_d  = m_vertex_pyramid_d   + m_hp5_offsets[ m_hp5_levels-3 ];
+        args.tri_sideband_level_c_d = m_triangle_sideband_d + m_hp5_offsets[ m_hp5_levels-3 ];
+        args.vtx_sideband_level_c_d = m_triangle_sideband_d + m_hp5_offsets[ m_hp5_levels-3 ];
+        args.d_case             = m_case_d;
+        args.iso                = 256.f*m_iso;
+        args.cells              = make_uint3( field->width()-1,
+                                              field->height()-1,
+                                              field->depth()-1 );
+        args.chunks             = m_hp5_chunks;
+        args.field              = field->fieldDev();
+        args.field_end          = field->fieldDev() + field->width()*field->height()*field->depth();
+        args.field_row_pitch    = field->width();
+        args.field_slice_pitch  = field->width()*field->height();
+        args.case_vtxtricnt     = m_constants->vertexTriangleCountDev() ;
 
+        uint gs = (m_hp5_level_sizes[ m_hp5_levels-1 ]+3999)/4000;
+        uint bs = 160;
+        hp5_buildup_base_indexed_triple_gb<unsigned char><<<gs,bs,0, stream >>>( args );
+
+    }
+    else {
+        throw std::runtime_error( "invokeBaseBuildup: unsupported field type" );
+    }
 }
+
 
 } // of namespace cuhpmc

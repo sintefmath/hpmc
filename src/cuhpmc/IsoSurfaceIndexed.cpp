@@ -125,7 +125,11 @@ IsoSurfaceIndexed::IsoSurfaceIndexed( Field* field )
     cudaError_t error;
 
     // --- set up sideband memory
-    error = cudaMalloc( (void**)&m_hp5_sb_d, sizeof(uint)*m_hp5_size );
+    error = cudaMalloc( (void**)&m_triangle_sideband_d, sizeof(uint)*m_hp5_size );
+    if( error != cudaSuccess ) {
+        throw CUDAErrorException( error );
+    }
+    error = cudaMalloc( (void**)&m_vertex_sideband_d, sizeof(uint)*m_hp5_size );
     if( error != cudaSuccess ) {
         throw CUDAErrorException( error );
     }
@@ -148,7 +152,8 @@ IsoSurfaceIndexed::IsoSurfaceIndexed( Field* field )
     }
 
 
-    cudaMalloc( (void**)&m_hp5_hp_d, 4*sizeof(uint)* m_hp5_size );
+    cudaMalloc( (void**)&m_triangle_pyramid_d, 4*sizeof(uint)* m_hp5_size );
+    cudaMalloc( (void**)&m_vertex_pyramid_d, 4*sizeof(uint)*m_hp5_size );
     cudaMalloc( (void**)&m_case_d, m_hp5_input_N );
 
     cudaMalloc( (void**)&m_hp5_offsets_d, sizeof(uint)*32 );
@@ -182,7 +187,7 @@ IsoSurfaceIndexed::triangles()
 void
 IsoSurfaceIndexed::build( float iso, cudaStream_t stream )
 {
-    buildNonIndexed( iso, m_hp5_hp_d, m_case_d, stream );
+    buildNonIndexed( iso, m_triangle_pyramid_d, m_case_d, stream );
 }
 
 void
@@ -192,9 +197,11 @@ IsoSurfaceIndexed::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* c
     m_iso = iso;
     uint3 field_size = make_uint3( m_field->width(), m_field->height(), m_field->depth() );
 
+    invokeBaseBuildup( stream );
+/*
     if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
         run_hp5_buildup_base_indexed_triple_gb_ub( hp5_hp_d + m_hp5_offsets[ m_hp5_levels-3 ],
-                                           m_hp5_sb_d + m_hp5_offsets[ m_hp5_levels-3 ],
+                                           m_triangle_sideband_d + m_hp5_offsets[ m_hp5_levels-3 ],
                                            m_hp5_level_sizes[ m_hp5_levels-1 ],
                                            hp5_hp_d + m_hp5_offsets[ m_hp5_levels-2 ],
                                            hp5_hp_d + m_hp5_offsets[ m_hp5_levels-1 ],
@@ -210,25 +217,25 @@ IsoSurfaceIndexed::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* c
     }
     else {
         throw std::runtime_error( "Unsupported field type" );
-    }
+    }*/
     for( uint i=m_hp5_first_triple_level; i>m_hp5_first_double_level; i-=2 ) {
         run_hp5_buildup_level_double( hp5_hp_d + m_hp5_offsets[i-2],
-                                      m_hp5_sb_d + m_hp5_offsets[i-2],
+                                      m_triangle_sideband_d + m_hp5_offsets[i-2],
                                       hp5_hp_d + m_hp5_offsets[i-1],
-                                      m_hp5_sb_d + m_hp5_offsets[i],
+                                      m_triangle_sideband_d + m_hp5_offsets[i],
                                       m_hp5_level_sizes[i-1],
                                       stream );
     }
     for( uint i=m_hp5_first_double_level; i>m_hp5_first_single_level; --i ) {
         run_hp5_buildup_level_single( hp5_hp_d + m_hp5_offsets[ i-1 ],
-                                      m_hp5_sb_d + m_hp5_offsets[ i-1 ],
-                                      m_hp5_sb_d + m_hp5_offsets[ i   ],
+                                      m_triangle_sideband_d + m_hp5_offsets[ i-1 ],
+                                      m_triangle_sideband_d + m_hp5_offsets[ i   ],
                                       m_hp5_level_sizes[i-1],
                                       stream );
     }
     run_hp5_buildup_apex( m_hp5_top_d,
                           hp5_hp_d,
-                          m_hp5_sb_d + 32,
+                          m_triangle_sideband_d + 32,
                           m_hp5_level_sizes[2],
                           stream );
     cudaEventRecord( m_buildup_event, stream );

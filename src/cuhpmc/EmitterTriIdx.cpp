@@ -45,26 +45,7 @@ EmitterTriIdx::~EmitterTriIdx()
 void
 EmitterTriIdx::writeTriangleIndices( float* interleaved_buffer_d, uint triangles, cudaStream_t stream  )
 {
-    if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
-        run_index_writer( interleaved_buffer_d,
-                          m_iso_surface->hp5Dev(),
-                          m_iso_surface->mcCasesDev(),
-                          m_constants->caseIntersectEdgeDev(),
-                          m_iso_surface->hp5LevelOffsetsDev(),
-                          m_iso_surface->hp5Chunks(),
-                          m_iso_surface->hp5Size(),
-                          m_iso_surface->hp5Levels(),
-                          triangles,
-                          m_iso_surface->iso(),
-                          field->fieldDev(),
-                          make_uint3( field->width(),
-                                      field->height(),
-                                      field->depth() ),
-                          stream );
-    }
-    else {
-        std::cerr << "Unable to cast field to acceptable type.\n";
-    }
+    invokeKernel( interleaved_buffer_d, triangles, stream );
 }
 
 

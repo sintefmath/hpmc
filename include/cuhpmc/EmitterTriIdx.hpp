@@ -38,6 +38,8 @@ protected:
     Field*              m_field;
     IsoSurfaceIndexed*  m_iso_surface;
 
+    void
+    invokeKernel( float* output_d, uint tris, cudaStream_t stream );
 
 };
 

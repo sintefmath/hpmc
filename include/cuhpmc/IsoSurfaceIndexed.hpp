@@ -62,7 +62,10 @@ public:
 
     /** Returns a device pointer to the hp5 histopyramid data. */
     const uint4*
-    hp5Dev() const { return m_hp5_hp_d; }
+    trianglePyramidDev() const { return m_triangle_pyramid_d; }
+
+    const uint4*
+    vertexPyramidDev() const { return m_vertex_pyramid_d; }
 
     /** Returns a device pointer to an array of hp5 level offsets. */
     const uint*
@@ -86,7 +89,6 @@ protected:
     std::vector<uint>   m_hp5_level_sizes;
     std::vector<uint>   m_hp5_offsets;
 
-    uint*               m_hp5_sb_d;     // sideband buffer
 
     cudaEvent_t         m_buildup_event;
 
@@ -94,9 +96,14 @@ protected:
     uint*               m_hp5_top_d;
 
     uint*               m_hp5_offsets_d;
-    uint4*              m_hp5_hp_d;
+    uint4*              m_triangle_pyramid_d;
+    uint4*              m_vertex_pyramid_d;
+    uint*               m_triangle_sideband_d;     // sideband buffer
+    uint*               m_vertex_sideband_d;     // sideband buffer
     unsigned char*      m_case_d;
 
+    void
+    invokeBaseBuildup( cudaStream_t stream );
 
 
     void
