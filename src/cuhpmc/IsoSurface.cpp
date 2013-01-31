@@ -28,8 +28,6 @@
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/Constants.hpp>
-#include "kernels/hp5_buildup_base_triple_gb.hpp"
-#include "kernels/hp5_buildup_apex.hpp"
 
 namespace cuhpmc {
 
@@ -174,24 +172,25 @@ IsoSurface::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, 
     uint3 field_size = make_uint3( m_field->width(), m_field->height(), m_field->depth() );
 
     if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
-        run_hp5_buildup_base_triple_gb_ub( hp5_hp_d + m_hp5_offsets[ m_hp5_levels-3 ],
-                                           m_hp5_sb_d + m_hp5_offsets[ m_hp5_levels-3 ],
-                                           m_hp5_level_sizes[ m_hp5_levels-1 ],
-                                           hp5_hp_d + m_hp5_offsets[ m_hp5_levels-2 ],
-                                           hp5_hp_d + m_hp5_offsets[ m_hp5_levels-1 ],
-                                           case_d,
-                                           m_iso,
-                                           m_hp5_chunks,
-                                           field->fieldDev(),
-                                           field_size,
-                                           m_constants->triangleCountDev(),
-                                           stream );
+
+        invokeBaseBuildup( hp5_hp_d + m_hp5_offsets[ m_hp5_levels-3 ],
+                m_hp5_sb_d + m_hp5_offsets[ m_hp5_levels-3 ],
+                m_hp5_level_sizes[ m_hp5_levels-1 ],
+                hp5_hp_d + m_hp5_offsets[ m_hp5_levels-2 ],
+                hp5_hp_d + m_hp5_offsets[ m_hp5_levels-1 ],
+                case_d,
+                m_iso,
+                m_hp5_chunks,
+                field->fieldDev(),
+                field_size,
+                m_constants->triangleCountDev(),
+                stream );
 
 
     }
     else if( FieldGLBufferUChar* field = dynamic_cast<FieldGLBufferUChar*>( m_field ) ) {
         const unsigned char* field_d = field->mapFieldBuffer( stream );
-        run_hp5_buildup_base_triple_gb_ub( hp5_hp_d + m_hp5_offsets[ m_hp5_levels-3 ],
+        invokeBaseBuildup( hp5_hp_d + m_hp5_offsets[ m_hp5_levels-3 ],
                                            m_hp5_sb_d + m_hp5_offsets[ m_hp5_levels-3 ],
                                            m_hp5_level_sizes[ m_hp5_levels-1 ],
                                            hp5_hp_d + m_hp5_offsets[ m_hp5_levels-2 ],
@@ -223,11 +222,11 @@ IsoSurface::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, 
                                       m_hp5_level_sizes[i-1],
                                       stream );
     }
-    run_hp5_buildup_apex( m_hp5_top_d,
-                          hp5_hp_d,
-                          m_hp5_sb_d + 32,
-                          m_hp5_level_sizes[2],
-                          stream );
+    invokeApexBuildup( m_hp5_top_d,
+                       hp5_hp_d,
+                       m_hp5_sb_d + 32,
+                       m_hp5_level_sizes[2],
+                       stream );
     cudaEventRecord( m_buildup_event, stream );
 }
 

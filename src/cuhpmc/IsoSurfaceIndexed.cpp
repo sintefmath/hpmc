@@ -28,7 +28,6 @@
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/Constants.hpp>
-#include "kernels/hp5_buildup_apex.hpp"
 
 namespace cuhpmc {
 
@@ -132,14 +131,14 @@ IsoSurfaceIndexed::IsoSurfaceIndexed( Field* field )
     }
 
     // --- set up mem and event for zero-copy of top element
-    error = cudaHostAlloc( (void**)&m_hp5_top_h, 2*sizeof(uint), cudaHostAllocMapped );
+    error = cudaHostAlloc( (void**)&m_vertex_triangle_top_h, 2*sizeof(uint), cudaHostAllocMapped );
     if( error != cudaSuccess ) {
         throw CUDAErrorException( error );
     }
-    m_hp5_top_h[0] = 0; // triangles
-    m_hp5_top_h[1] = 0; // vertices
+    m_vertex_triangle_top_h[0] = 0; // triangles
+    m_vertex_triangle_top_h[1] = 0; // vertices
 
-    error = cudaHostGetDevicePointer( (void**)&m_hp5_top_d, m_hp5_top_h, 0 );
+    error = cudaHostGetDevicePointer( (void**)&m_vertex_triangle_top_d, m_vertex_triangle_top_h, 0 );
     if( error != cudaSuccess ) {
         throw CUDAErrorException( error );
     }
@@ -164,9 +163,9 @@ IsoSurfaceIndexed::IsoSurfaceIndexed( Field* field )
 IsoSurfaceIndexed::~IsoSurfaceIndexed( )
 {
     cudaError_t error;
-    if( m_hp5_top_h != NULL ) {
-        error = cudaFreeHost( m_hp5_top_h );
-        m_hp5_top_h = NULL;
+    if( m_vertex_triangle_top_h != NULL ) {
+        error = cudaFreeHost( m_vertex_triangle_top_h );
+        m_vertex_triangle_top_h = NULL;
         if( error != cudaSuccess ) {
             throw CUDAErrorException( error );
         }
@@ -178,59 +177,30 @@ uint
 IsoSurfaceIndexed::triangles()
 {
     cudaEventSynchronize( m_buildup_event );
-    return m_hp5_top_h[0];
+    return m_vertex_triangle_top_h[0];
 }
+
+uint
+IsoSurfaceIndexed::vertices()
+{
+    cudaEventSynchronize( m_buildup_event );
+    return m_vertex_triangle_top_h[1];
+}
+
 
 void
 IsoSurfaceIndexed::build( float iso, cudaStream_t stream )
 {
-    buildNonIndexed( iso, m_triangle_pyramid_d, m_case_d, stream );
-}
-
-void
-IsoSurfaceIndexed::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, cudaStream_t stream )
-{
-
     m_iso = iso;
-    uint3 field_size = make_uint3( m_field->width(), m_field->height(), m_field->depth() );
 
     invokeBaseBuildup( stream );
-/*
-    if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
-        run_hp5_buildup_base_indexed_triple_gb_ub( hp5_hp_d + m_hp5_offsets[ m_hp5_levels-3 ],
-                                           m_triangle_sideband_d + m_hp5_offsets[ m_hp5_levels-3 ],
-                                           m_hp5_level_sizes[ m_hp5_levels-1 ],
-                                           hp5_hp_d + m_hp5_offsets[ m_hp5_levels-2 ],
-                                           hp5_hp_d + m_hp5_offsets[ m_hp5_levels-1 ],
-                                           case_d,
-                                           m_iso,
-                                           m_hp5_chunks,
-                                           field->fieldDev(),
-                                           field_size,
-                                           m_constants->vertexTriangleCountDev(),
-                                           stream );
-
-
-    }
-    else {
-        throw std::runtime_error( "Unsupported field type" );
-    }*/
     for( uint i=m_hp5_first_triple_level; i>m_hp5_first_double_level; i-=2 ) {
         invokeDoubleBuildup( i, stream );
     }
     for( uint i=m_hp5_first_double_level; i>m_hp5_first_single_level; --i ) {
         invokeSingleBuildup( i, stream );
-/*        run_hp5_buildup_level_single( hp5_hp_d + m_hp5_offsets[ i-1 ],
-                                      m_triangle_sideband_d + m_hp5_offsets[ i-1 ],
-                                      m_triangle_sideband_d + m_hp5_offsets[ i   ],
-                                      m_hp5_level_sizes[i-1],
-                                      stream );*/
     }
-    run_hp5_buildup_apex( m_hp5_top_d,
-                          hp5_hp_d,
-                          m_triangle_sideband_d + 32,
-                          m_hp5_level_sizes[2],
-                          stream );
+    invokeApexBuildup( stream );
     cudaEventRecord( m_buildup_event, stream );
 }
 

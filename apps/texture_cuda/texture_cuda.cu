@@ -531,6 +531,7 @@ infoString( float fps )
         o << iso_surface->triangles() << "triangles, ";
     }
     else {
+        o << isurf_idx->vertices() << " vertices, ";
         o << isurf_idx->triangles() << " triangles, ";
     }
     o << "iso=" << iso

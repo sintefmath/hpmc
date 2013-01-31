@@ -17,6 +17,8 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cuhpmc/IsoSurface.hpp>
+
 namespace cuhpmc {
 
 template<class T>
@@ -238,18 +240,18 @@ hp5_buildup_base_triple_gb( hp5_buildup_base_triple_gb_args<T> a )
 }
 
 void
-run_hp5_buildup_base_triple_gb_ub( uint4*               hp_c_d,
-                                   uint*                sb_c_d,
-                                   const uint           hp2_N,
-                                   uint4*               hp_b_d,
-                                   uint4*               hp_a_d,
-                                   unsigned char*       case_d,
-                                   const float          iso,
-                                   const uint3          chunks,
-                                   const unsigned char* field,
-                                   const uint3          field_size,
-                                   const unsigned char *case_vtxcnt,
-                                   cudaStream_t         stream )
+IsoSurface::invokeBaseBuildup( uint4*               hp_c_d,
+                               uint*                sb_c_d,
+                               const uint           hp2_N,
+                               uint4*               hp_b_d,
+                               uint4*               hp_a_d,
+                               unsigned char*       case_d,
+                               const float          iso,
+                               const uint3          chunks,
+                               const unsigned char* field,
+                               const uint3          field_size,
+                               const unsigned char *case_vtxcnt,
+                               cudaStream_t         stream )
 {
     const uint3 cells = make_uint3( field_size.x-1, field_size.y-1, field_size.z-1 );
 

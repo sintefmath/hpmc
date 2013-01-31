@@ -57,6 +57,9 @@ public:
     uint
     triangles();
 
+    uint
+    vertices();
+
     /** Return the ISO value for which this surface was most recently built. */
     float
     iso() const { return m_iso; }
@@ -93,8 +96,8 @@ protected:
 
     cudaEvent_t         m_buildup_event;
 
-    uint*               m_hp5_top_h;    // populated using zero-copy
-    uint*               m_hp5_top_d;
+    uint*               m_vertex_triangle_top_h;    // populated using zero-copy
+    uint*               m_vertex_triangle_top_d;
 
     uint*               m_hp5_offsets_d;
     uint4*              m_triangle_pyramid_d;
@@ -113,7 +116,7 @@ protected:
     invokeSingleBuildup( uint level_a, cudaStream_t stream );
 
     void
-    buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, cudaStream_t stream );
+    invokeApexBuildup( cudaStream_t stream );
 
 };
 

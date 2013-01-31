@@ -87,6 +87,20 @@ protected:
     void
     buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, cudaStream_t stream );
 
+    void
+    invokeBaseBuildup( uint4*               hp_c_d,
+                       uint*                sb_c_d,
+                       const uint           hp2_N,
+                       uint4*               hp_b_d,
+                       uint4*               hp_a_d,
+                       unsigned char*       case_d,
+                       const float          iso,
+                       const uint3          chunks,
+                       const unsigned char* field,
+                       const uint3          field_size,
+                       const unsigned char *case_vtxcnt,
+                       cudaStream_t         stream );
+
     /** Build levels b and c from sideband of a. */
     void
     invokeDoubleBuildup( uint4*         pyramid_c_d,
@@ -102,6 +116,13 @@ protected:
                          const uint*   sb_a_d,
                          const uint    N_b,
                          cudaStream_t  stream );
+
+    void
+    invokeApexBuildup( uint*         sum_d,
+                       uint4*        hp_dcb_d,
+                       const uint*   sb_a_d,
+                       const uint    N_a,
+                       cudaStream_t  stream );
 
 };
 
