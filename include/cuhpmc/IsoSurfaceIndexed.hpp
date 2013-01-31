@@ -20,6 +20,7 @@
 #include <vector>
 #include <cuhpmc/cuhpmc.hpp>
 #include <cuhpmc/NonCopyable.hpp>
+#include <cuhpmc/IsoSurface.hpp>
 
 namespace cuhpmc {
 
@@ -105,6 +106,11 @@ protected:
     void
     invokeBaseBuildup( cudaStream_t stream );
 
+    void
+    invokeDoubleBuildup( uint level_a, cudaStream_t stream );
+
+    void
+    invokeSingleBuildup( uint level_a, cudaStream_t stream );
 
     void
     buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, cudaStream_t stream );

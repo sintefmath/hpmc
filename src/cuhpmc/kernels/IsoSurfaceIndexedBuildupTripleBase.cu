@@ -231,10 +231,10 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
     uint cnt_b_3 = sb[ sh_i + 3 ];
     uint cnt_b_4 = sb[ sh_i + 4 ];
 
-    ((uchar4*)a.tri_pyramid_level_b_d)[ hp_b_o ] = make_uchar4( cnt_b_0 & 0xffu,
-                                                                cnt_b_1 & 0xffu,
-                                                                cnt_b_2 & 0xffu,
-                                                                cnt_b_3 & 0xffu );
+    ((uchar4*)a.tri_pyramid_level_b_d)[ hp_b_o ] = make_uchar4( cnt_b_0,
+                                                                cnt_b_1,
+                                                                cnt_b_2,
+                                                                cnt_b_3 );
 
     __syncthreads();
     // third reduction
@@ -251,11 +251,10 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
         uint cnt_c_2 = sh[5*wt+2];
         uint cnt_c_3 = sh[5*wt+3];
         uint cnt_c_4 = sh[5*wt+4];
-
-        ((uchar4*)a.tri_pyramid_level_c_d)[ 32*blockIdx.x + wt ] = make_uchar4( cnt_c_0 & 0xffu,
-                                                                                cnt_c_1 & 0xffu,
-                                                                                cnt_c_2 & 0xffu,
-                                                                                cnt_c_3 & 0xffu );
+        ((uchar4*)a.tri_pyramid_level_c_d)[ 32*blockIdx.x + wt ] = make_uchar4( cnt_c_0,
+                                                                                cnt_c_1,
+                                                                                cnt_c_2,
+                                                                                cnt_c_3 );
         // sum = %0000000v vvvvvvvv 000000tt tttttttt
         uint sum = cnt_c_0
                  + cnt_c_1
@@ -263,8 +262,8 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
                  + cnt_c_3
                  + cnt_c_4;
 
-//        a.tri_pyramid_level_c_d[ 32*blockIdx.x + wt ] = bu;
-        a.tri_sideband_level_c_d[ 32*blockIdx.x + wt ] = sum & 0xffffu;//bu.x + bu.y + bu.z + bu.w + sh[ 5*wt + 4 ];
+        a.tri_sideband_level_c_d[ 32*blockIdx.x + wt ] = sum       & 0xffffu;
+        a.vtx_sideband_level_c_d[ 32*blockIdx.x + wt ] = (sum>>16) & 0xffffu;
     }
 }
 
@@ -281,7 +280,7 @@ IsoSurfaceIndexed::invokeBaseBuildup( cudaStream_t stream )
         args.tri_pyramid_level_c_d  = m_triangle_pyramid_d + m_hp5_offsets[ m_hp5_levels-3 ];
         args.vtx_pyramid_level_c_d  = m_vertex_pyramid_d   + m_hp5_offsets[ m_hp5_levels-3 ];
         args.tri_sideband_level_c_d = m_triangle_sideband_d + m_hp5_offsets[ m_hp5_levels-3 ];
-        args.vtx_sideband_level_c_d = m_triangle_sideband_d + m_hp5_offsets[ m_hp5_levels-3 ];
+        args.vtx_sideband_level_c_d = m_vertex_sideband_d + m_hp5_offsets[ m_hp5_levels-3 ];
         args.d_case             = m_case_d;
         args.iso                = 256.f*m_iso;
         args.cells              = make_uint3( field->width()-1,

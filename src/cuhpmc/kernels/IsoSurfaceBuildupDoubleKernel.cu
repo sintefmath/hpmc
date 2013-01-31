@@ -17,6 +17,9 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cuhpmc/IsoSurface.hpp>
+#include <cuhpmc/IsoSurfaceIndexed.hpp>
+
 namespace cuhpmc {
 
 struct hp5_buildup_level_double_args
@@ -60,34 +63,44 @@ hp5_buildup_level_double( hp5_buildup_level_double_args a )
 }
 
 void
-run_hp5_buildup_level_double( uint4*        hp_c_d,
-                              uint*         sb_c_d,
-                              uint4*        hp_b_d,
-                              const uint*   sb_a_d,
-                              const uint    N_b,
-                              cudaStream_t  stream  )
+IsoSurface::invokeDoubleBuildup( uint4*         pyramid_c_d,
+                                 uint*          sideband_c_d,
+                                 uint4*         pyramid_b_d,
+                                 const uint*    sideband_a_d,
+                                 const uint     N_b,
+                                 cudaStream_t   stream )
 {
-
     uint gs = (N_b+799)/800;
     uint bs = 160;
-
     hp5_buildup_level_double_args args;
-    args.hp_c_d = hp_c_d;
-    args.sb_c_d = sb_c_d;
-    args.hp_b_d = hp_b_d;
-    args.sb_a_d = sb_a_d;
+    args.hp_c_d = pyramid_c_d;
+    args.sb_c_d = sideband_c_d;
+    args.hp_b_d = pyramid_b_d;
+    args.sb_a_d = sideband_a_d;
     args.N_b    = N_b;
+    hp5_buildup_level_double<<<gs,bs,0,stream>>>( args );
+}
 
+void
+IsoSurfaceIndexed::invokeDoubleBuildup( uint level_a, cudaStream_t stream )
+{
+    uint gs = (m_hp5_level_sizes[level_a-1]+799)/800;
+    uint bs = 160;
+    hp5_buildup_level_double_args args;
+    args.hp_c_d = m_triangle_pyramid_d + m_hp5_offsets[ level_a-2 ];
+    args.sb_c_d = m_triangle_sideband_d + m_hp5_offsets[level_a-2];
+    args.hp_b_d = m_triangle_pyramid_d + m_hp5_offsets[level_a-1];
+    args.sb_a_d = m_triangle_sideband_d + m_hp5_offsets[level_a];
+    args.N_b    = m_hp5_level_sizes[level_a-1];
     hp5_buildup_level_double<<<gs,bs,0,stream>>>( args );
 
-    /*hp5_buildup_level_double
-            <<< (hp5_level_sizes[i-1]+799)/800, 160 >>>
-            ( hp_d + hp5_offsets[ i-2 ],
-              hp5_sb_d + hp5_offsets[ i-2 ],
-              hp_d + hp5_offsets[ i-1 ],
-              hp5_sb_d + hp5_offsets[ i   ],
-              hp5_level_sizes[i-1] );
-*/
+    args.hp_c_d = m_vertex_pyramid_d + m_hp5_offsets[ level_a-2 ];
+    args.sb_c_d = m_vertex_sideband_d + m_hp5_offsets[level_a-2];
+    args.hp_b_d = m_vertex_pyramid_d + m_hp5_offsets[level_a-1];
+    args.sb_a_d = m_vertex_sideband_d + m_hp5_offsets[level_a];
+    args.N_b    = m_hp5_level_sizes[level_a-1];
+    hp5_buildup_level_double<<<gs,bs,0,stream>>>( args );
+
 }
 
 } // of namespace cuhpmc

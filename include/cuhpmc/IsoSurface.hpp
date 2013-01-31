@@ -87,6 +87,22 @@ protected:
     void
     buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, cudaStream_t stream );
 
+    /** Build levels b and c from sideband of a. */
+    void
+    invokeDoubleBuildup( uint4*         pyramid_c_d,
+                         uint*          sideband_c_d,
+                         uint4*         pyramid_b_d,
+                         const uint*    sideband_a_d,
+                         const uint     N_b,
+                         cudaStream_t   stream );
+
+    void
+    invokeSingleBuildup( uint4*        hp_b_d,
+                         uint*         sb_b_d,
+                         const uint*   sb_a_d,
+                         const uint    N_b,
+                         cudaStream_t  stream );
+
 };
 
 

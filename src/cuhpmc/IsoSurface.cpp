@@ -29,8 +29,6 @@
 #include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/Constants.hpp>
 #include "kernels/hp5_buildup_base_triple_gb.hpp"
-#include "kernels/hp5_buildup_level_double.hpp"
-#include "kernels/hp5_buildup_level_single.hpp"
 #include "kernels/hp5_buildup_apex.hpp"
 
 namespace cuhpmc {
@@ -211,15 +209,15 @@ IsoSurface::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, 
         throw std::runtime_error( "Unsupported field type" );
     }
     for( uint i=m_hp5_first_triple_level; i>m_hp5_first_double_level; i-=2 ) {
-        run_hp5_buildup_level_double( hp5_hp_d + m_hp5_offsets[i-2],
-                                      m_hp5_sb_d + m_hp5_offsets[i-2],
-                                      hp5_hp_d + m_hp5_offsets[i-1],
-                                      m_hp5_sb_d + m_hp5_offsets[i],
-                                      m_hp5_level_sizes[i-1],
-                                      stream );
+        invokeDoubleBuildup(  hp5_hp_d + m_hp5_offsets[i-2],
+                              m_hp5_sb_d + m_hp5_offsets[i-2],
+                              hp5_hp_d + m_hp5_offsets[i-1],
+                              m_hp5_sb_d + m_hp5_offsets[i],
+                              m_hp5_level_sizes[i-1],
+                              stream );
     }
     for( uint i=m_hp5_first_double_level; i>m_hp5_first_single_level; --i ) {
-        run_hp5_buildup_level_single( hp5_hp_d + m_hp5_offsets[ i-1 ],
+        invokeSingleBuildup( hp5_hp_d   + m_hp5_offsets[ i-1 ],
                                       m_hp5_sb_d + m_hp5_offsets[ i-1 ],
                                       m_hp5_sb_d + m_hp5_offsets[ i   ],
                                       m_hp5_level_sizes[i-1],
