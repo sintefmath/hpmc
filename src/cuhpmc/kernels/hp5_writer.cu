@@ -186,15 +186,16 @@ run_dummy_writer( float*                output_d,
                   const uint3           hp5_chunks,
                   const uint            hp5_size,
                   const uint            hp5_max_level,
-                  const uint            triangles,
+                  const uint            vertices,
                   const float           iso,
                   const unsigned char*  field_d,
                   const uint3           field_size,
                   cudaStream_t          stream )
 {
-    if( triangles == 0 ) {
+    if( vertices == 0 ) {
         return;
     }
+    const uint triangles = vertices/3;
 
     bool use_constmem = true;
     bool use_texfetch = true;

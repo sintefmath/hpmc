@@ -101,10 +101,16 @@ cuhpmc::IsoSurfaceIndexed*      cu_i_isurf           = NULL;
 cuhpmc::EmitterTriIdx*          cu_i_writer         = NULL;
 
 
-GLuint                          surface_vao         = 0;
-GLuint                          surface_vbo         = 0;
-GLsizei                         surface_vbo_n       = 0;
-cudaGraphicsResource*           surface_resource    = NULL;
+GLuint                          vertices_vao         = 0;
+GLuint                          vertices_vbo         = 0;
+GLsizei                         vertices_vbo_n       = 0;
+cudaGraphicsResource*           vertices_resource    = NULL;
+
+GLuint                          triangles_vao         = 0;
+GLuint                          triangles_vbo         = 0;
+GLsizei                         triangles_vbo_n       = 0;
+cudaGraphicsResource*           triangles_resource    = NULL;
+
 cudaStream_t                    stream              = 0;
 float*                          surface_cuda_d      = NULL;
 cudaEvent_t                     pre_buildup         = 0;
@@ -338,16 +344,13 @@ init( int argc, char** argv )
 
     // --- If CUDA generates geometry, create GL buffers to write into
     if( (mode == CUDA_NON_INDEXED) || (mode== CUDA_INDEXED ) ) {
-        // Generate OpenGL VBO that we lend to CUDA
-        surface_vbo_n = 100;
-        glGenBuffers( 1, &surface_vbo );
-        glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
-        glBufferData( GL_ARRAY_BUFFER,
-                      3*2*3*sizeof(GLfloat)*surface_vbo_n,
-                      NULL,
-                      GL_DYNAMIC_COPY );
-        glGenVertexArrays( 1, &surface_vao );
-        glBindVertexArray( surface_vao );
+
+        vertices_vbo_n = 100;
+        glGenBuffers( 1, &vertices_vbo );
+        glBindBuffer( GL_ARRAY_BUFFER, vertices_vbo );
+        glBufferData( GL_ARRAY_BUFFER, 3*2*sizeof(GLfloat)*vertices_vbo_n, NULL, GL_DYNAMIC_COPY );
+        glGenVertexArrays( 1, &vertices_vao );
+        glBindVertexArray( vertices_vao );
         glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*6, (void*)(3*sizeof(GLfloat)) );
         glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*6, NULL );
         glEnableVertexAttribArray(0);
@@ -355,11 +358,25 @@ init( int argc, char** argv )
         glBindVertexArray( 0);
         glBindBuffer( GL_ARRAY_BUFFER, 0 );
 
+        CUDA_CHECKED( cudaGraphicsGLRegisterBuffer( &vertices_resource, vertices_vbo, cudaGraphicsRegisterFlagsWriteDiscard ) );
+    }
 
-        cudaGraphicsGLRegisterBuffer( &surface_resource,
-                                      surface_vbo,
-                                      cudaGraphicsRegisterFlagsWriteDiscard );
+    if( mode == CUDA_INDEXED ) {
+        triangles_vbo_n = 100;
 
+        glGenBuffers( 1, &triangles_vbo );
+        glBindBuffer( GL_ARRAY_BUFFER, triangles_vbo );
+        glBufferData( GL_ARRAY_BUFFER, 3*2*sizeof(GLfloat)*triangles_vbo_n, NULL, GL_DYNAMIC_COPY );
+        glGenVertexArrays( 1, &triangles_vao );
+        glBindVertexArray( triangles_vao );
+        glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*6, (void*)(3*sizeof(GLfloat)) );
+        glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*6, NULL );
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glBindVertexArray( 0);
+        glBindBuffer( GL_ARRAY_BUFFER, 0 );
+
+        CUDA_CHECKED( cudaGraphicsGLRegisterBuffer( &triangles_resource, triangles_vbo, cudaGraphicsRegisterFlagsWriteDiscard ) );
     }
 
     // --- Create shader program to render the VBO results ---------------------
@@ -470,50 +487,56 @@ render( float t,
     }
 
     // resize buffers if we run unless we do direct GL rendering
+    uint vertices = 0;
     uint triangles = 0;
     switch( mode ) {
     case OPENGL_NON_INDEXED:
         break;
+
     case CUDA_NON_INDEXED:
-        triangles = cu_n_isurf->triangles();
-        if( surface_vbo_n < triangles ) {
+        vertices = cu_n_isurf->vertices();
+        if( vertices_vbo_n < vertices ) {
             CUDA_CHECKED( cudaStreamSynchronize( stream ) );
-            CUDA_CHECKED( cudaGraphicsUnregisterResource( surface_resource ) );
+            CUDA_CHECKED( cudaGraphicsUnregisterResource( vertices_resource ) );
 
-            surface_vbo_n = 1.1f*triangles;
-            glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
-            glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
-            glBufferData( GL_ARRAY_BUFFER,
-                          3*2*3*sizeof(GLfloat)*surface_vbo_n,
-                          NULL,
-                          GL_DYNAMIC_COPY );
-            glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
+            vertices_vbo_n = 1.1f*vertices;
+            GLsizei vbuf_size = 2*3*sizeof(GLfloat)*vertices_vbo_n;
+            glBindBuffer( GL_ARRAY_BUFFER, vertices_vbo );
+            glBufferData( GL_ARRAY_BUFFER, vbuf_size, NULL, GL_DYNAMIC_COPY );
+            glBindBuffer( GL_ARRAY_BUFFER, 0);
 
-            CUDA_CHECKED( cudaGraphicsGLRegisterBuffer( &surface_resource,
-                                                        surface_vbo,
-                                                        cudaGraphicsRegisterFlagsWriteDiscard ) );
-            std::cerr << "Resized VBO to hold " << triangles << " triangles (" << (3*2*3*sizeof(GLfloat)*surface_vbo_n) << " bytes)\n";
+            CUDA_CHECKED( cudaGraphicsGLRegisterBuffer( &vertices_resource, vertices_vbo, cudaGraphicsRegisterFlagsWriteDiscard ) );
+
+            std::cerr << "Resized VBO to hold " << vertices << " vertices (" << vbuf_size << " bytes)\n";
         }
         break;
 
     case CUDA_INDEXED:
+        vertices  = cu_i_isurf->vertices();
         triangles = cu_i_isurf->triangles();
-        if( surface_vbo_n < triangles ) {
-            CUDA_CHECKED( cudaStreamSynchronize( stream ) );
-            CUDA_CHECKED( cudaGraphicsUnregisterResource( surface_resource ) );
 
-            surface_vbo_n = 1.1f*triangles;
-            glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
-            glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
-            glBufferData( GL_ARRAY_BUFFER,
-                          3*2*3*sizeof(GLfloat)*surface_vbo_n,
-                          NULL,
-                          GL_DYNAMIC_COPY );
-            glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
-            CUDA_CHECKED( cudaGraphicsGLRegisterBuffer( &surface_resource,
-                                                        surface_vbo,
-                                                        cudaGraphicsRegisterFlagsWriteDiscard ) );
-            std::cerr << "Resized VBO to hold " << triangles << " triangles (" << (3*2*3*sizeof(GLfloat)*surface_vbo_n) << " bytes)\n";
+        if( vertices_vbo_n < triangles ) {
+            CUDA_CHECKED( cudaStreamSynchronize( stream ) );
+            CUDA_CHECKED( cudaGraphicsUnregisterResource( vertices_resource ) );
+            CUDA_CHECKED( cudaGraphicsUnregisterResource( triangles_resource ) );
+
+            vertices_vbo_n = 1.1f*3*triangles;
+            triangles_vbo_n = 1.1f*3*triangles;
+            GLsizei vbuf_size = 2*3*sizeof(GLfloat)*vertices_vbo_n;
+            GLsizei tbuf_size = 2*3*sizeof(GLfloat)*triangles_vbo_n;
+
+            glBindBuffer( GL_ARRAY_BUFFER, vertices_vbo );
+            glBufferData( GL_ARRAY_BUFFER, vbuf_size, NULL, GL_DYNAMIC_COPY );
+
+            glBindBuffer( GL_ARRAY_BUFFER, triangles_vbo );
+            glBufferData( GL_ARRAY_BUFFER, tbuf_size, NULL, GL_DYNAMIC_COPY );
+            glBindBuffer( GL_ARRAY_BUFFER, 0 );
+
+            CUDA_CHECKED( cudaGraphicsGLRegisterBuffer( &vertices_resource, vertices_vbo, cudaGraphicsRegisterFlagsWriteDiscard ) );
+            CUDA_CHECKED( cudaGraphicsGLRegisterBuffer( &triangles_resource, triangles_vbo, cudaGraphicsRegisterFlagsWriteDiscard ) );
+
+            std::cerr << "Resized VBO to hold " << vertices << " vertices (" << vbuf_size << " bytes)\n";
+            std::cerr << "Resized VBO to hold " << triangles << " triangles (" << tbuf_size << " bytes)\n";
         }
         break;
     }
@@ -530,23 +553,22 @@ render( float t,
         break;
     case CUDA_NON_INDEXED:
     {
-        CUDA_CHECKED( cudaGraphicsMapResources( 1, &surface_resource, stream ) );
-        float* surface_d = NULL;
-        size_t surface_s = 0;
-        CUDA_CHECKED( cudaGraphicsResourceGetMappedPointer( (void**)&surface_d, &surface_s, surface_resource ) );
+        float* vertices_d = NULL;
+        size_t vertices_s = 0;
+        CUDA_CHECKED( cudaGraphicsMapResources( 1, &vertices_resource, stream ) );
+        CUDA_CHECKED( cudaGraphicsResourceGetMappedPointer( (void**)&vertices_d, &vertices_s, vertices_resource ) );
 
-        cu_n_writer->writeInterleavedNormalPosition( surface_d, triangles, stream );
-        CHECK_CUDA;
+        cu_n_writer->writeInterleavedNormalPosition( vertices_d, vertices, stream );
 
-        CUDA_CHECKED( cudaGraphicsUnmapResources( 1, &surface_resource, stream ) );
+        CUDA_CHECKED( cudaGraphicsUnmapResources( 1, &vertices_resource, stream ) );
 
         glUseProgram( vbo_render_prog );
         glUniformMatrix4fv( vbo_render_loc_pm, 1, GL_FALSE, PM );
         glUniformMatrix3fv( vbo_render_loc_nm, 1, GL_FALSE, NM );
         glUniform4f( vbo_render_loc_col, 0.8f, 0.8f, 1.f, 1.f );
 
-        glBindVertexArray( surface_vao );
-        glDrawArrays( GL_TRIANGLES, 0, 3*triangles );
+        glBindVertexArray( vertices_vao );
+        glDrawArrays( GL_TRIANGLES, 0, vertices );
         glBindVertexArray( 0 );
         glUseProgram( 0 );
     }
@@ -554,22 +576,35 @@ render( float t,
 
     case CUDA_INDEXED:
     {
-        CUDA_CHECKED( cudaGraphicsMapResources( 1, &surface_resource, stream ) );
-        float* surface_d = NULL;
-        size_t surface_s = 0;
-        CUDA_CHECKED( cudaGraphicsResourceGetMappedPointer( (void**)&surface_d, &surface_s, surface_resource ) );
+        float* vertices_d = NULL;
+        float* triangles_d = NULL;
+        size_t vertices_s = 0;
+        size_t triangles_s = 0;
+        cudaGraphicsResource* resources[2] = {
+            vertices_resource,
+            triangles_resource
+        };
+        CUDA_CHECKED( cudaGraphicsMapResources( 2, resources, stream ) );
+        CUDA_CHECKED( cudaGraphicsResourceGetMappedPointer( (void**)&vertices_d, &vertices_s, vertices_resource ) );
+        CUDA_CHECKED( cudaGraphicsResourceGetMappedPointer( (void**)&triangles_d, &triangles_s, triangles_resource ) );
 
-        cu_i_writer->writeTriangleIndices( surface_d, triangles, stream );
+        cu_i_writer->writeTriangleIndices( triangles_d, triangles, stream );
 
-        CUDA_CHECKED( cudaGraphicsUnmapResources( 1, &surface_resource, stream ) );
+        CUDA_CHECKED( cudaGraphicsUnmapResources( 2, resources, stream ) );
 
         glUseProgram( vbo_render_prog );
         glUniformMatrix4fv( vbo_render_loc_pm, 1, GL_FALSE, PM );
         glUniformMatrix3fv( vbo_render_loc_nm, 1, GL_FALSE, NM );
         glUniform4f( vbo_render_loc_col, 0.8f, 0.8f, 1.f, 1.f );
 
-        glBindVertexArray( surface_vao );
+        glBindVertexArray( triangles_vao );
         glDrawArrays( GL_TRIANGLES, 0, 3*triangles );
+
+        glUniform4f( vbo_render_loc_col, 1.f, 0.f, 0.f, 1.f );
+        glBindVertexArray( vertices_vao );
+        glBindVertexArray( 0 );
+        //        glDrawArrays( GL_POINTS, 0, 3*triangles );
+
         glBindVertexArray( 0 );
         glUseProgram( 0 );
     }
@@ -617,16 +652,17 @@ infoString( float fps )
     }
     switch( mode ) {
     case OPENGL_NON_INDEXED:
-        o << gl_n_isurf->triangles() << "triangles, ";
+        o << "n_vtx=" << gl_n_isurf->vertices() << ", "
+          << "n_tri=" << (gl_n_isurf->vertices()/3u) << ", ";
         break;
     case CUDA_NON_INDEXED:
-        o << cu_n_isurf->triangles() << "triangles, ";
-        cu_n_isurf->build( iso, stream );
+        o << "n_vtx=" << cu_n_isurf->vertices() << ", "
+          << "n_tri=" << (cu_n_isurf->vertices()/3u) << ", ";
         break;
 
     case CUDA_INDEXED:
-        o << cu_i_isurf->vertices() << " vertices, ";
-        o << cu_i_isurf->triangles() << " triangles, ";
+        o << "n_vtx=" << cu_i_isurf->vertices() << ", "
+          << "n_tri=" << cu_i_isurf->triangles() << ", ";
         break;
     }
     o << "iso=" << iso

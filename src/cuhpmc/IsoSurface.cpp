@@ -158,16 +158,15 @@ IsoSurface::~IsoSurface( )
 }
 
 uint
-IsoSurface::triangles()
+IsoSurface::vertices()
 {
     cudaEventSynchronize( m_buildup_event );
-    return m_hp5_top_h[0];
+    return 3u*m_hp5_top_h[0];
 }
 
 void
 IsoSurface::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, cudaStream_t stream )
 {
-
     m_iso = iso;
     uint3 field_size = make_uint3( m_field->width(), m_field->height(), m_field->depth() );
 

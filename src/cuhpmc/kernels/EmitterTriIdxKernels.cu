@@ -200,6 +200,7 @@ EmitterTriIdx::invokeKernel( float* output_d, uint tris, cudaStream_t stream )
     if( tris == 0 ) {
         return;
     }
+    tris = tris;
     cudaMemcpyToSymbolAsync( hp5_const_offsets,
                              m_iso_surface->hp5LevelOffsetsDev(),
                              sizeof(uint)*32,
