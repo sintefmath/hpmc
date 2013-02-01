@@ -41,11 +41,17 @@ EmitterTriIdx::~EmitterTriIdx()
 {
 }
 
+void
+EmitterTriIdx::writeVerticesInterleavedN3FV3F( float* vertex_buffer_d, uint vertices, cudaStream_t stream )
+{
+    invokeVertexN3FV3Fkernel( vertex_buffer_d, vertices, stream );
+}
+
 
 void
 EmitterTriIdx::writeTriangleIndices( float* interleaved_buffer_d, uint triangles, cudaStream_t stream  )
 {
-    invokeKernel( interleaved_buffer_d, triangles, stream );
+    invokeTriangleIndicesKernel( interleaved_buffer_d, triangles, stream );
 }
 
 

@@ -90,18 +90,18 @@ hp5PosToCellPos( uint3&                             i0,
 
 __global__
 void
-zindex_writer( float* __restrict__               output_d,
-              const uint4* __restrict__         hp5_d,
-              const unsigned char* __restrict__ mc_cases_d,
-              const unsigned char* __restrict__ case_intersect_edge_d,
-              const uint3                       chunks,
-              const uint                        triangles,
-              const uint                        max_level,
-              const float                       iso,
-              const unsigned char*              field_d,
-              const uint                        field_row_pitch,
-              const uint                        field_slice_pitch,
-              const float3                      scale )
+TriangleIndicesKernel( float* __restrict__               output_d,
+                       const uint4* __restrict__         hp5_d,
+                       const unsigned char* __restrict__ mc_cases_d,
+                       const unsigned char* __restrict__ case_intersect_edge_d,
+                       const uint3                       chunks,
+                       const uint                        triangles,
+                       const uint                        max_level,
+                       const float                       iso,
+                       const unsigned char*              field_d,
+                       const uint                        field_row_pitch,
+                       const uint                        field_slice_pitch,
+                       const float3                      scale )
 {
 
     uint triangle = 256*blockIdx.x + threadIdx.x;
@@ -195,7 +195,7 @@ zindex_writer( float* __restrict__               output_d,
 }
 
 void
-EmitterTriIdx::invokeKernel( float* output_d, uint tris, cudaStream_t stream )
+EmitterTriIdx::invokeTriangleIndicesKernel( float* output_d, uint tris, cudaStream_t stream )
 {
     if( tris == 0 ) {
         return;
@@ -212,7 +212,7 @@ EmitterTriIdx::invokeKernel( float* output_d, uint tris, cudaStream_t stream )
     dim3 bs( 256, 1, 1 );
 
     if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
-        zindex_writer<<<gs,bs,0,stream>>>( output_d,
+        TriangleIndicesKernel<<<gs,bs,0,stream>>>( output_d,
                                            m_iso_surface->trianglePyramidDev(),
                                            m_iso_surface->mcCasesDev(),
                                            m_constants->caseIntersectEdgeDev(),

@@ -31,6 +31,9 @@ public:
     ~EmitterTriIdx();
 
     void
+    writeVerticesInterleavedN3FV3F( float* vertex_buffer_d, uint vertices, cudaStream_t stream );
+
+    void
     writeTriangleIndices( float* interleaved_buffer_d, uint triangles, cudaStream_t stream  );
 
 protected:
@@ -39,7 +42,10 @@ protected:
     IsoSurfaceIndexed*  m_iso_surface;
 
     void
-    invokeKernel( float* output_d, uint tris, cudaStream_t stream );
+    invokeTriangleIndicesKernel( float* output_d, uint tris, cudaStream_t stream );
+
+    void
+    invokeVertexN3FV3Fkernel( float* output_d, uint vtx, cudaStream_t stream );
 
 };
 

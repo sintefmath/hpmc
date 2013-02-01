@@ -588,6 +588,7 @@ render( float t,
         CUDA_CHECKED( cudaGraphicsResourceGetMappedPointer( (void**)&vertices_d, &vertices_s, vertices_resource ) );
         CUDA_CHECKED( cudaGraphicsResourceGetMappedPointer( (void**)&triangles_d, &triangles_s, triangles_resource ) );
 
+        cu_i_writer->writeVerticesInterleavedN3FV3F( vertices_d, vertices, stream );
         cu_i_writer->writeTriangleIndices( triangles_d, triangles, stream );
 
         CUDA_CHECKED( cudaGraphicsUnmapResources( 2, resources, stream ) );
@@ -603,7 +604,7 @@ render( float t,
         glUniform4f( vbo_render_loc_col, 1.f, 0.f, 0.f, 1.f );
         glBindVertexArray( vertices_vao );
         glBindVertexArray( 0 );
-        //        glDrawArrays( GL_POINTS, 0, 3*triangles );
+        glDrawArrays( GL_POINTS, 0, vertices );
 
         glBindVertexArray( 0 );
         glUseProgram( 0 );
