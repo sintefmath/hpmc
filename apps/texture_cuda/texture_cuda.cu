@@ -599,11 +599,14 @@ render( float t,
         glUniform4f( vbo_render_loc_col, 0.8f, 0.8f, 1.f, 1.f );
 
         glBindVertexArray( triangles_vao );
+        glPolygonOffset( 1.f, 1.f );
+        glEnable( GL_POLYGON_OFFSET_FILL );
         glDrawArrays( GL_TRIANGLES, 0, 3*triangles );
+        glDisable( GL_POLYGON_OFFSET_FILL );
 
+        glPointSize( 2.f );
         glUniform4f( vbo_render_loc_col, 1.f, 0.f, 0.f, 1.f );
         glBindVertexArray( vertices_vao );
-        glBindVertexArray( 0 );
         glDrawArrays( GL_POINTS, 0, vertices );
 
         glBindVertexArray( 0 );
