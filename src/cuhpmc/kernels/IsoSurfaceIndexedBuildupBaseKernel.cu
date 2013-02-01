@@ -123,7 +123,8 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
     bool no_check = lfield +
                       32 + 5*a.field_row_pitch + 5*a.field_slice_pitch < a.field_end;
 
-    bool xmask = cp.x < a.cells.x;
+    bool xmask_tri = cp.x <  a.cells.x;
+    bool xmask_vtx = cp.x <= a.cells.x;
     bool znocare = cp.z+5 < a.cells.z;
 
     // Fetch scalar field values and determine inside-outside for 5 slices
@@ -170,10 +171,11 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
 
         uint ix_o_1 = 160*w + 32*q + wt;
 
-        bool ymask = cp.y+q+1 < a.cells.y;
+        bool ymask_tri = cp.y+q+1 <  a.cells.y;
+        bool ymask_vtx = cp.y+q+1 <= a.cells.y;
         uint sum;
 
-        if( xmask && ymask && wt < 31 ) { // if-test needed to avoid syncthreads??
+        if( xmask_tri && ymask_tri && wt < 31 ) { // if-test needed to avoid syncthreads??
             m0_1 += (sh[ 0*160 + threadIdx.x + 1]<<1);
             m1_1 += (sh[ 1*160 + threadIdx.x + 1]<<1);
             m2_1 += (sh[ 2*160 + threadIdx.x + 1]<<1);
@@ -187,20 +189,73 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
             uint cnt_a_3 = a.case_vtxtricnt[ m3_1 ];
             uint cnt_a_4 = a.case_vtxtricnt[ m4_1 ];
 
+            if( !znocare ) {
+                assert( (cp.z + 0 <= a.cells.z) );
 
-            if( znocare ) {
+                if( cp.z + 0 < a.cells.z ) {
+                    sum = cnt_a_0 & 0xf0u;
+                    //m0_1 = (m0_1 & 0xf0) | (m0_1>>4);
+                }
+                else {
+                    sum = cnt_a_0;
+                    if( cp.z + 1 < a.cells.z ) {
+                        sum += cnt_a_1 & 0xf0u;
+                        //m1_1 = (m1_1 & 0xf0) | (m1_1>>4);
+                    }
+                    else {
+                        sum += cnt_a_1;
+                        if( cp.z + 2 < a.cells.z ) {
+                            sum += cnt_a_2 & 0xf0u;
+                            //m2_1 = (m2_1 & 0xf0) | (m2_1>>4);
+                        }
+                        else {
+
+                            sum += cnt_a_2;
+                            if( cp.z + 3 < a.cells.z ) {
+                                sum += cnt_a_3 & 0xf0u;
+                                //m3_1 = (m3_1 & 0xf0) | (m3_1>>4);
+                            }
+                            else {
+                                sum += cnt_a_3;
+                                if( cp.z + 4 < a.cells.z ) {
+                                    sum += cnt_a_4 & 0xf0u;
+                                    //m4_1 = (m4_1 & 0xf0) | (m4_1>>4);
+                                }
+                                else {
+                                    sum += cnt_a_4;
+                                }
+                            }
+                        }
+                    }
+                }
+#if 0
+#if 1
+                if( cp.z + 0 < a.cells.z ) { } else if( cp.z + 0 == a.cells.z ) { cnt_a_0 = cnt_a_0 & 0xf0u; } else { cnt_a_0 = 0; }
+                if( cp.z + 1 < a.cells.z ) { } else if( cp.z + 1 == a.cells.z ) { cnt_a_1 = cnt_a_1 & 0xf0u; } else { cnt_a_1 = 0; }
+                if( cp.z + 2 < a.cells.z ) { } else if( cp.z + 2 == a.cells.z ) { cnt_a_2 = cnt_a_2 & 0xf0u; } else { cnt_a_2 = 0; }
+                if( cp.z + 3 < a.cells.z ) { } else if( cp.z + 3 == a.cells.z ) { cnt_a_3 = cnt_a_3 & 0x00u; } else { cnt_a_3 = 0; }
+                if( cp.z + 4 < a.cells.z ) { } else if( cp.z + 4 == a.cells.z ) { cnt_a_4 = cnt_a_4 & 0x00u; } else { cnt_a_4 = 0; }
+#endif
                 sum = cnt_a_0
                     + cnt_a_1
                     + cnt_a_2
                     + cnt_a_3
                     + cnt_a_4;
-            }
-            else {
-                sum = (cp.z+0 < a.cells.z ? cnt_a_0 : 0) +
+#endif
+
+/*                sum = (cp.z+0 < a.cells.z ? cnt_a_0 : 0) +
                       (cp.z+1 < a.cells.z ? cnt_a_1 : 0) +
                       (cp.z+2 < a.cells.z ? cnt_a_2 : 0) +
                       (cp.z+3 < a.cells.z ? cnt_a_3 : 0) +
                       (cp.z+4 < a.cells.z ? cnt_a_4 : 0);
+*/
+            }
+            else {
+                sum = cnt_a_0
+                    + cnt_a_1
+                    + cnt_a_2
+                    + cnt_a_3
+                    + cnt_a_4;
             }
             // sum = %00000000 00000000 0000000v vvvttttt
             // sb  = %00000000 0000vvvv 00000000 000ttttt

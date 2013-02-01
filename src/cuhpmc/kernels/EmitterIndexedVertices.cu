@@ -183,7 +183,7 @@ VertexN3FV3Fkernel( float* __restrict__               output_d,
         float f1_y = field_d[ i1_ix + field_row_pitch ]-f1;
         float f1_z = field_d[ i1_ix + field_slice_pitch ]-f1;
 
-        float t = (iso-f0)/(f1-f0);
+        float t = 0.5f;//(iso-f0)/(f1-f0);
         float s = 1.f-t;
 
         float n_x = s*f0_x + t*f1_x;

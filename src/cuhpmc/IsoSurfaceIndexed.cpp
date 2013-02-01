@@ -39,9 +39,11 @@ IsoSurfaceIndexed::IsoSurfaceIndexed( Field* field )
                           field->height()-1,
                           field->depth()-1 );
 
-    m_hp5_chunks = make_uint3( (m_cells.x + 30)/31,
-                               (m_cells.y + 4)/5,
-                               (m_cells.z + 4)/5 );
+    // we pad these with an extra cell layer since some vertices belong to cells
+    // that don't produce geometry themselves
+    m_hp5_chunks = make_uint3( ((m_cells.x+1) + 30)/31,
+                               ((m_cells.y+1) + 4)/5,
+                               ((m_cells.z+1) + 4)/5 );
 
     // Number of input elements padded s.t. it divides cleanly with blocks
     m_hp5_input_N = 800*m_hp5_chunks.x*m_hp5_chunks.y*m_hp5_chunks.z;
