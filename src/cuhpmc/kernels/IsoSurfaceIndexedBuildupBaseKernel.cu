@@ -76,23 +76,22 @@ fetchFromField( uint&           bp0,                // Bit mask for slice 0
 template<class T>
 struct hp5_buildup_base_indexed_triple_gb_args
 {
-    uint4* __restrict__             tri_pyramid_level_a_d;
-    uint4* __restrict__             vtx_pyramid_level_a_d;
-    uint4* __restrict__             tri_pyramid_level_b_d;
-    uint4* __restrict__             vtx_pyramid_level_b_d;
-    uint4* __restrict__             tri_pyramid_level_c_d;
-    uint4* __restrict__             vtx_pyramid_level_c_d;
-    uint*  __restrict__             tri_sideband_level_c_d;
-    uint*  __restrict__             vtx_sideband_level_c_d;
-    unsigned char* __restrict__     d_case;
-    float                     iso;
-    uint3                     cells;
-    uint3                     chunks;
-    const T* __restrict__                 field;
-    const T* __restrict__           field_end;
-    size_t                    field_row_pitch;
-    size_t                    field_slice_pitch;
-    const unsigned char*                  case_vtxtricnt;
+    uint4* __restrict__                 tri_pyramid_level_a_d;
+    uint4* __restrict__                 vtx_pyramid_level_a_d;
+    uint4* __restrict__                 tri_pyramid_level_b_d;
+    uint4* __restrict__                 vtx_pyramid_level_b_d;
+    uint4* __restrict__                 tri_pyramid_level_c_d;
+    uint4* __restrict__                 vtx_pyramid_level_c_d;
+    uint*  __restrict__                 tri_sideband_level_c_d;
+    uint*  __restrict__                 vtx_sideband_level_c_d;
+    unsigned char* __restrict__         d_case;
+    float                               iso;
+    int3                                cells;
+    int3                                chunks;
+    const T* __restrict__               field;
+    int                                 field_row_pitch;
+    int                                 field_slice_pitch;
+    const unsigned char* __restrict__   case_vtxtricnt;
 };
 
 template<class T>
@@ -104,35 +103,35 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
     __shared__ uint sb[800];
     __shared__ uint sh[801];
 
-    const uint w  = threadIdx.x / 32;                                   // warp
-    const uint wt = threadIdx.x % 32;                                   // thread-in-warp
-    const uint sh_i = 160*w + 5*wt;                                     //
-    const uint hp_b_o = 5*32*blockIdx.x + 32*w + wt;                    //
-    const uint c_lix = 5*blockIdx.x + w;                                //
+    const int w  = threadIdx.x / 32;                                   // warp
+    const int wt = threadIdx.x % 32;                                   // thread-in-warp
+    const int sh_i = 160*w + 5*wt;                                     //
+    const int hp_b_o = 5*32*blockIdx.x + 32*w + wt;                    //
+    const int c_lix = 5*blockIdx.x + w;                                //
 
     // Base xyz-index for this chunk. Can be composed into a single uint32, and
     // be checked with an LOP.AND + ISETP.LT
-    const uint3 chunk_offset = make_uint3( 31u*( c_lix % a.chunks.x ),
-                                            5u*( (c_lix/a.chunks.x) % a.chunks.y ),
-                                            5u*( (c_lix/a.chunks.x) / a.chunks.y ) );
+    const int3 chunk_offset = make_int3( 31*( c_lix % a.chunks.x ),
+                                          5*( (c_lix/a.chunks.x) % a.chunks.y ),
+                                          5*( (c_lix/a.chunks.x) / a.chunks.y ) );
 
     assert( chunk_offset.x <= a.cells.x );
     assert( chunk_offset.y <= a.cells.y );
-    assert( chunk_offset.z <= a.cells.z );
+    //assert( chunk_offset.z <= a.cells.z );
 
-    const uint3 chunk_cells = make_uint3( a.cells.x - chunk_offset.x,
-                                          a.cells.y - chunk_offset.y,
-                                          a.cells.z - chunk_offset.z );
+    const int3 chunk_cells = make_int3( a.cells.x - chunk_offset.x,
+                                        a.cells.y - chunk_offset.y,
+                                        a.cells.z - chunk_offset.z );
 
     // base corner should always be inside field, but x for wt > 0 might be
     // outside.
-    uint field_offset = chunk_offset.z * a.field_slice_pitch
+    int field_offset = min( a.cells.z, chunk_offset.z) * a.field_slice_pitch
                       + chunk_offset.y * a.field_row_pitch
                       + chunk_offset.x + min( wt, chunk_cells.x );
 
 
     // Fetch scalar field values and determine inside-outside for 5 slices
-    uint field_offset_tmp = field_offset;
+    int field_offset_tmp = field_offset;
     uint bp0 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
     if( 1 <= chunk_cells.z ) {
         field_offset_tmp += a.field_slice_pitch;
@@ -160,7 +159,7 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
         if( q+1 <= chunk_cells.y ) {
             field_offset += a.field_row_pitch;
         }
-        uint field_offset_tmp = field_offset;
+        int field_offset_tmp = field_offset;
         uint bc0 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
 
         if( 1 <= chunk_cells.z ) {
@@ -240,45 +239,62 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
             m4_1 += (sh[ 4*160 + threadIdx.x + 1]<<1);
 
             // cnt_a_X = %00000000 0vv00ttt
-            uint tmp_mask = mask;
-            if( 0 == chunk_cells.z ) {
-                tmp_mask = tmp_mask & 0xf0u;
-                mask = 0x00u;
-            }
-            uint cnt_a_0 = a.case_vtxtricnt[ m0_1 ] & tmp_mask;
 
-            tmp_mask = mask;
-            if( 1 == chunk_cells.z ) {
-                tmp_mask = tmp_mask & 0xf0u;
-                mask = 0x00u;
-            }
-            uint cnt_a_1 = a.case_vtxtricnt[ m1_1 ] & tmp_mask;
 
-            tmp_mask = mask;
-            if( 2 == chunk_cells.z ) {
-                tmp_mask = tmp_mask & 0xf0u;
-                mask = 0x00u;
+            uint cnt_a_0;
+            uint cnt_a_1;
+            uint cnt_a_2;
+            uint cnt_a_3;
+            uint cnt_a_4;
+            if( mask == ~0x0u && 5 < chunk_cells.z ) {
+                cnt_a_0 = a.case_vtxtricnt[ m0_1 ];
+                cnt_a_1 = a.case_vtxtricnt[ m1_1 ];
+                cnt_a_2 = a.case_vtxtricnt[ m2_1 ];
+                cnt_a_3 = a.case_vtxtricnt[ m3_1 ];
+                cnt_a_4 = a.case_vtxtricnt[ m4_1 ];
             }
-            uint cnt_a_2 = a.case_vtxtricnt[ m2_1 ] & tmp_mask;
+            else {
+                uint tmp_mask;
+                if( 0 <= chunk_cells.z ) {
+                    tmp_mask = mask;
+                }
+                else {
+                    tmp_mask = 0x00u;
+                }
+                if( 0 == chunk_cells.z ) {
+                    tmp_mask = tmp_mask & 0xf0u;
+                    mask = 0x00u;
+                }
+                cnt_a_0 = a.case_vtxtricnt[ m0_1 ] & tmp_mask;
 
-            tmp_mask = mask;
-            if( 3 == chunk_cells.z ) {
-                tmp_mask = tmp_mask & 0xf0u;
-                mask = 0x00u;
+                tmp_mask = mask;
+                if( 1 == chunk_cells.z ) {
+                    tmp_mask = tmp_mask & 0xf0u;
+                    mask = 0x00u;
+                }
+                cnt_a_1 = a.case_vtxtricnt[ m1_1 ] & tmp_mask;
+
+                tmp_mask = mask;
+                if( 2 == chunk_cells.z ) {
+                    tmp_mask = tmp_mask & 0xf0u;
+                    mask = 0x00u;
+                }
+                cnt_a_2 = a.case_vtxtricnt[ m2_1 ] & tmp_mask;
+
+                tmp_mask = mask;
+                if( 3 == chunk_cells.z ) {
+                    tmp_mask = tmp_mask & 0xf0u;
+                    mask = 0x00u;
+                }
+                cnt_a_3 = a.case_vtxtricnt[ m3_1 ] & tmp_mask;
+
+                tmp_mask = mask;
+                if( 4 == chunk_cells.z ) {
+                    tmp_mask = tmp_mask & 0xf0u;
+                }
+                cnt_a_4 = a.case_vtxtricnt[ m4_1 ] & tmp_mask;
             }
-            uint cnt_a_3 = a.case_vtxtricnt[ m3_1 ] & tmp_mask;
 
-            tmp_mask = mask;
-            if( 4 == chunk_cells.z ) {
-                tmp_mask = tmp_mask & 0xf0u;
-            }
-            uint cnt_a_4 = a.case_vtxtricnt[ m4_1 ] & tmp_mask;
-
-            //            uint cnt_a_0 = (0 < chunk_cells.z ? (a.case_vtxtricnt[ m0_1 ] & mask) : 0u); // Faster to fetch from glob. mem than tex.
-            //uint cnt_a_1 = (1 < chunk_cells.z ? (a.case_vtxtricnt[ m1_1 ] & mask) : 0u);
-            //uint cnt_a_2 = (2 < chunk_cells.z ? (a.case_vtxtricnt[ m2_1 ] & mask) : 0u);
-            //uint cnt_a_3 = (3 < chunk_cells.z ? (a.case_vtxtricnt[ m3_1 ] & mask) : 0u);
-            //uint cnt_a_4 = (4 < chunk_cells.z ? (a.case_vtxtricnt[ m4_1 ] & mask) : 0u);
 
             sum = cnt_a_0
                     + cnt_a_1
@@ -392,12 +408,13 @@ IsoSurfaceIndexed::invokeBaseBuildup( cudaStream_t stream )
         args.vtx_sideband_level_c_d = m_vertex_sideband_d + m_hp5_offsets[ m_hp5_levels-3 ];
         args.d_case             = m_case_d;
         args.iso                = 256.f*m_iso;
-        args.cells              = make_uint3( field->width()-1,
-                                              field->height()-1,
-                                              field->depth()-1 );
-        args.chunks             = m_hp5_chunks;
+        args.cells              = make_int3( field->width()-1,
+                                             field->height()-1,
+                                             field->depth()-1 );
+        args.chunks             = make_int3( m_hp5_chunks.x,
+                                             m_hp5_chunks.y,
+                                             m_hp5_chunks.z );
         args.field              = field->fieldDev();
-        args.field_end          = field->fieldDev() + field->width()*field->height()*field->depth();
         args.field_row_pitch    = field->width();
         args.field_slice_pitch  = field->width()*field->height();
         args.case_vtxtricnt     = m_constants->vertexTriangleCountDev() ;
