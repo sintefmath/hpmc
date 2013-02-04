@@ -124,29 +124,12 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
                                           a.cells.y - chunk_offset.y,
                                           a.cells.z - chunk_offset.z );
 
-    const uint3 cp = make_uint3( 31*( c_lix % a.chunks.x ) + wt,          // field pos x
-                                  5*( (c_lix/a.chunks.x) % a.chunks.y ),    // field pos y
-                                  5*( (c_lix/a.chunks.x) / a.chunks.y ) );  // field pos.z
-
-
     // base corner should always be inside field, but x for wt > 0 might be
     // outside.
     uint field_offset = chunk_offset.z * a.field_slice_pitch
                       + chunk_offset.y * a.field_row_pitch
                       + chunk_offset.x + min( wt, chunk_cells.x );
 
-    const T* lfield = a.field +                                           // Field sample pointer
-                      cp.x +
-                      cp.y * a.field_row_pitch +
-                      cp.z * a.field_slice_pitch;
-
-    // Check if we are in danger of sampling outside the scalar field buffer
-    bool no_check = lfield +
-                      32 + 5*a.field_row_pitch + 5*a.field_slice_pitch < a.field_end;
-
-    bool xmask_tri = cp.x <  a.cells.x;
-    bool xmask_vtx = cp.x <= a.cells.x;
-    bool znocare = cp.z+5 < a.cells.z;
 
     // Fetch scalar field values and determine inside-outside for 5 slices
     uint field_offset_tmp = field_offset;
@@ -172,7 +155,6 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
     }
     uint bp5 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
 
-
     for(uint q=0; q<5; q++) {
         // Move along y to build up masks
         if( q+1 <= chunk_cells.y ) {
@@ -180,6 +162,7 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
         }
         uint field_offset_tmp = field_offset;
         uint bc0 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+
         if( 1 <= chunk_cells.z ) {
             field_offset_tmp += a.field_slice_pitch;
         }
@@ -230,14 +213,6 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
 
         uint ix_o_1 = 160*w + 32*q + wt;
 
-        bool ymask_tri = cp.y+q+1 <  a.cells.y;
-        bool ymask_vtx = cp.y+q+1 <= a.cells.y;
-        uint sum;
-
-
-
-
-
         uint mask;
         if(  (wt <= 30) &&
              (wt <= chunk_cells.x ) &&
@@ -256,6 +231,7 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
 
         // merge from right
         //if( xmask_tri && ymask_tri && wt < 31 ) {
+        uint sum;
         if( mask != 0u ) {
             m0_1 += (sh[ 0*160 + threadIdx.x + 1]<<1);
             m1_1 += (sh[ 1*160 + threadIdx.x + 1]<<1);
@@ -264,12 +240,45 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
             m4_1 += (sh[ 4*160 + threadIdx.x + 1]<<1);
 
             // cnt_a_X = %00000000 0vv00ttt
-            uint cnt_a_0 = (1 < chunk_cells.z ? (a.case_vtxtricnt[ m0_1 ] & mask) : 0u); // Faster to fetch from glob. mem than tex.
-            uint cnt_a_1 = (2 < chunk_cells.z ? (a.case_vtxtricnt[ m1_1 ] & mask) : 0u);
-            uint cnt_a_2 = (3 < chunk_cells.z ? (a.case_vtxtricnt[ m2_1 ] & mask) : 0u);
-            uint cnt_a_3 = (4 < chunk_cells.z ? (a.case_vtxtricnt[ m3_1 ] & mask) : 0u);
-            uint cnt_a_4 = (5 < chunk_cells.z ? (a.case_vtxtricnt[ m4_1 ] & mask) : 0u);
+            uint tmp_mask = mask;
+            if( 0 == chunk_cells.z ) {
+                tmp_mask = tmp_mask & 0xf0u;
+                mask = 0x00u;
+            }
+            uint cnt_a_0 = a.case_vtxtricnt[ m0_1 ] & tmp_mask;
 
+            tmp_mask = mask;
+            if( 1 == chunk_cells.z ) {
+                tmp_mask = tmp_mask & 0xf0u;
+                mask = 0x00u;
+            }
+            uint cnt_a_1 = a.case_vtxtricnt[ m1_1 ] & tmp_mask;
+
+            tmp_mask = mask;
+            if( 2 == chunk_cells.z ) {
+                tmp_mask = tmp_mask & 0xf0u;
+                mask = 0x00u;
+            }
+            uint cnt_a_2 = a.case_vtxtricnt[ m2_1 ] & tmp_mask;
+
+            tmp_mask = mask;
+            if( 3 == chunk_cells.z ) {
+                tmp_mask = tmp_mask & 0xf0u;
+                mask = 0x00u;
+            }
+            uint cnt_a_3 = a.case_vtxtricnt[ m3_1 ] & tmp_mask;
+
+            tmp_mask = mask;
+            if( 4 == chunk_cells.z ) {
+                tmp_mask = tmp_mask & 0xf0u;
+            }
+            uint cnt_a_4 = a.case_vtxtricnt[ m4_1 ] & tmp_mask;
+
+            //            uint cnt_a_0 = (0 < chunk_cells.z ? (a.case_vtxtricnt[ m0_1 ] & mask) : 0u); // Faster to fetch from glob. mem than tex.
+            //uint cnt_a_1 = (1 < chunk_cells.z ? (a.case_vtxtricnt[ m1_1 ] & mask) : 0u);
+            //uint cnt_a_2 = (2 < chunk_cells.z ? (a.case_vtxtricnt[ m2_1 ] & mask) : 0u);
+            //uint cnt_a_3 = (3 < chunk_cells.z ? (a.case_vtxtricnt[ m3_1 ] & mask) : 0u);
+            //uint cnt_a_4 = (4 < chunk_cells.z ? (a.case_vtxtricnt[ m4_1 ] & mask) : 0u);
 
             sum = cnt_a_0
                     + cnt_a_1

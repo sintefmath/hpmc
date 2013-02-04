@@ -613,49 +613,6 @@ render( float t,
         glUseProgram( 0 );
 
 
-        glMatrixMode( GL_PROJECTION );
-        glLoadMatrixf( P );
-        glMatrixMode( GL_MODELVIEW );
-        glLoadMatrixf( MV );
-        glBegin( GL_LINES );
-        glColor3f( 0.f, 0.f, 0.f ); glVertex3f( 0.f, 0.f, 0.f );
-        glColor3f( 1.f, 0.f, 0.f ); glVertex3f( 1.f, 0.f, 0.f );
-
-        glColor3f( 1.f, 0.f, 0.f ); glVertex3f( 1.f, 0.f, 0.f );
-        glColor3f( 1.f, 1.f, 0.f ); glVertex3f( 1.f, 1.f, 0.f );
-
-        glColor3f( 1.f, 1.f, 0.f ); glVertex3f( 1.f, 1.f, 0.f );
-        glColor3f( 0.f, 1.f, 0.f ); glVertex3f( 0.f, 1.f, 0.f );
-
-        glColor3f( 0.f, 1.f, 0.f ); glVertex3f( 0.f, 1.f, 0.f );
-        glColor3f( 0.f, 0.f, 0.f ); glVertex3f( 0.f, 0.f, 0.f );
-
-        glColor3f( 0.f, 0.f, 1.f ); glVertex3f( 0.f, 0.f, 1.f );
-        glColor3f( 1.f, 0.f, 1.f ); glVertex3f( 1.f, 0.f, 1.f );
-
-        glColor3f( 1.f, 0.f, 1.f ); glVertex3f( 1.f, 0.f, 1.f );
-        glColor3f( 1.f, 1.f, 1.f ); glVertex3f( 1.f, 1.f, 1.f );
-
-        glColor3f( 1.f, 1.f, 1.f ); glVertex3f( 1.f, 1.f, 1.f );
-        glColor3f( 0.f, 1.f, 1.f ); glVertex3f( 0.f, 1.f, 1.f );
-
-        glColor3f( 0.f, 1.f, 1.f ); glVertex3f( 0.f, 1.f, 1.f );
-        glColor3f( 0.f, 0.f, 1.f ); glVertex3f( 0.f, 0.f, 1.f );
-
-
-        glColor3f( 0.f, 0.f, 0.f ); glVertex3f( 0.f, 0.f, 0.f );
-        glColor3f( 0.f, 0.f, 1.f ); glVertex3f( 0.f, 0.f, 1.f );
-
-        glColor3f( 1.f, 0.f, 0.f ); glVertex3f( 1.f, 0.f, 0.f );
-        glColor3f( 1.f, 0.f, 1.f ); glVertex3f( 1.f, 0.f, 1.f );
-
-        glColor3f( 1.f, 1.f, 0.f ); glVertex3f( 1.f, 1.f, 0.f );
-        glColor3f( 1.f, 1.f, 1.f ); glVertex3f( 1.f, 1.f, 1.f );
-
-        glColor3f( 0.f, 1.f, 0.f ); glVertex3f( 0.f, 1.f, 0.f );
-        glColor3f( 0.f, 1.f, 1.f ); glVertex3f( 0.f, 1.f, 1.f );
-
-        glEnd();
 
     }
         break;
@@ -672,6 +629,51 @@ render( float t,
         write_ms += ms;
         runs++;
     }
+
+    glMatrixMode( GL_PROJECTION );
+    glLoadMatrixf( P );
+    glMatrixMode( GL_MODELVIEW );
+    glLoadMatrixf( MV );
+    glBegin( GL_LINES );
+    glColor3f( 0.f, 0.f, 0.f ); glVertex3f( 0.f, 0.f, 0.f );
+    glColor3f( 1.f, 0.f, 0.f ); glVertex3f( 1.f, 0.f, 0.f );
+
+    glColor3f( 1.f, 0.f, 0.f ); glVertex3f( 1.f, 0.f, 0.f );
+    glColor3f( 1.f, 1.f, 0.f ); glVertex3f( 1.f, 1.f, 0.f );
+
+    glColor3f( 1.f, 1.f, 0.f ); glVertex3f( 1.f, 1.f, 0.f );
+    glColor3f( 0.f, 1.f, 0.f ); glVertex3f( 0.f, 1.f, 0.f );
+
+    glColor3f( 0.f, 1.f, 0.f ); glVertex3f( 0.f, 1.f, 0.f );
+    glColor3f( 0.f, 0.f, 0.f ); glVertex3f( 0.f, 0.f, 0.f );
+
+    glColor3f( 0.f, 0.f, 1.f ); glVertex3f( 0.f, 0.f, 1.f );
+    glColor3f( 1.f, 0.f, 1.f ); glVertex3f( 1.f, 0.f, 1.f );
+
+    glColor3f( 1.f, 0.f, 1.f ); glVertex3f( 1.f, 0.f, 1.f );
+    glColor3f( 1.f, 1.f, 1.f ); glVertex3f( 1.f, 1.f, 1.f );
+
+    glColor3f( 1.f, 1.f, 1.f ); glVertex3f( 1.f, 1.f, 1.f );
+    glColor3f( 0.f, 1.f, 1.f ); glVertex3f( 0.f, 1.f, 1.f );
+
+    glColor3f( 0.f, 1.f, 1.f ); glVertex3f( 0.f, 1.f, 1.f );
+    glColor3f( 0.f, 0.f, 1.f ); glVertex3f( 0.f, 0.f, 1.f );
+
+
+    glColor3f( 0.f, 0.f, 0.f ); glVertex3f( 0.f, 0.f, 0.f );
+    glColor3f( 0.f, 0.f, 1.f ); glVertex3f( 0.f, 0.f, 1.f );
+
+    glColor3f( 1.f, 0.f, 0.f ); glVertex3f( 1.f, 0.f, 0.f );
+    glColor3f( 1.f, 0.f, 1.f ); glVertex3f( 1.f, 0.f, 1.f );
+
+    glColor3f( 1.f, 1.f, 0.f ); glVertex3f( 1.f, 1.f, 0.f );
+    glColor3f( 1.f, 1.f, 1.f ); glVertex3f( 1.f, 1.f, 1.f );
+
+    glColor3f( 0.f, 1.f, 0.f ); glVertex3f( 0.f, 1.f, 0.f );
+    glColor3f( 0.f, 1.f, 1.f ); glVertex3f( 0.f, 1.f, 1.f );
+
+    glEnd();
+
 
     cudaError_t error = cudaGetLastError();
     if( error != cudaSuccess ) {
