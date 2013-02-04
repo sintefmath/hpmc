@@ -611,6 +611,52 @@ render( float t,
 
         glBindVertexArray( 0 );
         glUseProgram( 0 );
+
+
+        glMatrixMode( GL_PROJECTION );
+        glLoadMatrixf( P );
+        glMatrixMode( GL_MODELVIEW );
+        glLoadMatrixf( MV );
+        glBegin( GL_LINES );
+        glColor3f( 0.f, 0.f, 0.f ); glVertex3f( 0.f, 0.f, 0.f );
+        glColor3f( 1.f, 0.f, 0.f ); glVertex3f( 1.f, 0.f, 0.f );
+
+        glColor3f( 1.f, 0.f, 0.f ); glVertex3f( 1.f, 0.f, 0.f );
+        glColor3f( 1.f, 1.f, 0.f ); glVertex3f( 1.f, 1.f, 0.f );
+
+        glColor3f( 1.f, 1.f, 0.f ); glVertex3f( 1.f, 1.f, 0.f );
+        glColor3f( 0.f, 1.f, 0.f ); glVertex3f( 0.f, 1.f, 0.f );
+
+        glColor3f( 0.f, 1.f, 0.f ); glVertex3f( 0.f, 1.f, 0.f );
+        glColor3f( 0.f, 0.f, 0.f ); glVertex3f( 0.f, 0.f, 0.f );
+
+        glColor3f( 0.f, 0.f, 1.f ); glVertex3f( 0.f, 0.f, 1.f );
+        glColor3f( 1.f, 0.f, 1.f ); glVertex3f( 1.f, 0.f, 1.f );
+
+        glColor3f( 1.f, 0.f, 1.f ); glVertex3f( 1.f, 0.f, 1.f );
+        glColor3f( 1.f, 1.f, 1.f ); glVertex3f( 1.f, 1.f, 1.f );
+
+        glColor3f( 1.f, 1.f, 1.f ); glVertex3f( 1.f, 1.f, 1.f );
+        glColor3f( 0.f, 1.f, 1.f ); glVertex3f( 0.f, 1.f, 1.f );
+
+        glColor3f( 0.f, 1.f, 1.f ); glVertex3f( 0.f, 1.f, 1.f );
+        glColor3f( 0.f, 0.f, 1.f ); glVertex3f( 0.f, 0.f, 1.f );
+
+
+        glColor3f( 0.f, 0.f, 0.f ); glVertex3f( 0.f, 0.f, 0.f );
+        glColor3f( 0.f, 0.f, 1.f ); glVertex3f( 0.f, 0.f, 1.f );
+
+        glColor3f( 1.f, 0.f, 0.f ); glVertex3f( 1.f, 0.f, 0.f );
+        glColor3f( 1.f, 0.f, 1.f ); glVertex3f( 1.f, 0.f, 1.f );
+
+        glColor3f( 1.f, 1.f, 0.f ); glVertex3f( 1.f, 1.f, 0.f );
+        glColor3f( 1.f, 1.f, 1.f ); glVertex3f( 1.f, 1.f, 1.f );
+
+        glColor3f( 0.f, 1.f, 0.f ); glVertex3f( 0.f, 1.f, 0.f );
+        glColor3f( 0.f, 1.f, 1.f ); glVertex3f( 0.f, 1.f, 1.f );
+
+        glEnd();
+
     }
         break;
     }

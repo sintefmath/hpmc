@@ -110,10 +110,31 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
     const uint hp_b_o = 5*32*blockIdx.x + 32*w + wt;                    //
     const uint c_lix = 5*blockIdx.x + w;                                //
 
+    // Base xyz-index for this chunk. Can be composed into a single uint32, and
+    // be checked with an LOP.AND + ISETP.LT
+    const uint3 chunk_offset = make_uint3( 31u*( c_lix % a.chunks.x ),
+                                            5u*( (c_lix/a.chunks.x) % a.chunks.y ),
+                                            5u*( (c_lix/a.chunks.x) / a.chunks.y ) );
+
+    assert( chunk_offset.x <= a.cells.x );
+    assert( chunk_offset.y <= a.cells.y );
+    assert( chunk_offset.z <= a.cells.z );
+
+    const uint3 chunk_cells = make_uint3( a.cells.x - chunk_offset.x,
+                                          a.cells.y - chunk_offset.y,
+                                          a.cells.z - chunk_offset.z );
 
     const uint3 cp = make_uint3( 31*( c_lix % a.chunks.x ) + wt,          // field pos x
                                   5*( (c_lix/a.chunks.x) % a.chunks.y ),    // field pos y
                                   5*( (c_lix/a.chunks.x) / a.chunks.y ) );  // field pos.z
+
+
+    // base corner should always be inside field, but x for wt > 0 might be
+    // outside.
+    uint field_offset = chunk_offset.z * a.field_slice_pitch
+                      + chunk_offset.y * a.field_row_pitch
+                      + chunk_offset.x + min( wt, chunk_cells.x );
+
     const T* lfield = a.field +                                           // Field sample pointer
                       cp.x +
                       cp.y * a.field_row_pitch +
@@ -128,19 +149,57 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
     bool znocare = cp.z+5 < a.cells.z;
 
     // Fetch scalar field values and determine inside-outside for 5 slices
-    uint bp0, bp1, bp2, bp3, bp4, bp5;
+    uint field_offset_tmp = field_offset;
+    uint bp0 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+    if( 1 <= chunk_cells.z ) {
+        field_offset_tmp += a.field_slice_pitch;
+    }
+    uint bp1 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+    if( 2 <= chunk_cells.z ) {
+        field_offset_tmp += a.field_slice_pitch;
+    }
+    uint bp2 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+    if( 3 <= chunk_cells.z ) {
+        field_offset_tmp += a.field_slice_pitch;
+    }
+    uint bp3 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+    if( 4 <= chunk_cells.z ) {
+        field_offset_tmp += a.field_slice_pitch;
+    }
+    uint bp4 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+    if( 5 <= chunk_cells.z ) {
+        field_offset_tmp += a.field_slice_pitch;
+    }
+    uint bp5 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
 
-    fetchFromField( bp0, bp1, bp2, bp3, bp4, bp5,
-                    lfield, a.field_end, a.field_row_pitch, a.field_slice_pitch,
-                    a.iso,
-                    no_check );
 
     for(uint q=0; q<5; q++) {
         // Move along y to build up masks
-        uint bc0, bc1, bc2, bc3, bc4, bc5;
-        fetchFromField( bc0, bc1, bc2, bc3, bc4, bc5,
-                        lfield + (q+1)*a.field_row_pitch, a.field_end, a.field_row_pitch, a.field_slice_pitch,
-                        a.iso, no_check );
+        if( q+1 <= chunk_cells.y ) {
+            field_offset += a.field_row_pitch;
+        }
+        uint field_offset_tmp = field_offset;
+        uint bc0 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+        if( 1 <= chunk_cells.z ) {
+            field_offset_tmp += a.field_slice_pitch;
+        }
+        uint bc1 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+        if( 2 <= chunk_cells.z ) {
+            field_offset_tmp += a.field_slice_pitch;
+        }
+        uint bc2 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+        if( 3 <= chunk_cells.z ) {
+            field_offset_tmp += a.field_slice_pitch;
+        }
+        uint bc3 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+        if( 4 <= chunk_cells.z ) {
+            field_offset_tmp += a.field_slice_pitch;
+        }
+        uint bc4 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+        if( 5 <= chunk_cells.z ) {
+            field_offset_tmp += a.field_slice_pitch;
+        }
+        uint bc5 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
 
         // Merge
         uint b0 = bp0 + (bc0<<2);
@@ -175,7 +234,29 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
         bool ymask_vtx = cp.y+q+1 <= a.cells.y;
         uint sum;
 
-        if( xmask_tri && ymask_tri && wt < 31 ) { // if-test needed to avoid syncthreads??
+
+
+
+
+        uint mask;
+        if(  (wt <= 30) &&
+             (wt <= chunk_cells.x ) &&
+             (q <= chunk_cells.y ) )
+        {
+            if( (wt == chunk_cells.x) || (q==chunk_cells.y) ) {
+                mask = 0xf0u;
+            }
+            else {
+                mask = ~0x0u;
+            }
+        }
+        else {
+            mask = 0x0u;
+        }
+
+        // merge from right
+        //if( xmask_tri && ymask_tri && wt < 31 ) {
+        if( mask != 0u ) {
             m0_1 += (sh[ 0*160 + threadIdx.x + 1]<<1);
             m1_1 += (sh[ 1*160 + threadIdx.x + 1]<<1);
             m2_1 += (sh[ 2*160 + threadIdx.x + 1]<<1);
@@ -183,81 +264,20 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
             m4_1 += (sh[ 4*160 + threadIdx.x + 1]<<1);
 
             // cnt_a_X = %00000000 0vv00ttt
-            uint cnt_a_0 = a.case_vtxtricnt[ m0_1 ]; // Faster to fetch from glob. mem than tex.
-            uint cnt_a_1 = a.case_vtxtricnt[ m1_1 ];
-            uint cnt_a_2 = a.case_vtxtricnt[ m2_1 ];
-            uint cnt_a_3 = a.case_vtxtricnt[ m3_1 ];
-            uint cnt_a_4 = a.case_vtxtricnt[ m4_1 ];
+            uint cnt_a_0 = (1 < chunk_cells.z ? (a.case_vtxtricnt[ m0_1 ] & mask) : 0u); // Faster to fetch from glob. mem than tex.
+            uint cnt_a_1 = (2 < chunk_cells.z ? (a.case_vtxtricnt[ m1_1 ] & mask) : 0u);
+            uint cnt_a_2 = (3 < chunk_cells.z ? (a.case_vtxtricnt[ m2_1 ] & mask) : 0u);
+            uint cnt_a_3 = (4 < chunk_cells.z ? (a.case_vtxtricnt[ m3_1 ] & mask) : 0u);
+            uint cnt_a_4 = (5 < chunk_cells.z ? (a.case_vtxtricnt[ m4_1 ] & mask) : 0u);
 
-            if( !znocare ) {
-                assert( (cp.z + 0 <= a.cells.z) );
 
-                if( cp.z + 0 < a.cells.z ) {
-                    sum = cnt_a_0 & 0xf0u;
-                    //m0_1 = (m0_1 & 0xf0) | (m0_1>>4);
-                }
-                else {
-                    sum = cnt_a_0;
-                    if( cp.z + 1 < a.cells.z ) {
-                        sum += cnt_a_1 & 0xf0u;
-                        //m1_1 = (m1_1 & 0xf0) | (m1_1>>4);
-                    }
-                    else {
-                        sum += cnt_a_1;
-                        if( cp.z + 2 < a.cells.z ) {
-                            sum += cnt_a_2 & 0xf0u;
-                            //m2_1 = (m2_1 & 0xf0) | (m2_1>>4);
-                        }
-                        else {
-
-                            sum += cnt_a_2;
-                            if( cp.z + 3 < a.cells.z ) {
-                                sum += cnt_a_3 & 0xf0u;
-                                //m3_1 = (m3_1 & 0xf0) | (m3_1>>4);
-                            }
-                            else {
-                                sum += cnt_a_3;
-                                if( cp.z + 4 < a.cells.z ) {
-                                    sum += cnt_a_4 & 0xf0u;
-                                    //m4_1 = (m4_1 & 0xf0) | (m4_1>>4);
-                                }
-                                else {
-                                    sum += cnt_a_4;
-                                }
-                            }
-                        }
-                    }
-                }
-#if 0
-#if 1
-                if( cp.z + 0 < a.cells.z ) { } else if( cp.z + 0 == a.cells.z ) { cnt_a_0 = cnt_a_0 & 0xf0u; } else { cnt_a_0 = 0; }
-                if( cp.z + 1 < a.cells.z ) { } else if( cp.z + 1 == a.cells.z ) { cnt_a_1 = cnt_a_1 & 0xf0u; } else { cnt_a_1 = 0; }
-                if( cp.z + 2 < a.cells.z ) { } else if( cp.z + 2 == a.cells.z ) { cnt_a_2 = cnt_a_2 & 0xf0u; } else { cnt_a_2 = 0; }
-                if( cp.z + 3 < a.cells.z ) { } else if( cp.z + 3 == a.cells.z ) { cnt_a_3 = cnt_a_3 & 0x00u; } else { cnt_a_3 = 0; }
-                if( cp.z + 4 < a.cells.z ) { } else if( cp.z + 4 == a.cells.z ) { cnt_a_4 = cnt_a_4 & 0x00u; } else { cnt_a_4 = 0; }
-#endif
-                sum = cnt_a_0
+            sum = cnt_a_0
                     + cnt_a_1
                     + cnt_a_2
                     + cnt_a_3
                     + cnt_a_4;
-#endif
 
-/*                sum = (cp.z+0 < a.cells.z ? cnt_a_0 : 0) +
-                      (cp.z+1 < a.cells.z ? cnt_a_1 : 0) +
-                      (cp.z+2 < a.cells.z ? cnt_a_2 : 0) +
-                      (cp.z+3 < a.cells.z ? cnt_a_3 : 0) +
-                      (cp.z+4 < a.cells.z ? cnt_a_4 : 0);
-*/
-            }
-            else {
-                sum = cnt_a_0
-                    + cnt_a_1
-                    + cnt_a_2
-                    + cnt_a_3
-                    + cnt_a_4;
-            }
-            // sum = %00000000 00000000 0000000v vvvttttt
+                // sum = %00000000 00000000 0000000v vvvttttt
             // sb  = %00000000 0000vvvv 00000000 000ttttt
             sb[ ix_o_1 ] = ((sum<<11)&0xf0000u) | (sum&0x1fu);
             if( sum > 0 ) {
