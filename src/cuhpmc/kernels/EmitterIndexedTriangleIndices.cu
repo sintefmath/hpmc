@@ -20,6 +20,7 @@
 #include <stdexcept>
 #include <cuda.h>
 #include <builtin_types.h>
+#include <cassert>
 #include <cuhpmc/Constants.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/IsoSurfaceIndexed.hpp>
@@ -93,8 +94,10 @@ __global__
 void
 TriangleIndicesKernel( float* __restrict__               output_d,
                        const uint4* __restrict__         hp5_d,
+                       const uint4* __restrict__         vertex_pyramid_d,
                        const unsigned char* __restrict__ mc_cases_d,
                        const unsigned char* __restrict__ case_intersect_edge_d,
+                       const unsigned char* __restrict__ case_indexed_intersect_edge_d,
                        const uint3                       chunks,
                        const uint                        triangles,
                        const uint                        max_level,
@@ -150,6 +153,138 @@ TriangleIndicesKernel( float* __restrict__               output_d,
         uint3 i0;
         uint mc_case;
         hp5PosToCellPos( i0, mc_case, pos, chunks, mc_cases_d );
+
+        for(uint i=0; i<3; i++) {
+            uint edge_flags = case_indexed_intersect_edge_d[ 16*mc_case + rem + i ];
+            // adjust for shift
+            int3 cell = make_int3( i0.x + (((edge_flags&(1<<5)) ? 1 : 0  )),
+                                   i0.y + (((edge_flags&(1<<6)) ? 1 : 0  )),
+                                   i0.z + (((edge_flags&(1<<7)) ? 1 : 0  )) );
+            int3 chunk = make_int3( cell.x / 31,
+                                    cell.y / 5,
+                                    cell.z / 5 );
+            int3 sub_chunk = make_int3( cell.x % 31,
+                                        cell.y % 5,
+                                        cell.z % 5 );
+            int ix = 800*( chunk.x + chunks.x*( chunk.y + chunks.y * chunk.z))
+                   + sub_chunk.z + 5*(sub_chunk.x + 32*sub_chunk.y);
+
+            uint cell_case = mc_cases_d[ ix ];
+
+            // Determine # edge intersections in this cell
+            const uint vertex_0___mask = (cell_case&0x1 ? 0x16 : 0);    // %xxxxxxx1 ? %00010110 : %00000000
+            const uint vertex_124_mask = cell_case & 0x16;              // %000x0xx0 = %xxxxxxxx
+            const uint vertices = vertex_0___mask ^ vertex_124_mask;    //
+
+            // Extract edge bit for this one
+            const uint this_vertex_mask = edge_flags & 0x16;
+            // Mask out edge intersections before the current intersection
+            assert( this_vertex_mask & vertices );
+
+            const uint lower_vertices = vertices & (this_vertex_mask-1);
+
+            uint index = __popc( lower_vertices );
+
+            // -- Up-traversal step 0
+            {
+                uint component = pos % 5;
+                pos = pos/5;
+                unsigned char val_ = ((unsigned char*)(vertex_pyramid_d + hp5_const_offsets[ max_level-1 ] ))[ pos ];
+                uint4 val = make_uint4( (val_   ) & 0x3u,
+                                        (val_>>2) & 0x3u,
+                                        (val_>>4) & 0x3u,
+                                        (val_>>6) & 0x3u );
+                if( component > 3 ) {
+                    index += val.w;
+                }
+                if( component > 2 ) {
+                    index += val.z;
+                }
+                if( component > 1 ) {
+                    index += val.y;
+                }
+                if( component > 0 ) {
+                    index += val.x;
+                }
+            }
+            // -- Up-traversal step 1
+            {
+                uint component = pos % 5;
+                pos = pos/5;
+                short1 val_ = ((short1*)(vertex_pyramid_d + hp5_const_offsets[ max_level-2 ] ))[ pos ];
+                uint4 val = make_uint4( (val_.x   )  & 0xfu,
+                                        (val_.x>>4)  & 0xfu,
+                                        (val_.x>>8)  & 0xfu,
+                                        (val_.x>>12) & 0xfu );
+                if( component > 3 ) {
+                    index += val.w;
+                }
+                if( component > 2 ) {
+                    index += val.z;
+                }
+                if( component > 1 ) {
+                    index += val.y;
+                }
+                if( component > 0 ) {
+                    index += val.x;
+                }
+            }
+            // -- Up-traversal step 2
+            {
+                uint component = pos % 5;
+                pos = pos/5;
+                uchar4 val_ = ((uchar4*)(vertex_pyramid_d + hp5_const_offsets[ l ]))[pos];
+                uint4 val = make_uint4( val_.x,
+                                        val_.y,
+                                        val_.z,
+                                        val_.w );
+                if( component > 3 ) {
+                    index += val.w;
+                }
+                if( component > 2 ) {
+                    index += val.z;
+                }
+                if( component > 1 ) {
+                    index += val.y;
+                }
+                if( component > 0 ) {
+                    index += val.x;
+                }
+            }
+            for(l=max_level-4; l>0; l--) {
+                uint component = pos % 5;
+                pos = pos/5;
+                uint4 val = vertex_pyramid_d[ hp5_const_offsets[l] + pos ];
+                if( component > 3 ) {
+                    index += val.w;
+                }
+                if( component > 2 ) {
+                    index += val.z;
+                }
+                if( component > 1 ) {
+                    index += val.y;
+                }
+                if( component > 0 ) {
+                    index += val.x;
+                }
+            }
+        }
+
+
+        /*
+        uint c_lix = pos / 800u;
+        uint t_lix = pos % 800u;
+        uint3 ci = make_uint3( 31*( c_lix % chunks.x ),
+                               5*( (c_lix/chunks.x) % chunks.y ),
+                               5*( (c_lix/chunks.x) / chunks.y ) );
+
+        // calc 3D pos within cunk
+        i0 = make_uint3( ci.x + ((t_lix / 5)%32),
+                         ci.y + ((t_lix / 5)/32),
+                         ci.z + ( t_lix%5 ) );
+
+        mc_case = mc_cases_d[ pos ];
+        */
         for(uint i=0; i<3; i++ ) {
             uint isec = case_intersect_edge_d[ 16*mc_case + rem + i ];
 
@@ -214,19 +349,21 @@ EmitterTriIdx::invokeTriangleIndicesKernel( float* output_d, uint tris, cudaStre
 
     if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
         TriangleIndicesKernel<<<gs,bs,0,stream>>>( output_d,
-                                           m_iso_surface->trianglePyramidDev(),
-                                           m_iso_surface->mcCasesDev(),
-                                           m_constants->caseIntersectEdgeDev(),
-                                           m_iso_surface->hp5Chunks(),
-                                           tris,
-                                           m_iso_surface->hp5Levels(),
-                                           256.f*m_iso_surface->iso(),
-                                           field->fieldDev(),
-                                           field->width(),
-                                           field->width()*field->height(),
-                                           make_float3( 1.f/(field->width()-1.f),
-                                                        1.f/(field->height()-1.f),
-                                                        1.f/(field->depth()-1.f) ) );
+                                                   m_iso_surface->trianglePyramidDev(),
+                                                   m_iso_surface->vertexPyramidDev(),
+                                                   m_iso_surface->mcCasesDev(),
+                                                   m_constants->caseIntersectEdgeDev(),
+                                                   m_constants->caseIndexIntersectEdgeDev(),
+                                                   m_iso_surface->hp5Chunks(),
+                                                   tris,
+                                                   m_iso_surface->hp5Levels(),
+                                                   256.f*m_iso_surface->iso(),
+                                                   field->fieldDev(),
+                                                   field->width(),
+                                                   field->width()*field->height(),
+                                                   make_float3( 1.f/(field->width()-1.f),
+                                                                1.f/(field->height()-1.f),
+                                                                1.f/(field->depth()-1.f) ) );
     }
     else {
         throw std::runtime_error( "EmitterTriIdx::invokeKernel: unsupported field type" );

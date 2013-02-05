@@ -28,7 +28,7 @@ main()
     vec3 l = normalize( vec3( 1.0, 1.0, 1.0 ) );
     vec3 h = normalize( v+l );
     vec3 n = normalize( normal );
-    float diff = max( 0.8, dot( n, l ) );
-    float spec = 0.1*pow( max( 0.0, dot(n, h)), 20.0);
+    float diff = max( 0.1, dot( n, l ) );
+    float spec = pow( max( 0.0, dot(n, h)), 20.0);
     fragment = diff * color + spec * vec4(1.0);
 }

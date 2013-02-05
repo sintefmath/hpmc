@@ -34,6 +34,7 @@ Constants::Constants()
     unsigned char vtxtricnt[256];
     unsigned char tricnt[256];
     unsigned char eisec[256*16];
+    unsigned char ixisec[256*16];
 
     for(uint j=0; j<256; j++) {
         // case bits:
@@ -131,6 +132,7 @@ Constants::Constants()
                 int a = edge_table[m][0];
                 int b = edge_table[m][1];
                 eisec[16*j+i] = a | (b<<3);
+                ixisec[16*j+i] = edge_table[m][2];
             }
         }
     }
@@ -156,12 +158,22 @@ Constants::Constants()
     }
 
     // copy edge intersection table to device
-    if( cudaMalloc( (void**)(&m_case_intersect_edge_d), sizeof(unsigned char)*16*256 ) != cudaSuccess ) {
+    if( cudaMalloc( (void**)(&m_case_intersect_edge_d), sizeof(eisec) ) != cudaSuccess ) {
         throw std::runtime_error( std::string( cudaGetErrorString( cudaGetLastError() ) ) );
     }
-    if( cudaMemcpy( m_case_intersect_edge_d, eisec, sizeof(unsigned char)*16*256, cudaMemcpyHostToDevice ) != cudaSuccess ) {
+    if( cudaMemcpy( m_case_intersect_edge_d, eisec, sizeof(eisec), cudaMemcpyHostToDevice ) != cudaSuccess ) {
         throw std::runtime_error( std::string( cudaGetErrorString( cudaGetLastError() ) ) );
     }
+
+    if( cudaMalloc( (void**)(&m_case_indexed_intersect_edge_d), sizeof(ixisec) ) != cudaSuccess ) {
+        throw std::runtime_error( std::string( cudaGetErrorString( cudaGetLastError() ) ) );
+    }
+    if( cudaMemcpy( m_case_indexed_intersect_edge_d, ixisec, sizeof(ixisec), cudaMemcpyHostToDevice ) != cudaSuccess ) {
+        throw std::runtime_error( std::string( cudaGetErrorString( cudaGetLastError() ) ) );
+    }
+
+//    unsigned char*  m_case_indexed_intersect_edge_d;
+
 
 
 #ifdef ENABLE_CUHPMC_INTEROP

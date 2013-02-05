@@ -43,15 +43,17 @@ public:
     const unsigned char*
     caseIntersectEdgeDev() const { return m_case_intersect_edge_d; }
 
+    const unsigned char*
+    caseIndexIntersectEdgeDev() const { return m_case_indexed_intersect_edge_d; }
+
     GLuint
     caseIntersectEdgeGL() { return m_case_intersect_edge_tex; }
-
-
 
 private:
     unsigned char*  m_vertex_triangle_count_dev;
     unsigned char*  m_triangle_count_dev;
     unsigned char*  m_case_intersect_edge_d;
+    unsigned char*  m_case_indexed_intersect_edge_d;
     GLuint          m_case_intersect_edge_tex;
 
 
