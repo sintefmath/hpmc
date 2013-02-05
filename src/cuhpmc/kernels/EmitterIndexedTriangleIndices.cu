@@ -24,6 +24,7 @@
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/IsoSurfaceIndexed.hpp>
 #include <cuhpmc/EmitterTriIdx.hpp>
+#include <cuhpmc/CUDAErrorException.hpp>
 
 namespace cuhpmc {
 
@@ -200,7 +201,7 @@ EmitterTriIdx::invokeTriangleIndicesKernel( float* output_d, uint tris, cudaStre
     if( tris == 0 ) {
         return;
     }
-    tris = tris;
+    //tris = tris;
     cudaMemcpyToSymbolAsync( hp5_const_offsets,
                              m_iso_surface->hp5LevelOffsetsDev(),
                              sizeof(uint)*32,
@@ -229,6 +230,10 @@ EmitterTriIdx::invokeTriangleIndicesKernel( float* output_d, uint tris, cudaStre
     }
     else {
         throw std::runtime_error( "EmitterTriIdx::invokeKernel: unsupported field type" );
+    }
+    cudaError_t error = cudaGetLastError();
+    if( error != cudaSuccess ) {
+        throw CUDAErrorException( error );
     }
 }
 

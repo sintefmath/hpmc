@@ -53,6 +53,9 @@ public:
     const std::vector<uint>&
     hp5Offsets() const { return m_hp5_offsets; }
 
+    const uint3
+    cells() const { return m_cells; }
+
     /** Returns the number of vertices in the mesh.
      *
      * Since surface is not indexed, the number of vertices is three times the

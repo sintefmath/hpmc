@@ -25,6 +25,7 @@
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/IsoSurfaceIndexed.hpp>
 #include <cuhpmc/EmitterTriIdx.hpp>
+#include <cuhpmc/CUDAErrorException.hpp>
 
 namespace cuhpmc {
 
@@ -68,7 +69,7 @@ downTraversalStep( uint& pos, uint& key, const uint4& val )
 __device__
 __forceinline__
 void
-hp5PosToCellPos( uint3&                             i0,
+hp5PosToCellPos( int3&                              i0,
                  uint&                              mc_case,
                  const uint                         pos,
                  const uint3&                       chunks,
@@ -76,14 +77,14 @@ hp5PosToCellPos( uint3&                             i0,
 {
     uint c_lix = pos / 800u;
     uint t_lix = pos % 800u;
-    uint3 ci = make_uint3( 31*( c_lix % chunks.x ),
-                           5*( (c_lix/chunks.x) % chunks.y ),
-                           5*( (c_lix/chunks.x) / chunks.y ) );
+    int3 ci = make_int3( 31*( c_lix % chunks.x ),
+                          5*( (c_lix/chunks.x) % chunks.y ),
+                          5*( (c_lix/chunks.x) / chunks.y ) );
 
     // calc 3D pos within cunk
-    i0 = make_uint3( ci.x + ((t_lix / 5)%32),
-                     ci.y + ((t_lix / 5)/32),
-                     ci.z + ( t_lix%5 ) );
+    i0 = make_int3( ci.x + ((t_lix / 5)%32),
+                    ci.y + ((t_lix / 5)/32),
+                    ci.z + ( t_lix%5 ) );
 
     mc_case = mc_cases_d[ pos ];
 }
@@ -96,6 +97,7 @@ VertexN3FV3Fkernel( float* __restrict__               output_d,
                     const unsigned char* __restrict__ mc_cases_d,
                     const unsigned char* __restrict__ case_intersect_edge_d,
                     const uint3                       chunks,
+                    const int3                        cells,
                     const uint                        vertices,
                     const uint                        max_level,
                     const float                       iso,
@@ -140,7 +142,7 @@ VertexN3FV3Fkernel( float* __restrict__               output_d,
             downTraversalStep( pos, key, val );
         }
 
-        uint3 i0;
+        int3 i0;
         uint mc_case;
         hp5PosToCellPos( i0, mc_case, pos, chunks, mc_cases_d );
 
@@ -160,10 +162,18 @@ VertexN3FV3Fkernel( float* __restrict__               output_d,
         edge = edge & (-edge);
 
         // Determine other end of edge
-        uint3 i1 = make_uint3( i0.x + ((edge>>1) & 0x1u),
-                               i0.y + ((edge>>2) & 0x1u),
-                               i0.z + ((edge>>4) & 0x1u) );
+        int3 i1 = make_int3( i0.x + ((edge>>1) & 0x1u),
+                             i0.y + ((edge>>2) & 0x1u),
+                             i0.z + ((edge>>4) & 0x1u) );
 
+        /*        assert( i0.x < 128 );
+        assert( i0.y < 128 );
+        assert( i0.z < 128 );
+
+        assert( i1.x < 128 );
+        assert( i1.y < 128 );
+        assert( i1.z < 128 );
+*/
         uint i0_ix = i0.x
                    + i0.y*field_row_pitch
                    + i0.z*field_slice_pitch;
@@ -172,18 +182,19 @@ VertexN3FV3Fkernel( float* __restrict__               output_d,
                    + i1.y*field_row_pitch
                    + i1.z*field_slice_pitch;
 
+
         float f0 = field_d[ i0_ix ];
-        float f0_x = field_d[ i0_ix + 1 ]-f0;
-        float f0_y = field_d[ i0_ix + field_row_pitch ]-f0;
-        float f0_z = field_d[ i0_ix + field_slice_pitch ]-f0;
+        float f0_x = field_d[ i0_ix + (i0.x < cells.x ? 1 : 0) ]-f0;
+        float f0_y = field_d[ i0_ix + (i0.y < cells.y ? field_row_pitch : 0) ]-f0;
+        float f0_z = field_d[ i0_ix + (i0.z < cells.z ? field_slice_pitch : 0) ]-f0;
 
 
         float f1 = field_d[ i1_ix ];
-        float f1_x = field_d[ i1_ix + 1 ]-f1;
-        float f1_y = field_d[ i1_ix + field_row_pitch ]-f1;
-        float f1_z = field_d[ i1_ix + field_slice_pitch ]-f1;
+        float f1_x = field_d[ i1_ix + (i1.x < cells.x ? 1 : 0 )]-f1;
+        float f1_y = field_d[ i1_ix + (i1.y < cells.y ? field_row_pitch : 0 ) ]-f1;
+        float f1_z = field_d[ i1_ix + (i1.z < cells.z ? field_slice_pitch : 0 ) ]-f1;
 
-        float t = (iso-f0)/(f1-f0);
+        float t = 0.5f;//(iso-f0)/(f1-f0);
         float s = 1.f-t;
 
         float n_x = s*f0_x + t*f1_x;
@@ -216,22 +227,29 @@ EmitterTriIdx::invokeVertexN3FV3Fkernel( float* output_d, uint vtx, cudaStream_t
     dim3 bs( 256, 1, 1 );
     if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
         VertexN3FV3Fkernel<<<gs,bs,0,stream>>>( output_d,
-                                           m_iso_surface->vertexPyramidDev(),
-                                           m_iso_surface->mcCasesDev(),
-                                           m_constants->caseIntersectEdgeDev(),
-                                           m_iso_surface->hp5Chunks(),
-                                           vtx,
-                                           m_iso_surface->hp5Levels(),
-                                           256.f*m_iso_surface->iso(),
-                                           field->fieldDev(),
-                                           field->width(),
-                                           field->width()*field->height(),
-                                           make_float3( 1.f/(field->width()-1.f),
-                                                        1.f/(field->height()-1.f),
-                                                        1.f/(field->depth()-1.f) ) );
+                                                m_iso_surface->vertexPyramidDev(),
+                                                m_iso_surface->mcCasesDev(),
+                                                m_constants->caseIntersectEdgeDev(),
+                                                m_iso_surface->hp5Chunks(),
+                                                make_int3( m_iso_surface->cells().x,
+                                                           m_iso_surface->cells().y,
+                                                           m_iso_surface->cells().z ),
+                                                vtx,
+                                                m_iso_surface->hp5Levels(),
+                                                256.f*m_iso_surface->iso(),
+                                                field->fieldDev(),
+                                                field->width(),
+                                                field->width()*field->height(),
+                                                make_float3( 1.f/(field->width()-1.f),
+                                                             1.f/(field->height()-1.f),
+                                                             1.f/(field->depth()-1.f) ) );
     }
     else {
         throw std::runtime_error( "EmitterTriIdx::invokeKernel: unsupported field type" );
+    }
+    cudaError_t error = cudaGetLastError();
+    if( error != cudaSuccess ) {
+        throw CUDAErrorException( error );
     }
 }
 
@@ -259,6 +277,7 @@ EmitterTriIdx::invokeKernel( float* output_d, uint tris, cudaStream_t stream )
                                            m_iso_surface->mcCasesDev(),
                                            m_constants->caseIntersectEdgeDev(),
                                            m_iso_surface->hp5Chunks(),
+                                           make_int3( m_is)
                                            tris,
                                            m_iso_surface->hp5Levels(),
                                            256.f*m_iso_surface->iso(),

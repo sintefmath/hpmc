@@ -54,6 +54,9 @@ public:
     const std::vector<uint>&
     hp5Offsets() const { return m_hp5_offsets; }
 
+    const uint3
+    cells() const { return m_cells; }
+
     uint
     triangles();
 

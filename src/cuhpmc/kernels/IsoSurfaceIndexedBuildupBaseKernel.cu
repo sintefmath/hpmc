@@ -24,6 +24,7 @@
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/IsoSurface.hpp>
 #include <cuhpmc/IsoSurfaceIndexed.hpp>
+#include <cuhpmc/CUDAErrorException.hpp>
 
 namespace cuhpmc {
 
@@ -426,6 +427,10 @@ IsoSurfaceIndexed::invokeBaseBuildup( cudaStream_t stream )
     }
     else {
         throw std::runtime_error( "invokeBaseBuildup: unsupported field type" );
+    }
+    cudaError_t error = cudaGetLastError();
+    if( error != cudaSuccess ) {
+        throw CUDAErrorException( error );
     }
 }
 
