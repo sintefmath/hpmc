@@ -92,7 +92,7 @@ hp5PosToCellPos( uint3&                             i0,
 
 __global__
 void
-TriangleIndicesKernel( float* __restrict__               output_d,
+TriangleIndicesKernel( uint* __restrict__                output_d,
                        const uint4* __restrict__         hp5_d,
                        const uint4* __restrict__         vertex_pyramid_d,
                        const unsigned char* __restrict__ mc_cases_d,
@@ -166,10 +166,10 @@ TriangleIndicesKernel( float* __restrict__               output_d,
             int3 sub_chunk = make_int3( cell.x % 31,
                                         cell.y % 5,
                                         cell.z % 5 );
-            int ix = 800*( chunk.x + chunks.x*( chunk.y + chunks.y * chunk.z))
-                   + sub_chunk.z + 5*(sub_chunk.x + 32*sub_chunk.y);
+            uint pos = 800*( chunk.x + chunks.x*( chunk.y + chunks.y * chunk.z))
+                     + sub_chunk.z + 5*(sub_chunk.x + 32*sub_chunk.y);
 
-            uint cell_case = mc_cases_d[ ix ];
+            uint cell_case = mc_cases_d[ pos ];
 
             // Determine # edge intersections in this cell
             const uint vertex_0___mask = (cell_case&0x1 ? 0x16 : 0);    // %xxxxxxx1 ? %00010110 : %00000000
@@ -184,6 +184,7 @@ TriangleIndicesKernel( float* __restrict__               output_d,
             const uint lower_vertices = vertices & (this_vertex_mask-1);
 
             uint index = __popc( lower_vertices );
+            assert( index < 3 );
 
             // -- Up-traversal step 0
             {
@@ -233,7 +234,7 @@ TriangleIndicesKernel( float* __restrict__               output_d,
             {
                 uint component = pos % 5;
                 pos = pos/5;
-                uchar4 val_ = ((uchar4*)(vertex_pyramid_d + hp5_const_offsets[ l ]))[pos];
+                uchar4 val_ = ((uchar4*)(vertex_pyramid_d + hp5_const_offsets[ max_level-3 ]))[pos];
                 uint4 val = make_uint4( val_.x,
                                         val_.y,
                                         val_.z,
@@ -251,7 +252,7 @@ TriangleIndicesKernel( float* __restrict__               output_d,
                     index += val.x;
                 }
             }
-            for(l=max_level-4; l>0; l--) {
+            for(l=max_level-4; l>=0; l--) {
                 uint component = pos % 5;
                 pos = pos/5;
                 uint4 val = vertex_pyramid_d[ hp5_const_offsets[l] + pos ];
@@ -268,70 +269,13 @@ TriangleIndicesKernel( float* __restrict__               output_d,
                     index += val.x;
                 }
             }
-        }
-
-
-        /*
-        uint c_lix = pos / 800u;
-        uint t_lix = pos % 800u;
-        uint3 ci = make_uint3( 31*( c_lix % chunks.x ),
-                               5*( (c_lix/chunks.x) % chunks.y ),
-                               5*( (c_lix/chunks.x) / chunks.y ) );
-
-        // calc 3D pos within cunk
-        i0 = make_uint3( ci.x + ((t_lix / 5)%32),
-                         ci.y + ((t_lix / 5)/32),
-                         ci.z + ( t_lix%5 ) );
-
-        mc_case = mc_cases_d[ pos ];
-        */
-        for(uint i=0; i<3; i++ ) {
-            uint isec = case_intersect_edge_d[ 16*mc_case + rem + i ];
-
-            uint3 oa = make_uint3( i0.x + ((isec   )&1u),
-                                   i0.y + ((isec>>1u)&1u),
-                                   i0.z + ((isec>>2u)&1u) );
-            uint oa_ix = oa.x
-                       + oa.y*field_row_pitch
-                       + oa.z*field_slice_pitch;
-            float fa = field_d[ oa_ix ];
-            float fa_x = field_d[ oa_ix + 1 ]-fa;
-            float fa_y = field_d[ oa_ix + field_row_pitch ]-fa;
-            float fa_z = field_d[ oa_ix + field_slice_pitch ]-fa;
-
-            uint3 ob = make_uint3( i0.x + ((isec>>3u)&1u),
-                                   i0.y + ((isec>>4u)&1u),
-                                   i0.z + ((isec>>5u)&1u) );
-            uint ob_ix = ob.x
-                       + ob.y*field_row_pitch
-                       + ob.z*field_slice_pitch;
-            float fb = field_d[ ob_ix ];
-            float fb_x = field_d[ ob_ix + 1 ]-fb;
-            float fb_y = field_d[ ob_ix + field_row_pitch ]-fb;
-            float fb_z = field_d[ ob_ix + field_slice_pitch ]-fb;
-
-            float t = (iso-fa)/(fb-fa);
-            float s = 1.f-t;
-
-            float n_x = s*fa_x + t*fb_x;
-            float n_y = s*fa_y + t*fb_y;
-            float n_z = s*fa_z + t*fb_z;
-
-
-            uint vtx = 3*triangle + i;
-
-            output_d[ 6*vtx + 0 ] = n_x;
-            output_d[ 6*vtx + 1 ] = n_y;
-            output_d[ 6*vtx + 2 ] = n_z;
-            output_d[ 6*vtx + 3 ] = scale.x*(s*oa.x + t*ob.x);
-            output_d[ 6*vtx + 4 ] = scale.y*(s*oa.y + t*ob.y);
-            output_d[ 6*vtx + 5 ] = scale.z*(s*oa.z + t*ob.z);
+            output_d[ 3*triangle + i ] = index;
         }
     }
 }
 
 void
-EmitterTriIdx::invokeTriangleIndicesKernel( float* output_d, uint tris, cudaStream_t stream )
+EmitterTriIdx::invokeTriangleIndicesKernel( unsigned int* output_d, uint tris, cudaStream_t stream )
 {
     if( tris == 0 ) {
         return;

@@ -49,9 +49,9 @@ EmitterTriIdx::writeVerticesInterleavedN3FV3F( float* vertex_buffer_d, uint vert
 
 
 void
-EmitterTriIdx::writeTriangleIndices( float* interleaved_buffer_d, uint triangles, cudaStream_t stream  )
+EmitterTriIdx::writeTriangleIndices( unsigned int* indices_uint3_d, uint triangles, cudaStream_t stream  )
 {
-    invokeTriangleIndicesKernel( interleaved_buffer_d, triangles, stream );
+    invokeTriangleIndicesKernel( indices_uint3_d, triangles, stream );
 }
 
 

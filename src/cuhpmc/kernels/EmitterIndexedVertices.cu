@@ -118,7 +118,7 @@ VertexN3FV3Fkernel( float* __restrict__               output_d,
             downTraversalStep( pos, key, val );
         }
         {   // second reduction is 4 x 8 bits = 32 bits
-            uchar4 val_ = ((uchar4*)(vertex_pyramid_d + hp5_const_offsets[ l ]))[pos];
+            uchar4 val_ = ((uchar4*)(vertex_pyramid_d + hp5_const_offsets[ max_level-3 ]))[pos];
             uint4 val = make_uint4( val_.x,
                                     val_.y,
                                     val_.z,

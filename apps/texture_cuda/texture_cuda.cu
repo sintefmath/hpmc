@@ -577,7 +577,7 @@ render( float t,
     case CUDA_INDEXED:
     {
         float* vertices_d = NULL;
-        float* triangles_d = NULL;
+        unsigned int* triangles_d = NULL;
         size_t vertices_s = 0;
         size_t triangles_s = 0;
         cudaGraphicsResource* resources[2] = {
@@ -598,15 +598,22 @@ render( float t,
         glUniformMatrix3fv( vbo_render_loc_nm, 1, GL_FALSE, NM );
         glUniform4f( vbo_render_loc_col, 0.8f, 0.8f, 1.f, 1.f );
 
+        /*
         glBindVertexArray( triangles_vao );
+        glDrawArrays( GL_TRIANGLES, 0, 3*triangles );
+        */
+
+        glPointSize( 1.f );
+        glBindVertexArray( vertices_vao );
+
         glPolygonOffset( 1.f, 1.f );
         glEnable( GL_POLYGON_OFFSET_FILL );
-        glDrawArrays( GL_TRIANGLES, 0, 3*triangles );
+        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, triangles_vbo );
+        glDrawElements( GL_TRIANGLES, 3*triangles, GL_UNSIGNED_INT, NULL );
+        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
         glDisable( GL_POLYGON_OFFSET_FILL );
 
-        glPointSize( 2.f );
         glUniform4f( vbo_render_loc_col, 1.f, 0.f, 0.f, 1.f );
-        glBindVertexArray( vertices_vao );
         glDrawArrays( GL_POINTS, 0, vertices );
 
         glBindVertexArray( 0 );
