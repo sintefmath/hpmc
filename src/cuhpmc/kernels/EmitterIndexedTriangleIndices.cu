@@ -96,17 +96,13 @@ TriangleIndicesKernel( uint* __restrict__                output_d,
                        const uint4* __restrict__         hp5_d,
                        const uint4* __restrict__         vertex_pyramid_d,
                        const unsigned char* __restrict__ mc_cases_d,
-                       const unsigned char* __restrict__ case_intersect_edge_d,
                        const unsigned char* __restrict__ case_indexed_intersect_edge_d,
-                       const uint3                       chunks,
                        const uint                        triangles,
                        const uint                        max_level,
-                       const float                       iso,
-                       const unsigned char*              field_d,
-                       const uint                        field_row_pitch,
-                       const uint                        field_slice_pitch,
-                       const float3                      scale )
+                       const uint                        shift_y_chunk,  // = 800*chunks.x-4*5*32,
+                       const uint                        shift_z_chunk ) // = 800*chunks.x*chunks.y-4
 {
+    __shared__ uint indices[ 256*3 ];
 
     uint triangle = 256*blockIdx.x + threadIdx.x;
 
@@ -150,26 +146,39 @@ TriangleIndicesKernel( uint* __restrict__                output_d,
         }
         uint rem = 3*key;
 
-        uint3 i0;
-        uint mc_case;
-        hp5PosToCellPos( i0, mc_case, pos, chunks, mc_cases_d );
+        uint mc_case = mc_cases_d[pos];
+
+        // Determine strides for cell shift
+        uint in_chunk_ix = pos % 800;
+        uint shift_x, shift_y, shift_z;
+        if( ((in_chunk_ix / 5)%32) == 30 ) {
+            shift_x = 800 - 30*5;
+        }
+        else {
+            shift_x = 5;
+        }
+        if( (in_chunk_ix/5)/32 == 4 ) {
+            shift_y = shift_y_chunk;
+        }
+        else {
+            shift_y = 5*32;
+        }
+        if( in_chunk_ix%5 == 4 ) {
+            shift_z = shift_z_chunk;
+        }
+        else {
+            shift_z = 1;
+        }
+
 
         for(uint i=0; i<3; i++) {
             uint edge_flags = case_indexed_intersect_edge_d[ 16*mc_case + rem + i ];
-            // adjust for shift
-            int3 cell = make_int3( i0.x + (((edge_flags&(1<<5)) ? 1 : 0  )),
-                                   i0.y + (((edge_flags&(1<<6)) ? 1 : 0  )),
-                                   i0.z + (((edge_flags&(1<<7)) ? 1 : 0  )) );
-            int3 chunk = make_int3( cell.x / 31,
-                                    cell.y / 5,
-                                    cell.z / 5 );
-            int3 sub_chunk = make_int3( cell.x % 31,
-                                        cell.y % 5,
-                                        cell.z % 5 );
-            uint pos = 800*( chunk.x + chunks.x*( chunk.y + chunks.y * chunk.z))
-                     + sub_chunk.z + 5*(sub_chunk.x + 32*sub_chunk.y);
+            uint adjusted_pos = pos;
+            if( edge_flags&(1<<5) ) { adjusted_pos += shift_x; }
+            if( edge_flags&(1<<6) ) { adjusted_pos += shift_y; }
+            if( edge_flags&(1<<7) ) { adjusted_pos += shift_z; }
 
-            uint cell_case = mc_cases_d[ pos ];
+            uint cell_case = mc_cases_d[ adjusted_pos ];
 
             // Determine # edge intersections in this cell
             const uint vertex_0___mask = (cell_case&0x1 ? 0x16 : 0);    // %xxxxxxx1 ? %00010110 : %00000000
@@ -188,90 +197,63 @@ TriangleIndicesKernel( uint* __restrict__                output_d,
 
             // -- Up-traversal step 0
             {
-                uint component = pos % 5;
-                pos = pos/5;
-                unsigned char val_ = ((unsigned char*)(vertex_pyramid_d + hp5_const_offsets[ max_level-1 ] ))[ pos ];
+                uint component = adjusted_pos % 5;
+                adjusted_pos = adjusted_pos/5;
+                unsigned char val_ = ((unsigned char*)(vertex_pyramid_d + hp5_const_offsets[ max_level-1 ] ))[ adjusted_pos ];
                 uint4 val = make_uint4( (val_   ) & 0x3u,
                                         (val_>>2) & 0x3u,
                                         (val_>>4) & 0x3u,
                                         (val_>>6) & 0x3u );
-                if( component > 3 ) {
-                    index += val.w;
-                }
-                if( component > 2 ) {
-                    index += val.z;
-                }
-                if( component > 1 ) {
-                    index += val.y;
-                }
-                if( component > 0 ) {
-                    index += val.x;
-                }
+                if( component > 3 ) { index += val.w; }
+                if( component > 2 ) { index += val.z; }
+                if( component > 1 ) { index += val.y; }
+                if( component > 0 ) { index += val.x; }
             }
             // -- Up-traversal step 1
             {
-                uint component = pos % 5;
-                pos = pos/5;
-                short1 val_ = ((short1*)(vertex_pyramid_d + hp5_const_offsets[ max_level-2 ] ))[ pos ];
+                uint component = adjusted_pos % 5;
+                adjusted_pos = adjusted_pos/5;
+                short1 val_ = ((short1*)(vertex_pyramid_d + hp5_const_offsets[ max_level-2 ] ))[ adjusted_pos ];
                 uint4 val = make_uint4( (val_.x   )  & 0xfu,
                                         (val_.x>>4)  & 0xfu,
                                         (val_.x>>8)  & 0xfu,
                                         (val_.x>>12) & 0xfu );
-                if( component > 3 ) {
-                    index += val.w;
-                }
-                if( component > 2 ) {
-                    index += val.z;
-                }
-                if( component > 1 ) {
-                    index += val.y;
-                }
-                if( component > 0 ) {
-                    index += val.x;
-                }
+                if( component > 3 ) { index += val.w; }
+                if( component > 2 ) { index += val.z; }
+                if( component > 1 ) { index += val.y; }
+                if( component > 0 ) { index += val.x; }
             }
             // -- Up-traversal step 2
             {
-                uint component = pos % 5;
-                pos = pos/5;
-                uchar4 val_ = ((uchar4*)(vertex_pyramid_d + hp5_const_offsets[ max_level-3 ]))[pos];
+                uint component = adjusted_pos % 5;
+                adjusted_pos = adjusted_pos/5;
+                uchar4 val_ = ((uchar4*)(vertex_pyramid_d + hp5_const_offsets[ max_level-3 ]))[adjusted_pos];
                 uint4 val = make_uint4( val_.x,
                                         val_.y,
                                         val_.z,
                                         val_.w );
-                if( component > 3 ) {
-                    index += val.w;
-                }
-                if( component > 2 ) {
-                    index += val.z;
-                }
-                if( component > 1 ) {
-                    index += val.y;
-                }
-                if( component > 0 ) {
-                    index += val.x;
-                }
+                if( component > 3 ) { index += val.w; }
+                if( component > 2 ) { index += val.z; }
+                if( component > 1 ) { index += val.y; }
+                if( component > 0 ) { index += val.x; }
             }
             for(l=max_level-4; l>=0; l--) {
-                uint component = pos % 5;
-                pos = pos/5;
-                uint4 val = vertex_pyramid_d[ hp5_const_offsets[l] + pos ];
-                if( component > 3 ) {
-                    index += val.w;
-                }
-                if( component > 2 ) {
-                    index += val.z;
-                }
-                if( component > 1 ) {
-                    index += val.y;
-                }
-                if( component > 0 ) {
-                    index += val.x;
-                }
+                uint component = adjusted_pos % 5;
+                adjusted_pos = adjusted_pos/5;
+                uint4 val = vertex_pyramid_d[ hp5_const_offsets[l] + adjusted_pos ];
+                if( component > 3 ) { index += val.w; }
+                if( component > 2 ) { index += val.z; }
+                if( component > 1 ) { index += val.y; }
+                if( component > 0 ) { index += val.x; }
             }
-            output_d[ 3*triangle + i ] = index;
+            indices[ 3*threadIdx.x + i ] = index;
         }
     }
+    __syncthreads();
+
+    output_d[ 3*256*blockIdx.x +   0 + threadIdx.x ] = indices[ threadIdx.x + 0   ];
+    output_d[ 3*256*blockIdx.x + 256 + threadIdx.x ] = indices[ threadIdx.x + 256 ];
+    output_d[ 3*256*blockIdx.x + 512 + threadIdx.x ] = indices[ threadIdx.x + 512 ];
 }
 
 void
@@ -296,18 +278,11 @@ EmitterTriIdx::invokeTriangleIndicesKernel( unsigned int* output_d, uint tris, c
                                                    m_iso_surface->trianglePyramidDev(),
                                                    m_iso_surface->vertexPyramidDev(),
                                                    m_iso_surface->mcCasesDev(),
-                                                   m_constants->caseIntersectEdgeDev(),
                                                    m_constants->caseIndexIntersectEdgeDev(),
-                                                   m_iso_surface->hp5Chunks(),
                                                    tris,
                                                    m_iso_surface->hp5Levels(),
-                                                   256.f*m_iso_surface->iso(),
-                                                   field->fieldDev(),
-                                                   field->width(),
-                                                   field->width()*field->height(),
-                                                   make_float3( 1.f/(field->width()-1.f),
-                                                                1.f/(field->height()-1.f),
-                                                                1.f/(field->depth()-1.f) ) );
+                                                   800*m_iso_surface->hp5Chunks().x-4*5*32,
+                                                   800*m_iso_surface->hp5Chunks().x*m_iso_surface->hp5Chunks().y-4 );
     }
     else {
         throw std::runtime_error( "EmitterTriIdx::invokeKernel: unsupported field type" );

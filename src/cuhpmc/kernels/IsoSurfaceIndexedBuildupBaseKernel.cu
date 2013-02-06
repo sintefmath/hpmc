@@ -59,15 +59,14 @@ fetchFromField( uint& bp0, uint& bp1, uint& bp2, uint& bp3, uint& bp4, uint& bp5
 
 static __device__ __inline__
 void
-mergeAlongY( uint& bp0, uint& bp1, uint& bp2, uint& bp3, uint& bp4, uint& bp5,
-             uint& bc0, uint& bc1, uint& bc2, uint& bc3, uint& bc4, uint& bc5 )
+mergeAlongY( uint& bp0, uint& bp1, uint& bp2, uint& bp3, uint& bp4,
+             uint& bc0, uint& bc1, uint& bc2, uint& bc3, uint& bc4 )
 {
     uint t0 = bp0 + (bc0<<2); bp0 = bc0; bc0 = t0;
     uint t1 = bp1 + (bc1<<2); bp1 = bc1; bc1 = t1;
     uint t2 = bp2 + (bc2<<2); bp2 = bc2; bc2 = t2;
     uint t3 = bp3 + (bc3<<2); bp3 = bc3; bc3 = t3;
     uint t4 = bp4 + (bc4<<2); bp4 = bc4; bc4 = t4;
-    uint t5 = bp5 + (bc5<<2); bp5 = bc5; bc5 = t5;
 }
 
 static __device__ __inline__
@@ -152,6 +151,8 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
         fetchFromField( bp0, bp1, bp2, bp3, bp4, bp5,
                         a.field, field_offset, a.field_slice_pitch, a.iso, chunk_cells.z );
 
+        mergeAlongZ( bp0, bp1, bp2, bp3, bp4, bp5 );
+
         // merge along z before Y?
         for(uint q=0; q<5; q++) {
             // Move along y to build up masks
@@ -161,10 +162,9 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
             uint bc0, bc1, bc2, bc3, bc4, bc5;
             fetchFromField( bc0, bc1, bc2, bc3, bc4, bc5,
                             a.field, field_offset, a.field_slice_pitch, a.iso, chunk_cells.z );
-
-            mergeAlongY( bp0, bp1, bp2, bp3, bp4, bp5,
-                         bc0, bc1, bc2, bc3, bc4, bc5 );
             mergeAlongZ( bc0, bc1, bc2, bc3, bc4, bc5 );
+            mergeAlongY( bp0, bp1, bp2, bp3, bp4,
+                         bc0, bc1, bc2, bc3, bc4 );
 
 #if __CUDA_ARCH__ >= 300
             bc0 = bc0 + ( (uint)__shfl_down( (int)bc0, 1 )<<1u);

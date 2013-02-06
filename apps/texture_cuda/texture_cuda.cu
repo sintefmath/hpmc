@@ -466,9 +466,11 @@ render( float t,
 
     iso = 0.5f;//0.48f*(sin(t)+1.f)+0.01f;
 
-    if( t > 2 ) {
+    static int foobar = 0;
+    if( foobar >= 10 ) {
         exit( EXIT_SUCCESS );
     }
+    foobar++;
 
     // build histopyramid
     if( profile ) {
