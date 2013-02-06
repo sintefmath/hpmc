@@ -110,227 +110,240 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
     const int hp_b_o = 5*32*blockIdx.x + 32*w + wt;                    //
     const int c_lix = 5*blockIdx.x + w;                                //
 
-    // Base xyz-index for this chunk. Can be composed into a single uint32, and
-    // be checked with an LOP.AND + ISETP.LT
-    const int3 chunk_offset = make_int3( 31*( c_lix % a.chunks.x ),
-                                          5*( (c_lix/a.chunks.x) % a.chunks.y ),
-                                          5*( (c_lix/a.chunks.x) / a.chunks.y ) );
+    const int3 chunk = make_int3( c_lix % a.chunks.x,
+                                  (c_lix/a.chunks.x) % a.chunks.y,
+                                  (c_lix/a.chunks.x) / a.chunks.y );
+    if( chunk.z < a.chunks.z ) {
 
-    assert( chunk_offset.x <= a.cells.x );
-    assert( chunk_offset.y <= a.cells.y );
-    //assert( chunk_offset.z <= a.cells.z );
+        // Base xyz-index for this chunk. Can be composed into a single uint32, and
+        // be checked with an LOP.AND + ISETP.LT
+        const int3 chunk_offset = make_int3( 31*chunk.x,
+                                             5*chunk.y,
+                                             5*chunk.z );
 
-    const int3 chunk_cells = make_int3( a.cells.x - chunk_offset.x,
-                                        a.cells.y - chunk_offset.y,
-                                        a.cells.z - chunk_offset.z );
+        assert( chunk_offset.x <= a.cells.x );
+        assert( chunk_offset.y <= a.cells.y );
+        //assert( chunk_offset.z <= a.cells.z );
 
-    // base corner should always be inside field, but x for wt > 0 might be
-    // outside.
-    int field_offset = min( a.cells.z, chunk_offset.z) * a.field_slice_pitch
-                      + chunk_offset.y * a.field_row_pitch
-                      + chunk_offset.x + min( wt, chunk_cells.x );
+        const int3 chunk_cells = make_int3( a.cells.x - chunk_offset.x,
+                                            a.cells.y - chunk_offset.y,
+                                            a.cells.z - chunk_offset.z );
+
+        // base corner should always be inside field, but x for wt > 0 might be
+        // outside.
+        int field_offset = min( a.cells.z, chunk_offset.z) * a.field_slice_pitch
+                + chunk_offset.y * a.field_row_pitch
+                + chunk_offset.x + min( wt, chunk_cells.x );
 
 
-    // Fetch scalar field values and determine inside-outside for 5 slices
-    int field_offset_tmp = field_offset;
-    uint bp0 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-    if( 1 <= chunk_cells.z ) {
-        field_offset_tmp += a.field_slice_pitch;
-    }
-    uint bp1 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-    if( 2 <= chunk_cells.z ) {
-        field_offset_tmp += a.field_slice_pitch;
-    }
-    uint bp2 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-    if( 3 <= chunk_cells.z ) {
-        field_offset_tmp += a.field_slice_pitch;
-    }
-    uint bp3 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-    if( 4 <= chunk_cells.z ) {
-        field_offset_tmp += a.field_slice_pitch;
-    }
-    uint bp4 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-    if( 5 <= chunk_cells.z ) {
-        field_offset_tmp += a.field_slice_pitch;
-    }
-    uint bp5 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-
-    for(uint q=0; q<5; q++) {
-        // Move along y to build up masks
-        if( q+1 <= chunk_cells.y ) {
-            field_offset += a.field_row_pitch;
-        }
+        // Fetch scalar field values and determine inside-outside for 5 slices
         int field_offset_tmp = field_offset;
-        uint bc0 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-
+        uint bp0 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
         if( 1 <= chunk_cells.z ) {
             field_offset_tmp += a.field_slice_pitch;
         }
-        uint bc1 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+        uint bp1 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
         if( 2 <= chunk_cells.z ) {
             field_offset_tmp += a.field_slice_pitch;
         }
-        uint bc2 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+        uint bp2 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
         if( 3 <= chunk_cells.z ) {
             field_offset_tmp += a.field_slice_pitch;
         }
-        uint bc3 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+        uint bp3 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
         if( 4 <= chunk_cells.z ) {
             field_offset_tmp += a.field_slice_pitch;
         }
-        uint bc4 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+        uint bp4 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
         if( 5 <= chunk_cells.z ) {
             field_offset_tmp += a.field_slice_pitch;
         }
-        uint bc5 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+        uint bp5 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
 
-        // Merge
-        uint b0 = bp0 + (bc0<<2);
-        uint b1 = bp1 + (bc1<<2);
-        uint b2 = bp2 + (bc2<<2);
-        uint b3 = bp3 + (bc3<<2);
-        uint b4 = bp4 + (bc4<<2);
-        uint b5 = bp5 + (bc5<<2);
-        // Store for next iteration
-        bp0 = bc0;
-        bp1 = bc1;
-        bp2 = bc2;
-        bp3 = bc3;
-        bp4 = bc4;
-        bp5 = bc5;
-
-        // build case
-        uint m0_1 = b0 + (b1<<4);
-        uint m1_1 = b1 + (b2<<4);
-        uint m2_1 = b2 + (b3<<4);
-        uint m3_1 = b3 + (b4<<4);
-        uint m4_1 = b4 + (b5<<4);
-        sh[ 0*160 + threadIdx.x ] = m0_1;
-        sh[ 1*160 + threadIdx.x ] = m1_1;
-        sh[ 2*160 + threadIdx.x ] = m2_1;
-        sh[ 3*160 + threadIdx.x ] = m3_1;
-        sh[ 4*160 + threadIdx.x ] = m4_1;
-
-        uint ix_o_1 = 160*w + 32*q + wt;
-
-        uint mask;
-        if(  (wt <= 30) &&
-             (wt <= chunk_cells.x ) &&
-             (q <= chunk_cells.y ) )
-        {
-            if( (wt == chunk_cells.x) || (q==chunk_cells.y) ) {
-                mask = 0xf0u;
+        for(uint q=0; q<5; q++) {
+            // Move along y to build up masks
+            if( q+1 <= chunk_cells.y ) {
+                field_offset += a.field_row_pitch;
             }
-            else {
-                mask = ~0x0u;
+            int field_offset_tmp = field_offset;
+            uint bc0 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+
+            if( 1 <= chunk_cells.z ) {
+                field_offset_tmp += a.field_slice_pitch;
             }
-        }
-        else {
-            mask = 0x0u;
-        }
-
-        // merge from right
-        //if( xmask_tri && ymask_tri && wt < 31 ) {
-        uint sum;
-        if( mask != 0u ) {
-            m0_1 += (sh[ 0*160 + threadIdx.x + 1]<<1);
-            m1_1 += (sh[ 1*160 + threadIdx.x + 1]<<1);
-            m2_1 += (sh[ 2*160 + threadIdx.x + 1]<<1);
-            m3_1 += (sh[ 3*160 + threadIdx.x + 1]<<1);
-            m4_1 += (sh[ 4*160 + threadIdx.x + 1]<<1);
-
-            // cnt_a_X = %00000000 0vv00ttt
-
-
-            uint cnt_a_0;
-            uint cnt_a_1;
-            uint cnt_a_2;
-            uint cnt_a_3;
-            uint cnt_a_4;
-            if( mask == ~0x0u && 5 < chunk_cells.z ) {
-                cnt_a_0 = a.case_vtxtricnt[ m0_1 ];
-                cnt_a_1 = a.case_vtxtricnt[ m1_1 ];
-                cnt_a_2 = a.case_vtxtricnt[ m2_1 ];
-                cnt_a_3 = a.case_vtxtricnt[ m3_1 ];
-                cnt_a_4 = a.case_vtxtricnt[ m4_1 ];
+            uint bc1 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+            if( 2 <= chunk_cells.z ) {
+                field_offset_tmp += a.field_slice_pitch;
             }
-            else {
-                uint tmp_mask;
-                if( 0 <= chunk_cells.z ) {
-                    tmp_mask = mask;
+            uint bc2 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+            if( 3 <= chunk_cells.z ) {
+                field_offset_tmp += a.field_slice_pitch;
+            }
+            uint bc3 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+            if( 4 <= chunk_cells.z ) {
+                field_offset_tmp += a.field_slice_pitch;
+            }
+            uint bc4 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+            if( 5 <= chunk_cells.z ) {
+                field_offset_tmp += a.field_slice_pitch;
+            }
+            uint bc5 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+
+            // Merge
+            uint b0 = bp0 + (bc0<<2);
+            uint b1 = bp1 + (bc1<<2);
+            uint b2 = bp2 + (bc2<<2);
+            uint b3 = bp3 + (bc3<<2);
+            uint b4 = bp4 + (bc4<<2);
+            uint b5 = bp5 + (bc5<<2);
+            // Store for next iteration
+            bp0 = bc0;
+            bp1 = bc1;
+            bp2 = bc2;
+            bp3 = bc3;
+            bp4 = bc4;
+            bp5 = bc5;
+
+            // build case
+            uint m0_1 = b0 + (b1<<4);
+            uint m1_1 = b1 + (b2<<4);
+            uint m2_1 = b2 + (b3<<4);
+            uint m3_1 = b3 + (b4<<4);
+            uint m4_1 = b4 + (b5<<4);
+            sh[ 0*160 + threadIdx.x ] = m0_1;
+            sh[ 1*160 + threadIdx.x ] = m1_1;
+            sh[ 2*160 + threadIdx.x ] = m2_1;
+            sh[ 3*160 + threadIdx.x ] = m3_1;
+            sh[ 4*160 + threadIdx.x ] = m4_1;
+
+            uint ix_o_1 = 160*w + 32*q + wt;
+
+            uint mask;
+            if(  (wt <= 30) &&
+                 (wt <= chunk_cells.x ) &&
+                 (q <= chunk_cells.y ) )
+            {
+                if( (wt == chunk_cells.x) || (q==chunk_cells.y) ) {
+                    mask = 0xf0u;
                 }
                 else {
-                    tmp_mask = 0x00u;
+                    mask = ~0x0u;
                 }
-                if( 0 == chunk_cells.z ) {
-                    tmp_mask = tmp_mask & 0xf0u;
-                    mask = 0x00u;
-                }
-                cnt_a_0 = a.case_vtxtricnt[ m0_1 ] & tmp_mask;
-
-                tmp_mask = mask;
-                if( 1 == chunk_cells.z ) {
-                    tmp_mask = tmp_mask & 0xf0u;
-                    mask = 0x00u;
-                }
-                cnt_a_1 = a.case_vtxtricnt[ m1_1 ] & tmp_mask;
-
-                tmp_mask = mask;
-                if( 2 == chunk_cells.z ) {
-                    tmp_mask = tmp_mask & 0xf0u;
-                    mask = 0x00u;
-                }
-                cnt_a_2 = a.case_vtxtricnt[ m2_1 ] & tmp_mask;
-
-                tmp_mask = mask;
-                if( 3 == chunk_cells.z ) {
-                    tmp_mask = tmp_mask & 0xf0u;
-                    mask = 0x00u;
-                }
-                cnt_a_3 = a.case_vtxtricnt[ m3_1 ] & tmp_mask;
-
-                tmp_mask = mask;
-                if( 4 == chunk_cells.z ) {
-                    tmp_mask = tmp_mask & 0xf0u;
-                }
-                cnt_a_4 = a.case_vtxtricnt[ m4_1 ] & tmp_mask;
+            }
+            else {
+                mask = 0x0u;
             }
 
+            // merge from right
+            //if( xmask_tri && ymask_tri && wt < 31 ) {
+            uint sum;
+            if( mask != 0u ) {
+                m0_1 += (sh[ 0*160 + threadIdx.x + 1]<<1);
+                m1_1 += (sh[ 1*160 + threadIdx.x + 1]<<1);
+                m2_1 += (sh[ 2*160 + threadIdx.x + 1]<<1);
+                m3_1 += (sh[ 3*160 + threadIdx.x + 1]<<1);
+                m4_1 += (sh[ 4*160 + threadIdx.x + 1]<<1);
 
-            sum = cnt_a_0
-                    + cnt_a_1
-                    + cnt_a_2
-                    + cnt_a_3
-                    + cnt_a_4;
+                // cnt_a_X = %00000000 0vv00ttt
+
+
+                uint cnt_a_0;
+                uint cnt_a_1;
+                uint cnt_a_2;
+                uint cnt_a_3;
+                uint cnt_a_4;
+                if( mask == ~0x0u && 5 < chunk_cells.z ) {
+                    cnt_a_0 = a.case_vtxtricnt[ m0_1 ];
+                    cnt_a_1 = a.case_vtxtricnt[ m1_1 ];
+                    cnt_a_2 = a.case_vtxtricnt[ m2_1 ];
+                    cnt_a_3 = a.case_vtxtricnt[ m3_1 ];
+                    cnt_a_4 = a.case_vtxtricnt[ m4_1 ];
+                }
+                else {
+                    uint tmp_mask;
+                    if( 0 <= chunk_cells.z ) {
+                        tmp_mask = mask;
+                    }
+                    else {
+                        tmp_mask = 0x00u;
+                    }
+                    if( 0 == chunk_cells.z ) {
+                        tmp_mask = tmp_mask & 0xf0u;
+                        mask = 0x00u;
+                    }
+                    cnt_a_0 = a.case_vtxtricnt[ m0_1 ] & tmp_mask;
+
+                    tmp_mask = mask;
+                    if( 1 == chunk_cells.z ) {
+                        tmp_mask = tmp_mask & 0xf0u;
+                        mask = 0x00u;
+                    }
+                    cnt_a_1 = a.case_vtxtricnt[ m1_1 ] & tmp_mask;
+
+                    tmp_mask = mask;
+                    if( 2 == chunk_cells.z ) {
+                        tmp_mask = tmp_mask & 0xf0u;
+                        mask = 0x00u;
+                    }
+                    cnt_a_2 = a.case_vtxtricnt[ m2_1 ] & tmp_mask;
+
+                    tmp_mask = mask;
+                    if( 3 == chunk_cells.z ) {
+                        tmp_mask = tmp_mask & 0xf0u;
+                        mask = 0x00u;
+                    }
+                    cnt_a_3 = a.case_vtxtricnt[ m3_1 ] & tmp_mask;
+
+                    tmp_mask = mask;
+                    if( 4 == chunk_cells.z ) {
+                        tmp_mask = tmp_mask & 0xf0u;
+                    }
+                    cnt_a_4 = a.case_vtxtricnt[ m4_1 ] & tmp_mask;
+                }
+
+
+                sum = cnt_a_0
+                        + cnt_a_1
+                        + cnt_a_2
+                        + cnt_a_3
+                        + cnt_a_4;
 
                 // sum = %00000000 00000000 0000000v vvvttttt
-            // sb  = %00000000 0000vvvv 00000000 000ttttt
-            sb[ ix_o_1 ] = ((sum<<11)&0xf0000u) | (sum&0x1fu);
-            if( sum > 0 ) {
-                // triangle count stored as 4 x 4 bits = 16 bits
-                ((short1*)(a.tri_pyramid_level_a_d))[ 5*160*blockIdx.x + ix_o_1 ] =
-                        make_short1( ((cnt_a_0 & 0xf)) |
-                                     ((cnt_a_1 & 0xf)<<4) |
-                                     ((cnt_a_2 & 0xf)<<8) |
-                                     ((cnt_a_3 & 0xf)<<12) );
+                // sb  = %00000000 0000vvvv 00000000 000ttttt
+                sb[ ix_o_1 ] = ((sum<<11)&0xf0000u) | (sum&0x1fu);
+                if( sum > 0 ) {
+                    // triangle count stored as 4 x 4 bits = 16 bits
+                    ((short1*)(a.tri_pyramid_level_a_d))[ 5*160*blockIdx.x + ix_o_1 ] =
+                            make_short1( ((cnt_a_0 & 0xf)) |
+                                         ((cnt_a_1 & 0xf)<<4) |
+                                         ((cnt_a_2 & 0xf)<<8) |
+                                         ((cnt_a_3 & 0xf)<<12) );
 
-                // vertex count stored as 4 x 2 bits = 8 bits
-                ((unsigned char*)(a.vtx_pyramid_level_a_d))[ 5*160*blockIdx.x + ix_o_1 ]
-                        = ((cnt_a_0>>5u)
-                        |  (cnt_a_1>>3u)
-                        |  ((cnt_a_2>>1u)&0x30u)
-                        |  ((cnt_a_3<<1u)&0xc0u) ) & 0xffu;
+                    // vertex count stored as 4 x 2 bits = 8 bits
+                    ((unsigned char*)(a.vtx_pyramid_level_a_d))[ 5*160*blockIdx.x + ix_o_1 ]
+                            = ((cnt_a_0>>5u)
+                               |  (cnt_a_1>>3u)
+                               |  ((cnt_a_2>>1u)&0x30u)
+                               |  ((cnt_a_3<<1u)&0xc0u) ) & 0xffu;
 
 
-                        //   a.tri_pyramid_level_a_d[ 5*160*blockIdx.x + ix_o_1 ] = make_uint4( s0_1, s1_1, s2_1, s3_1 );
-                a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 0 ] = m0_1;
-                a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 1 ] = m1_1;
-                a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 2 ] = m2_1;
-                a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 3 ] = m3_1;
-                a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 4 ] = m4_1;
+                    //   a.tri_pyramid_level_a_d[ 5*160*blockIdx.x + ix_o_1 ] = make_uint4( s0_1, s1_1, s2_1, s3_1 );
+                    a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 0 ] = m0_1;
+                    a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 1 ] = m1_1;
+                    a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 2 ] = m2_1;
+                    a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 3 ] = m3_1;
+                    a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 4 ] = m4_1;
+                }
+            }
+            else {
+                sb[ ix_o_1 ] = 0;
             }
         }
-        else {
+    }
+    else {
+        // pad-chunk, just write zero's and we'll never see it again.
+        for(uint q=0; q<5; q++) {
+            uint ix_o_1 = 160*w + 32*q + wt;
             sb[ ix_o_1 ] = 0;
         }
     }
