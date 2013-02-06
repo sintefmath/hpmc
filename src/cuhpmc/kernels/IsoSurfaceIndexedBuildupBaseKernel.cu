@@ -31,48 +31,63 @@ namespace cuhpmc {
 template<class T>
 __device__
 void
-fetchFromField( uint&           bp0,                // Bit mask for slice 0
-                uint&           bp1,                // Bit mask for slice 1
-                uint&           bp2,                // Bit mask for slice 2
-                uint&           bp3,                // Bit mask for slice 3
-                uint&           bp4,                // Bit mask for slice 4
-                uint&           bp5,                // Bit mask for slice 5
-                const T*        field,              // Sample-adjusted field pointer
-                const T*        field_end,          // Pointer to buffer end
-                const size_t    field_row_pitch,
-                const size_t    field_slice_pitch,
-                const float     iso,
-                const bool      no_check )
+fetchFromField( uint& bp0, uint& bp1, uint& bp2, uint& bp3, uint& bp4, uint& bp5,
+                const T* ptr,
+                const int offset,
+                const int slice_pitch,
+                const float iso,
+                const int chunk_cells_z )
 {
-    const T* llfield = field;
-    if( no_check ) {
-        bp0 = (*llfield < iso) ? 1 : 0;
-        llfield += field_slice_pitch;
-        bp1 = (*llfield < iso) ? 1 : 0;
-        llfield += field_slice_pitch;
-        bp2 = (*llfield < iso) ? 1 : 0;
-        llfield += field_slice_pitch;
-        bp3 = (*llfield < iso) ? 1 : 0;
-        llfield += field_slice_pitch;
-        bp4 = (*llfield < iso) ? 1 : 0;
-        llfield += field_slice_pitch;
-        bp5 = (*llfield < iso) ? 1 : 0;
-    }
-    else {
-        bp0 = ( llfield < field_end ) && (*llfield < iso) ? 1 : 0;
-        llfield += field_slice_pitch;
-        bp1 = ( llfield < field_end ) && (*llfield < iso) ? 1 : 0;
-        llfield += field_slice_pitch;
-        bp2 = ( llfield < field_end ) && (*llfield < iso) ? 1 : 0;
-        llfield += field_slice_pitch;
-        bp3 = ( llfield < field_end ) && (*llfield < iso) ? 1 : 0;
-        llfield += field_slice_pitch;
-        bp4 = ( llfield < field_end ) && (*llfield < iso) ? 1 : 0;
-        llfield += field_slice_pitch;
-        bp5 = ( llfield < field_end ) && (*llfield < iso) ? 1 : 0;
-    }
+    int offset_tmp = offset;
+
+    bp0 = ptr[ offset_tmp ] < iso ? 1 : 0;
+
+    if( 1 <= chunk_cells_z ) { offset_tmp += slice_pitch; }
+    bp1 = ptr[ offset_tmp ] < iso ? 1 : 0;
+
+    if( 2 <= chunk_cells_z ) { offset_tmp += slice_pitch; }
+    bp2 = ptr[ offset_tmp ] < iso ? 1 : 0;
+
+    if( 3 <= chunk_cells_z ) { offset_tmp += slice_pitch; }
+    bp3 = ptr[ offset_tmp ] < iso ? 1 : 0;
+
+    if( 4 <= chunk_cells_z ) { offset_tmp += slice_pitch; }
+    bp4 = ptr[ offset_tmp ] < iso ? 1 : 0;
+
+    if( 5 <= chunk_cells_z ) { offset_tmp += slice_pitch; }
+    bp5 = ptr[ offset_tmp ] < iso ? 1 : 0;
 }
 
+__device__
+void
+mergeAlongY( uint& bp0, uint& bp1, uint& bp2, uint& bp3, uint& bp4, uint& bp5,
+             uint& bc0, uint& bc1, uint& bc2, uint& bc3, uint& bc4, uint& bc5 )
+{
+    uint t0 = bp0 + (bc0<<2); bp0 = bc0; bc0 = t0;
+    uint t1 = bp1 + (bc1<<2); bp1 = bc1; bc1 = t1;
+    uint t2 = bp2 + (bc2<<2); bp2 = bc2; bc2 = t2;
+    uint t3 = bp3 + (bc3<<2); bp3 = bc3; bc3 = t3;
+    uint t4 = bp4 + (bc4<<2); bp4 = bc4; bc4 = t4;
+    uint t5 = bp5 + (bc5<<2); bp5 = bc5; bc5 = t5;
+}
+
+__device__
+void
+mergeAlongZ( uint& bc0, uint& bc1, uint& bc2, uint& bc3, uint& bc4, uint& bc5 )
+{
+    bc0 = bc0 + (bc1<<4);
+    bc1 = bc1 + (bc2<<4);
+    bc2 = bc2 + (bc3<<4);
+    bc3 = bc3 + (bc4<<4);
+    bc4 = bc4 + (bc5<<4);
+}
+
+__device__
+void
+mergeAlongX( uint& bc0, uint& bc1, uint& bc2, uint& bc3, uint& bc4 )
+{
+
+}
 
 template<class T>
 struct hp5_buildup_base_indexed_triple_gb_args
@@ -95,14 +110,21 @@ struct hp5_buildup_base_indexed_triple_gb_args
     const unsigned char* __restrict__   case_vtxtricnt;
 };
 
+static __device__ __inline__ uint __shfl_down(uint var, unsigned int delta, int width=warpSize) {
+    uint ret, c;
+    c = ((warpSize-width) << 8) | 0x1f;
+    asm volatile ("shfl.down.b32 %0, %1, %2, %3;" : "=r"(ret) : "r"(var), "r"(delta), "r"(c));
+    return ret;
+}
+
 template<class T>
 __global__
 void
 __launch_bounds__( 160 )
 hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a )
 {
-    __shared__ uint sb[800];
-    __shared__ uint sh[801];
+    volatile __shared__ uint sb[800];
+    volatile __shared__ uint sh[1601];
 
     const int w  = threadIdx.x / 32;                                   // warp
     const int wt = threadIdx.x % 32;                                   // thread-in-warp
@@ -110,6 +132,7 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
     const int hp_b_o = 5*32*blockIdx.x + 32*w + wt;                    //
     const int c_lix = 5*blockIdx.x + w;                                //
 
+    // Determine which chunk we're processing in this warp
     const int3 chunk = make_int3( c_lix % a.chunks.x,
                                   (c_lix/a.chunks.x) % a.chunks.y,
                                   (c_lix/a.chunks.x) / a.chunks.y );
@@ -121,10 +144,6 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
                                              5*chunk.y,
                                              5*chunk.z );
 
-        assert( chunk_offset.x <= a.cells.x );
-        assert( chunk_offset.y <= a.cells.y );
-        //assert( chunk_offset.z <= a.cells.z );
-
         const int3 chunk_cells = make_int3( a.cells.x - chunk_offset.x,
                                             a.cells.y - chunk_offset.y,
                                             a.cells.z - chunk_offset.z );
@@ -132,89 +151,49 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
         // base corner should always be inside field, but x for wt > 0 might be
         // outside.
         int field_offset = min( a.cells.z, chunk_offset.z) * a.field_slice_pitch
-                + chunk_offset.y * a.field_row_pitch
-                + chunk_offset.x + min( wt, chunk_cells.x );
+                         + chunk_offset.y * a.field_row_pitch
+                         + chunk_offset.x + min( wt, chunk_cells.x );
 
 
         // Fetch scalar field values and determine inside-outside for 5 slices
-        int field_offset_tmp = field_offset;
-        uint bp0 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-        if( 1 <= chunk_cells.z ) {
-            field_offset_tmp += a.field_slice_pitch;
-        }
-        uint bp1 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-        if( 2 <= chunk_cells.z ) {
-            field_offset_tmp += a.field_slice_pitch;
-        }
-        uint bp2 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-        if( 3 <= chunk_cells.z ) {
-            field_offset_tmp += a.field_slice_pitch;
-        }
-        uint bp3 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-        if( 4 <= chunk_cells.z ) {
-            field_offset_tmp += a.field_slice_pitch;
-        }
-        uint bp4 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-        if( 5 <= chunk_cells.z ) {
-            field_offset_tmp += a.field_slice_pitch;
-        }
-        uint bp5 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+        uint bp0, bp1, bp2, bp3, bp4, bp5;
+        fetchFromField( bp0, bp1, bp2, bp3, bp4, bp5,
+                        a.field, field_offset, a.field_slice_pitch, a.iso, chunk_cells.z );
 
+        // merge along z before Y?
         for(uint q=0; q<5; q++) {
             // Move along y to build up masks
             if( q+1 <= chunk_cells.y ) {
                 field_offset += a.field_row_pitch;
             }
-            int field_offset_tmp = field_offset;
-            uint bc0 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+            uint bc0, bc1, bc2, bc3, bc4, bc5;
+            fetchFromField( bc0, bc1, bc2, bc3, bc4, bc5,
+                            a.field, field_offset, a.field_slice_pitch, a.iso, chunk_cells.z );
 
-            if( 1 <= chunk_cells.z ) {
-                field_offset_tmp += a.field_slice_pitch;
-            }
-            uint bc1 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-            if( 2 <= chunk_cells.z ) {
-                field_offset_tmp += a.field_slice_pitch;
-            }
-            uint bc2 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-            if( 3 <= chunk_cells.z ) {
-                field_offset_tmp += a.field_slice_pitch;
-            }
-            uint bc3 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-            if( 4 <= chunk_cells.z ) {
-                field_offset_tmp += a.field_slice_pitch;
-            }
-            uint bc4 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
-            if( 5 <= chunk_cells.z ) {
-                field_offset_tmp += a.field_slice_pitch;
-            }
-            uint bc5 = a.field[ field_offset_tmp ] < a.iso ? 1 : 0;
+            mergeAlongY( bp0, bp1, bp2, bp3, bp4, bp5,
+                         bc0, bc1, bc2, bc3, bc4, bc5 );
+            mergeAlongZ( bc0, bc1, bc2, bc3, bc4, bc5 );
 
-            // Merge
-            uint b0 = bp0 + (bc0<<2);
-            uint b1 = bp1 + (bc1<<2);
-            uint b2 = bp2 + (bc2<<2);
-            uint b3 = bp3 + (bc3<<2);
-            uint b4 = bp4 + (bc4<<2);
-            uint b5 = bp5 + (bc5<<2);
-            // Store for next iteration
-            bp0 = bc0;
-            bp1 = bc1;
-            bp2 = bc2;
-            bp3 = bc3;
-            bp4 = bc4;
-            bp5 = bc5;
-
-            // build case
-            uint m0_1 = b0 + (b1<<4);
-            uint m1_1 = b1 + (b2<<4);
-            uint m2_1 = b2 + (b3<<4);
-            uint m3_1 = b3 + (b4<<4);
-            uint m4_1 = b4 + (b5<<4);
-            sh[ 0*160 + threadIdx.x ] = m0_1;
-            sh[ 1*160 + threadIdx.x ] = m1_1;
-            sh[ 2*160 + threadIdx.x ] = m2_1;
-            sh[ 3*160 + threadIdx.x ] = m3_1;
-            sh[ 4*160 + threadIdx.x ] = m4_1;
+#if __CUDA_ARCH__ >= 300
+            bc0 = bc0 + (((uint)__shfl_down( (int)bc0, 1 ))<<1u);
+            bc1 = bc1 + (((uint)__shfl_down( (int)bc1, 1 ))<<1u);
+            bc2 = bc2 + (((uint)__shfl_down( (int)bc2, 1 ))<<1u);
+            bc3 = bc3 + (((uint)__shfl_down( (int)bc3, 1 ))<<1u);
+            bc4 = bc4 + (((uint)__shfl_down( (int)bc4, 1 ))<<1u);
+#else
+            sh[ 0*160 + threadIdx.x ] = bc0;
+            sh[ 1*160 + threadIdx.x ] = bc1;
+            sh[ 2*160 + threadIdx.x ] = bc2;
+            sh[ 3*160 + threadIdx.x ] = bc3;
+            sh[ 4*160 + threadIdx.x ] = bc4;
+            if( wt < 31 ) {
+                bc0 = (bc0 + (sh[ 0*160 + threadIdx.x + 1]<<1));
+                bc1 = (bc1 + (sh[ 1*160 + threadIdx.x + 1]<<1));
+                bc2 = (bc2 + (sh[ 2*160 + threadIdx.x + 1]<<1));
+                bc3 = (bc3 + (sh[ 3*160 + threadIdx.x + 1]<<1));
+                bc4 = (bc4 + (sh[ 4*160 + threadIdx.x + 1]<<1));
+            }
+#endif
 
             uint ix_o_1 = 160*w + 32*q + wt;
 
@@ -238,26 +217,24 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
             //if( xmask_tri && ymask_tri && wt < 31 ) {
             uint sum;
             if( mask != 0u ) {
-                m0_1 += (sh[ 0*160 + threadIdx.x + 1]<<1);
-                m1_1 += (sh[ 1*160 + threadIdx.x + 1]<<1);
-                m2_1 += (sh[ 2*160 + threadIdx.x + 1]<<1);
-                m3_1 += (sh[ 3*160 + threadIdx.x + 1]<<1);
-                m4_1 += (sh[ 4*160 + threadIdx.x + 1]<<1);
-
+                /*                bc0 = bc0 + (sh[ 0*160 + threadIdx.x + 1]<<1);
+                bc1 = bc1 + (sh[ 1*160 + threadIdx.x + 1]<<1);
+                bc2 = bc2 + (sh[ 2*160 + threadIdx.x + 1]<<1);
+                bc3 = bc3 + (sh[ 3*160 + threadIdx.x + 1]<<1);
+                bc4 = bc4 + (sh[ 4*160 + threadIdx.x + 1]<<1);
+*/
                 // cnt_a_X = %00000000 0vv00ttt
-
-
                 uint cnt_a_0;
                 uint cnt_a_1;
                 uint cnt_a_2;
                 uint cnt_a_3;
                 uint cnt_a_4;
                 if( mask == ~0x0u && 5 < chunk_cells.z ) {
-                    cnt_a_0 = a.case_vtxtricnt[ m0_1 ];
-                    cnt_a_1 = a.case_vtxtricnt[ m1_1 ];
-                    cnt_a_2 = a.case_vtxtricnt[ m2_1 ];
-                    cnt_a_3 = a.case_vtxtricnt[ m3_1 ];
-                    cnt_a_4 = a.case_vtxtricnt[ m4_1 ];
+                    cnt_a_0 = a.case_vtxtricnt[ bc0 ];
+                    cnt_a_1 = a.case_vtxtricnt[ bc1 ];
+                    cnt_a_2 = a.case_vtxtricnt[ bc2 ];
+                    cnt_a_3 = a.case_vtxtricnt[ bc3 ];
+                    cnt_a_4 = a.case_vtxtricnt[ bc4 ];
                 }
                 else {
                     uint tmp_mask;
@@ -271,34 +248,34 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
                         tmp_mask = tmp_mask & 0xf0u;
                         mask = 0x00u;
                     }
-                    cnt_a_0 = a.case_vtxtricnt[ m0_1 ] & tmp_mask;
+                    cnt_a_0 = a.case_vtxtricnt[ bc0 ] & tmp_mask;
 
                     tmp_mask = mask;
                     if( 1 == chunk_cells.z ) {
                         tmp_mask = tmp_mask & 0xf0u;
                         mask = 0x00u;
                     }
-                    cnt_a_1 = a.case_vtxtricnt[ m1_1 ] & tmp_mask;
+                    cnt_a_1 = a.case_vtxtricnt[ bc1 ] & tmp_mask;
 
                     tmp_mask = mask;
                     if( 2 == chunk_cells.z ) {
                         tmp_mask = tmp_mask & 0xf0u;
                         mask = 0x00u;
                     }
-                    cnt_a_2 = a.case_vtxtricnt[ m2_1 ] & tmp_mask;
+                    cnt_a_2 = a.case_vtxtricnt[ bc2 ] & tmp_mask;
 
                     tmp_mask = mask;
                     if( 3 == chunk_cells.z ) {
                         tmp_mask = tmp_mask & 0xf0u;
                         mask = 0x00u;
                     }
-                    cnt_a_3 = a.case_vtxtricnt[ m3_1 ] & tmp_mask;
+                    cnt_a_3 = a.case_vtxtricnt[ bc3 ] & tmp_mask;
 
                     tmp_mask = mask;
                     if( 4 == chunk_cells.z ) {
                         tmp_mask = tmp_mask & 0xf0u;
                     }
-                    cnt_a_4 = a.case_vtxtricnt[ m4_1 ] & tmp_mask;
+                    cnt_a_4 = a.case_vtxtricnt[ bc4 ] & tmp_mask;
                 }
 
 
@@ -328,11 +305,11 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
 
 
                     //   a.tri_pyramid_level_a_d[ 5*160*blockIdx.x + ix_o_1 ] = make_uint4( s0_1, s1_1, s2_1, s3_1 );
-                    a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 0 ] = m0_1;
-                    a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 1 ] = m1_1;
-                    a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 2 ] = m2_1;
-                    a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 3 ] = m3_1;
-                    a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 4 ] = m4_1;
+                    a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 0 ] = bc0;
+                    a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 1 ] = bc1;
+                    a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 2 ] = bc2;
+                    a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 3 ] = bc3;
+                    a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 4 ] = bc4;
                 }
             }
             else {

@@ -514,6 +514,11 @@ render( float t,
     case CUDA_INDEXED:
         vertices  = cu_i_isurf->vertices();
         triangles = cu_i_isurf->triangles();
+#if 0
+        std::cerr << vertices << " vertices \n";
+        std::cerr << triangles << " triangles\n";
+        exit( EXIT_SUCCESS );
+#endif
 
         if( vertices_vbo_n < triangles ) {
             CUDA_CHECKED( cudaStreamSynchronize( stream ) );
