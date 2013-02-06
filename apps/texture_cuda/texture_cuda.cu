@@ -466,6 +466,10 @@ render( float t,
 
     iso = 0.5f;//0.48f*(sin(t)+1.f)+0.01f;
 
+    if( t > 2 ) {
+        exit( EXIT_SUCCESS );
+    }
+
     // build histopyramid
     if( profile ) {
         cudaEventRecord( pre_buildup, stream );

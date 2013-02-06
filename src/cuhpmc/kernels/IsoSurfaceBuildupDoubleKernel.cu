@@ -36,8 +36,8 @@ void
 __launch_bounds__( 160 )
 hp5_buildup_level_double( hp5_buildup_level_double_args a )
 {
-    __shared__ uint sb[160];
-    __shared__ uint sh[800];
+    volatile __shared__ uint sb[160];
+    volatile __shared__ uint sh[800];
     const uint w  = threadIdx.x / 32;
     const uint w5 = 5*w;
     const uint wt = threadIdx.x % 32;

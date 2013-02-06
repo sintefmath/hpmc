@@ -17,7 +17,6 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
 #include <iostream>
 #include <stdexcept>
 #include <cuhpmc/Constants.hpp>
@@ -29,7 +28,7 @@
 namespace cuhpmc {
 
 template<class T>
-__device__
+static __device__ __inline__
 void
 fetchFromField( uint& bp0, uint& bp1, uint& bp2, uint& bp3, uint& bp4, uint& bp5,
                 const T* ptr,
@@ -58,7 +57,7 @@ fetchFromField( uint& bp0, uint& bp1, uint& bp2, uint& bp3, uint& bp4, uint& bp5
     bp5 = ptr[ offset_tmp ] < iso ? 1 : 0;
 }
 
-__device__
+static __device__ __inline__
 void
 mergeAlongY( uint& bp0, uint& bp1, uint& bp2, uint& bp3, uint& bp4, uint& bp5,
              uint& bc0, uint& bc1, uint& bc2, uint& bc3, uint& bc4, uint& bc5 )
@@ -71,7 +70,7 @@ mergeAlongY( uint& bp0, uint& bp1, uint& bp2, uint& bp3, uint& bp4, uint& bp5,
     uint t5 = bp5 + (bc5<<2); bp5 = bc5; bc5 = t5;
 }
 
-__device__
+static __device__ __inline__
 void
 mergeAlongZ( uint& bc0, uint& bc1, uint& bc2, uint& bc3, uint& bc4, uint& bc5 )
 {
@@ -82,12 +81,7 @@ mergeAlongZ( uint& bc0, uint& bc1, uint& bc2, uint& bc3, uint& bc4, uint& bc5 )
     bc4 = bc4 + (bc5<<4);
 }
 
-__device__
-void
-mergeAlongX( uint& bc0, uint& bc1, uint& bc2, uint& bc3, uint& bc4 )
-{
 
-}
 
 template<class T>
 struct hp5_buildup_base_indexed_triple_gb_args
@@ -110,13 +104,6 @@ struct hp5_buildup_base_indexed_triple_gb_args
     const unsigned char* __restrict__   case_vtxtricnt;
 };
 
-static __device__ __inline__ uint __shfl_down(uint var, unsigned int delta, int width=warpSize) {
-    uint ret, c;
-    c = ((warpSize-width) << 8) | 0x1f;
-    asm volatile ("shfl.down.b32 %0, %1, %2, %3;" : "=r"(ret) : "r"(var), "r"(delta), "r"(c));
-    return ret;
-}
-
 template<class T>
 __global__
 void
@@ -124,7 +111,12 @@ __launch_bounds__( 160 )
 hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a )
 {
     volatile __shared__ uint sb[800];
-    volatile __shared__ uint sh[1601];
+#if __CUDA_ARCH__ >= 300
+    // we use warp shuffle instead and require less memory.
+    __shared__ uint sh[160];
+#else
+    volatile __shared__ uint sh[800];
+#endif
 
     const int w  = threadIdx.x / 32;                                   // warp
     const int wt = threadIdx.x % 32;                                   // thread-in-warp
@@ -175,11 +167,11 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
             mergeAlongZ( bc0, bc1, bc2, bc3, bc4, bc5 );
 
 #if __CUDA_ARCH__ >= 300
-            bc0 = bc0 + (((uint)__shfl_down( (int)bc0, 1 ))<<1u);
-            bc1 = bc1 + (((uint)__shfl_down( (int)bc1, 1 ))<<1u);
-            bc2 = bc2 + (((uint)__shfl_down( (int)bc2, 1 ))<<1u);
-            bc3 = bc3 + (((uint)__shfl_down( (int)bc3, 1 ))<<1u);
-            bc4 = bc4 + (((uint)__shfl_down( (int)bc4, 1 ))<<1u);
+            bc0 = bc0 + ( (uint)__shfl_down( (int)bc0, 1 )<<1u);
+            bc1 = bc1 + ( (uint)__shfl_down( (int)bc1, 1 )<<1u);
+            bc2 = bc2 + ( (uint)__shfl_down( (int)bc2, 1 )<<1u);
+            bc3 = bc3 + ( (uint)__shfl_down( (int)bc3, 1 )<<1u);
+            bc4 = bc4 + ( (uint)__shfl_down( (int)bc4, 1 )<<1u);
 #else
             sh[ 0*160 + threadIdx.x ] = bc0;
             sh[ 1*160 + threadIdx.x ] = bc1;
@@ -187,18 +179,17 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
             sh[ 3*160 + threadIdx.x ] = bc3;
             sh[ 4*160 + threadIdx.x ] = bc4;
             if( wt < 31 ) {
-                bc0 = (bc0 + (sh[ 0*160 + threadIdx.x + 1]<<1));
-                bc1 = (bc1 + (sh[ 1*160 + threadIdx.x + 1]<<1));
-                bc2 = (bc2 + (sh[ 2*160 + threadIdx.x + 1]<<1));
-                bc3 = (bc3 + (sh[ 3*160 + threadIdx.x + 1]<<1));
-                bc4 = (bc4 + (sh[ 4*160 + threadIdx.x + 1]<<1));
+                bc0 = bc0 + (sh[ 0*160 + threadIdx.x + 1]<<1);
+                bc1 = bc1 + (sh[ 1*160 + threadIdx.x + 1]<<1);
+                bc2 = bc2 + (sh[ 2*160 + threadIdx.x + 1]<<1);
+                bc3 = bc3 + (sh[ 3*160 + threadIdx.x + 1]<<1);
+                bc4 = bc4 + (sh[ 4*160 + threadIdx.x + 1]<<1);
             }
 #endif
-
             uint ix_o_1 = 160*w + 32*q + wt;
-
             uint mask;
-            if(  (wt <= 30) &&
+            uint sum;
+            if(  (wt < 31) &&
                  (wt <= chunk_cells.x ) &&
                  (q <= chunk_cells.y ) )
             {
@@ -212,17 +203,7 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
             else {
                 mask = 0x0u;
             }
-
-            // merge from right
-            //if( xmask_tri && ymask_tri && wt < 31 ) {
-            uint sum;
             if( mask != 0u ) {
-                /*                bc0 = bc0 + (sh[ 0*160 + threadIdx.x + 1]<<1);
-                bc1 = bc1 + (sh[ 1*160 + threadIdx.x + 1]<<1);
-                bc2 = bc2 + (sh[ 2*160 + threadIdx.x + 1]<<1);
-                bc3 = bc3 + (sh[ 3*160 + threadIdx.x + 1]<<1);
-                bc4 = bc4 + (sh[ 4*160 + threadIdx.x + 1]<<1);
-*/
                 // cnt_a_X = %00000000 0vv00ttt
                 uint cnt_a_0;
                 uint cnt_a_1;
@@ -277,8 +258,6 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
                     }
                     cnt_a_4 = a.case_vtxtricnt[ bc4 ] & tmp_mask;
                 }
-
-
                 sum = cnt_a_0
                         + cnt_a_1
                         + cnt_a_2
@@ -325,6 +304,7 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
         }
     }
     // second reduction
+    // sh_i = 160*w + 5*wt;
     uint cnt_b_0 = sb[ sh_i + 0 ];
     uint cnt_b_1 = sb[ sh_i + 1 ];
     uint cnt_b_2 = sb[ sh_i + 2 ];
