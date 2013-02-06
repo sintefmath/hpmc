@@ -20,7 +20,6 @@
 #include <stdexcept>
 #include <cuda.h>
 #include <builtin_types.h>
-#include <cassert>
 #include <cuhpmc/Constants.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
 #include <cuhpmc/IsoSurfaceIndexed.hpp>
@@ -107,76 +106,60 @@ TriangleIndicesKernel( uint* __restrict__                output_d,
     uint triangle = 256*blockIdx.x + threadIdx.x;
 
     if( triangle < triangles ) {
-
-        uint key = triangle;
         uint pos = 0;
-        int l = 0;
-        for(; l<max_level-3; l++) {
-            uint4 val = hp5_d[ hp5_const_offsets[l] + pos ];
-            downTraversalStep( pos, key, val );
-        }
-        for(; l<max_level-1; l++) {
-            // l1 -> fetch lower byte of 16-bit value
-            uchar4 val_ = ((uchar4*)(hp5_d + hp5_const_offsets[ l ]))[pos];
-            uint4 val = make_uint4( val_.x,
-                                    val_.y,
-                                    val_.z,
-                                    val_.w );
-            /*
-            hp5_d[ hp5_const_offsets[ max_level-2 ] + pos ];
-            val.x = val.x & 0xffu;
-            val.y = val.y & 0xffu;
-            val.z = val.z & 0xffu;
-            val.w = val.w & 0xffu;*/
-            downTraversalStep( pos, key, val );
-        }
-        {   // l0 -> fetch lower nibble of 8-bit value
-            short1 val_ = ((short1*)(hp5_d + hp5_const_offsets[ max_level-1 ] ))[ pos ];
-            uint4 val = make_uint4( val_.x & 0xfu,
-                                    (val_.x>>4) & 0xfu,
-                                    (val_.x>>8) & 0xfu,
-                                    (val_.x>>12) & 0xfu );
-
-           // uint4 val = hp5_d[ hp5_const_offsets[ max_level-1 ] + pos ];
-            val.x = val.x & 0xfu;
-            val.y = val.y & 0xfu;
-            val.z = val.z & 0xfu;
-            val.w = val.w & 0xfu;
-            downTraversalStep( pos, key, val );
-        }
-        uint rem = 3*key;
-
-        uint mc_case = mc_cases_d[pos];
-
-        // Determine strides for cell shift
-        uint in_chunk_ix = pos % 800;
-        uint shift_x, shift_y, shift_z;
-        if( ((in_chunk_ix / 5)%32) == 30 ) {
-            shift_x = 800 - 30*5;
-        }
-        else {
-            shift_x = 5;
-        }
-        if( (in_chunk_ix/5)/32 == 4 ) {
-            shift_y = shift_y_chunk;
-        }
-        else {
-            shift_y = 5*32;
-        }
-        if( in_chunk_ix%5 == 4 ) {
-            shift_z = shift_z_chunk;
-        }
-        else {
-            shift_z = 1;
+        uint isec_off;
+        {
+            uint key = triangle;
+            for(int l=0; l<max_level-3; l++) {
+                uint4 val = hp5_d[ hp5_const_offsets[l] + pos ];
+                downTraversalStep( pos, key, val );
+            }
+            for(int l=max_level-3; l<max_level-1; l++) {
+                // l1 -> fetch lower byte of 16-bit value
+                uchar4 val_ = ((uchar4*)(hp5_d + hp5_const_offsets[ l ]))[pos];
+                uint4 val = make_uint4( val_.x,
+                                        val_.y,
+                                        val_.z,
+                                        val_.w );
+                downTraversalStep( pos, key, val );
+            }
+            {   // l0 -> fetch lower nibble of 8-bit value
+                short1 val_ = ((short1*)(hp5_d + hp5_const_offsets[ max_level-1 ] ))[ pos ];
+                uint4 val = make_uint4( val_.x & 0xfu,
+                                        (val_.x>>4) & 0xfu,
+                                        (val_.x>>8) & 0xfu,
+                                        (val_.x>>12) & 0xfu );
+                val.x = val.x & 0xfu;
+                val.y = val.y & 0xfu;
+                val.z = val.z & 0xfu;
+                val.w = val.w & 0xfu;
+                downTraversalStep( pos, key, val );
+            }
+            uint mc_case = mc_cases_d[pos];
+            isec_off = 16*mc_case + 3*key;
         }
 
+        uint shift_mask = 0;
+        {   // Determine if shifts cross chunk boundaries
+            uint in_chunk_ix = pos % 800;
+            if( ((in_chunk_ix / 5)%32) == 30 ) { shift_mask = 1; }
+            if( (in_chunk_ix/5)/32 == 4 ) { shift_mask += 2;  }
+            if( in_chunk_ix%5 == 4 ) {  shift_mask += 4; }
+        }
 
         for(uint i=0; i<3; i++) {
-            uint edge_flags = case_indexed_intersect_edge_d[ 16*mc_case + rem + i ];
+            uint edge_flags = case_indexed_intersect_edge_d[ isec_off + i ];
             uint adjusted_pos = pos;
-            if( edge_flags&(1<<5) ) { adjusted_pos += shift_x; }
-            if( edge_flags&(1<<6) ) { adjusted_pos += shift_y; }
-            if( edge_flags&(1<<7) ) { adjusted_pos += shift_z; }
+
+            if( edge_flags&(1<<5) ) {
+                adjusted_pos += ( shift_mask&0x1 ? 800-30*5 : 5 );
+            }
+            if( edge_flags&(1<<6) ) {
+                adjusted_pos += ( shift_mask&0x2 ? shift_y_chunk : 5*32 );
+            }
+            if( edge_flags&(1<<7) ) {
+                adjusted_pos += ( shift_mask&0x4 ? shift_z_chunk : 1 );
+            }
 
             uint cell_case = mc_cases_d[ adjusted_pos ];
 
@@ -188,12 +171,10 @@ TriangleIndicesKernel( uint* __restrict__                output_d,
             // Extract edge bit for this one
             const uint this_vertex_mask = edge_flags & 0x16;
             // Mask out edge intersections before the current intersection
-            assert( this_vertex_mask & vertices );
 
             const uint lower_vertices = vertices & (this_vertex_mask-1);
 
             uint index = __popc( lower_vertices );
-            assert( index < 3 );
 
             // -- Up-traversal step 0
             {
@@ -237,7 +218,7 @@ TriangleIndicesKernel( uint* __restrict__                output_d,
                 if( component > 1 ) { index += val.y; }
                 if( component > 0 ) { index += val.x; }
             }
-            for(l=max_level-4; l>=0; l--) {
+            for(int l=max_level-4; l>=0; l--) {
                 uint component = adjusted_pos % 5;
                 adjusted_pos = adjusted_pos/5;
                 uint4 val = vertex_pyramid_d[ hp5_const_offsets[l] + adjusted_pos ];
