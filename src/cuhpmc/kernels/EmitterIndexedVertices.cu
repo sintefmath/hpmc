@@ -18,7 +18,6 @@
  */
 #include <iostream>
 #include <stdexcept>
-#include <assert.h>
 #include <cuda.h>
 #include <builtin_types.h>
 #include <cuhpmc/Constants.hpp>
@@ -26,45 +25,9 @@
 #include <cuhpmc/IsoSurfaceIndexed.hpp>
 #include <cuhpmc/EmitterTriIdx.hpp>
 #include <cuhpmc/CUDAErrorException.hpp>
+#include "HP5Traversal.hpp"
 
 namespace cuhpmc {
-
-// constant mem size: 64kb, cache working set: 8kb.
-// Count + pad :  1+3 elements :    16 bytes :    16 bytes
-// Level 0     :    4 elements :    16 bytes :    32 bytes
-// Level 1     :   20 elements :    80 bytes :   112 bytes
-// Level 2     :  100 elements :   400 bytes :   512 bytes
-// Level 3     :  500 elements :  2000 bytes :  2112 bytes
-// Level 4     : 2500 elements : 10000 bytes : 12112 bytes
-// Levels 0-2: 32*4*4=512 bytes :
-// Level  3:
-
-__constant__ uint  hp5_const_offsets[32];
-
-
-__device__
-__forceinline__
-void
-downTraversalStep( uint& pos, uint& key, const uint4& val )
-{
-    pos *= 5;
-    if( val.x <= key ) {
-        pos++;
-        key -=val.x;
-        if( val.y <= key ) {
-            pos++;
-            key-=val.y;
-            if( val.z <= key ) {
-                pos++;
-                key-=val.z;
-                if( val.w <= key ) {
-                    pos++;
-                    key-=val.w;
-                }
-            }
-        }
-    }
-}
 
 __device__
 __forceinline__
@@ -109,38 +72,9 @@ VertexN3FV3Fkernel( float* __restrict__               output_d,
 
     uint vertex = 256*blockIdx.x + threadIdx.x;
     if( vertex < vertices ) {
-
+        uint pos;
         uint key = vertex;
-        uint pos = 0;
-        int l = 0;
-        for(; l<max_level-3; l++) {
-            uint4 val = vertex_pyramid_d[ hp5_const_offsets[l] + pos ];
-            downTraversalStep( pos, key, val );
-        }
-        {   // second reduction is 4 x 8 bits = 32 bits
-            uchar4 val_ = ((uchar4*)(vertex_pyramid_d + hp5_const_offsets[ max_level-3 ]))[pos];
-            uint4 val = make_uint4( val_.x,
-                                    val_.y,
-                                    val_.z,
-                                    val_.w );
-            downTraversalStep( pos, key, val );
-        }
-        {   // first reduction is 4 x 4 bits = 16 bits
-            short1 val_ = ((short1*)(vertex_pyramid_d + hp5_const_offsets[ max_level-2 ] ))[ pos ];
-            uint4 val = make_uint4( (val_.x   )  & 0xfu,
-                                    (val_.x>>4)  & 0xfu,
-                                    (val_.x>>8)  & 0xfu,
-                                    (val_.x>>12) & 0xfu );
-            downTraversalStep( pos, key, val );
-        }
-        {   // base layer is 4 x 2 bits = 8 bits
-            unsigned char val_ = ((unsigned char*)(vertex_pyramid_d + hp5_const_offsets[ max_level-1 ] ))[ pos ];
-            uint4 val = make_uint4( (val_   ) & 0x3u,
-                                    (val_>>2) & 0x3u,
-                                    (val_>>4) & 0x3u,
-                                    (val_>>6) & 0x3u );
-            downTraversalStep( pos, key, val );
-        }
+        vertexPyramidDownTraverse( pos, key, max_level, vertex_pyramid_d );
 
         int3 i0;
         uint mc_case;
@@ -216,7 +150,7 @@ EmitterTriIdx::invokeVertexN3FV3Fkernel( float* output_d, uint vtx, cudaStream_t
     if( vtx == 0 ) {
         return;
     }
-    cudaMemcpyToSymbolAsync( hp5_const_offsets,
+    cudaMemcpyToSymbolAsync( vertex_hp5_offsets,
                              m_iso_surface->hp5LevelOffsetsDev(),
                              sizeof(uint)*32,
                              0,

@@ -133,6 +133,110 @@ static __constant__ uint  vertex_hp5_offsets[32];
 static
 __device__
 __inline__
+void
+vertexPyramidDownTraverse( uint& pos,
+                             uint& key,
+                             const uint max_level,
+                             const uint4* vertex_pyramid_d )
+{
+    int l = 0;
+    for(; l<max_level-3; l++) {
+        uint4 val = vertex_pyramid_d[ vertex_hp5_offsets[l] + pos ];
+        pos *= 5;
+        if( val.x <= key ) {
+            pos++;
+            key -=val.x;
+            if( val.y <= key ) {
+                pos++;
+                key-=val.y;
+                if( val.z <= key ) {
+                    pos++;
+                    key-=val.z;
+                    if( val.w <= key ) {
+                        pos++;
+                        key-=val.w;
+                    }
+                }
+            }
+        }
+    }
+    {   // second reduction is 4 x 8 bits = 32 bits
+        uchar4 val_ = ((uchar4*)(vertex_pyramid_d + vertex_hp5_offsets[ max_level-3 ]))[pos];
+        uint4 val = make_uint4( val_.x,
+                                val_.y,
+                                val_.z,
+                                val_.w );
+        pos *= 5;
+        if( val.x <= key ) {
+            pos++;
+            key -=val.x;
+            if( val.y <= key ) {
+                pos++;
+                key-=val.y;
+                if( val.z <= key ) {
+                    pos++;
+                    key-=val.z;
+                    if( val.w <= key ) {
+                        pos++;
+                        key-=val.w;
+                    }
+                }
+            }
+        }
+    }
+    {   // first reduction is 4 x 4 bits = 16 bits
+        short1 val_ = ((short1*)(vertex_pyramid_d + vertex_hp5_offsets[ max_level-2 ] ))[ pos ];
+        uint4 val = make_uint4( (val_.x   )  & 0xfu,
+                                (val_.x>>4)  & 0xfu,
+                                (val_.x>>8)  & 0xfu,
+                                (val_.x>>12) & 0xfu );
+        pos *= 5;
+        if( val.x <= key ) {
+            pos++;
+            key -=val.x;
+            if( val.y <= key ) {
+                pos++;
+                key-=val.y;
+                if( val.z <= key ) {
+                    pos++;
+                    key-=val.z;
+                    if( val.w <= key ) {
+                        pos++;
+                        key-=val.w;
+                    }
+                }
+            }
+        }
+    }
+    {   // base layer is 4 x 2 bits = 8 bits
+        unsigned char val_ = ((unsigned char*)(vertex_pyramid_d + vertex_hp5_offsets[ max_level-1 ] ))[ pos ];
+        uint4 val = make_uint4( (val_   ) & 0x3u,
+                                (val_>>2) & 0x3u,
+                                (val_>>4) & 0x3u,
+                                (val_>>6) & 0x3u );
+        pos *= 5;
+        if( val.x <= key ) {
+            pos++;
+            key -=val.x;
+            if( val.y <= key ) {
+                pos++;
+                key-=val.y;
+                if( val.z <= key ) {
+                    pos++;
+                    key-=val.z;
+                    if( val.w <= key ) {
+                        pos++;
+                        key-=val.w;
+                    }
+                }
+            }
+        }    }
+
+}
+
+static
+__device__
+__inline__
 uint
 vertexPyramidUpTraverse( uint adjusted_pos,
                          const uint max_level,
