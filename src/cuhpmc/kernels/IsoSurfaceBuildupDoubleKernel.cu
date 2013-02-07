@@ -87,17 +87,17 @@ IsoSurfaceIndexed::invokeDoubleBuildup( uint level_a, cudaStream_t stream )
     uint gs = (m_hp5_level_sizes[level_a-1]+799)/800;
     uint bs = 160;
     hp5_buildup_level_double_args args;
-    args.hp_c_d = m_triangle_pyramid_d + m_hp5_offsets[ level_a-2 ];
-    args.sb_c_d = m_triangle_sideband_d + m_hp5_offsets[level_a-2];
-    args.hp_b_d = m_triangle_pyramid_d + m_hp5_offsets[level_a-1];
-    args.sb_a_d = m_triangle_sideband_d + m_hp5_offsets[level_a];
+    args.hp_c_d = m_triangle_pyramid_d + m_triangle_hp5_offsets[ level_a-2 ];
+    args.sb_c_d = m_triangle_sideband_d + m_triangle_hp5_offsets[level_a-2];
+    args.hp_b_d = m_triangle_pyramid_d + m_triangle_hp5_offsets[level_a-1];
+    args.sb_a_d = m_triangle_sideband_d + m_triangle_hp5_offsets[level_a];
     args.N_b    = m_hp5_level_sizes[level_a-1];
     hp5_buildup_level_double<<<gs,bs,0,stream>>>( args );
 
-    args.hp_c_d = m_vertex_pyramid_d + m_hp5_offsets[ level_a-2 ];
-    args.sb_c_d = m_vertex_sideband_d + m_hp5_offsets[level_a-2];
-    args.hp_b_d = m_vertex_pyramid_d + m_hp5_offsets[level_a-1];
-    args.sb_a_d = m_vertex_sideband_d + m_hp5_offsets[level_a];
+    args.hp_c_d = m_vertex_pyramid_d + m_triangle_hp5_offsets[ level_a-2 ];
+    args.sb_c_d = m_vertex_sideband_d + m_triangle_hp5_offsets[level_a-2];
+    args.hp_b_d = m_vertex_pyramid_d + m_triangle_hp5_offsets[level_a-1];
+    args.sb_a_d = m_vertex_sideband_d + m_triangle_hp5_offsets[level_a];
     args.N_b    = m_hp5_level_sizes[level_a-1];
     hp5_buildup_level_double<<<gs,bs,0,stream>>>( args );
 

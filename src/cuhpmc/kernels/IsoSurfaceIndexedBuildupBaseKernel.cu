@@ -389,14 +389,14 @@ IsoSurfaceIndexed::invokeBaseBuildup( cudaStream_t stream )
     if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
 
         hp5_buildup_base_indexed_triple_gb_args<unsigned char> args;
-        args.tri_pyramid_level_a_d  = m_triangle_pyramid_d + m_hp5_offsets[ m_hp5_levels-1 ];
-        args.vtx_pyramid_level_a_d  = m_vertex_pyramid_d   + m_hp5_offsets[ m_hp5_levels-1 ];
-        args.tri_pyramid_level_b_d  = m_triangle_pyramid_d + m_hp5_offsets[ m_hp5_levels-2 ];
-        args.vtx_pyramid_level_b_d  = m_vertex_pyramid_d   + m_hp5_offsets[ m_hp5_levels-2 ];
-        args.tri_pyramid_level_c_d  = m_triangle_pyramid_d + m_hp5_offsets[ m_hp5_levels-3 ];
-        args.vtx_pyramid_level_c_d  = m_vertex_pyramid_d   + m_hp5_offsets[ m_hp5_levels-3 ];
-        args.tri_sideband_level_c_d = m_triangle_sideband_d + m_hp5_offsets[ m_hp5_levels-3 ];
-        args.vtx_sideband_level_c_d = m_vertex_sideband_d + m_hp5_offsets[ m_hp5_levels-3 ];
+        args.tri_pyramid_level_a_d  = m_triangle_pyramid_d + m_triangle_hp5_offsets[ m_hp5_levels-1 ];
+        args.vtx_pyramid_level_a_d  = m_vertex_pyramid_d   + m_triangle_hp5_offsets[ m_hp5_levels-1 ];
+        args.tri_pyramid_level_b_d  = m_triangle_pyramid_d + m_triangle_hp5_offsets[ m_hp5_levels-2 ];
+        args.vtx_pyramid_level_b_d  = m_vertex_pyramid_d   + m_triangle_hp5_offsets[ m_hp5_levels-2 ];
+        args.tri_pyramid_level_c_d  = m_triangle_pyramid_d + m_triangle_hp5_offsets[ m_hp5_levels-3 ];
+        args.vtx_pyramid_level_c_d  = m_vertex_pyramid_d   + m_triangle_hp5_offsets[ m_hp5_levels-3 ];
+        args.tri_sideband_level_c_d = m_triangle_sideband_d + m_triangle_hp5_offsets[ m_hp5_levels-3 ];
+        args.vtx_sideband_level_c_d = m_vertex_sideband_d + m_triangle_hp5_offsets[ m_hp5_levels-3 ];
         args.d_case             = m_case_d;
         args.iso                = 256.f*m_iso;
         args.cells              = make_int3( field->width()-1,

@@ -43,7 +43,7 @@ public:
 
     /** Returns the size of the hp5 histopyramid. */
     uint
-    hp5Size() const { return m_hp5_size; }
+    hp5Size() const { return m_triangle_hp5_size; }
 
     uint
     hp5Levels() const { return m_hp5_levels; }
@@ -52,7 +52,7 @@ public:
     hp5Chunks() const { return m_hp5_chunks; }
 
     const std::vector<uint>&
-    hp5Offsets() const { return m_hp5_offsets; }
+    hp5Offsets() const { return m_triangle_hp5_offsets; }
 
     const uint3
     cells() const { return m_cells; }
@@ -76,7 +76,10 @@ public:
 
     /** Returns a device pointer to an array of hp5 level offsets. */
     const uint*
-    hp5LevelOffsetsDev() const { return m_hp5_offsets_d; }
+    triangleHP5OffsetsDev() const { return m_triangle_hp5_offsets_d; }
+
+    const uint*
+    vertexHP5OffsetsDev() const { return m_vertex_hp5_offsets_d; }
 
     const unsigned char*
     mcCasesDev() const { return m_case_d; }
@@ -92,17 +95,22 @@ protected:
     uint                m_hp5_first_single_level;
     uint                m_hp5_first_double_level;
     uint                m_hp5_first_triple_level;
-    uint                m_hp5_size;
     std::vector<uint>   m_hp5_level_sizes;
-    std::vector<uint>   m_hp5_offsets;
 
+    uint                m_triangle_hp5_size;
+    std::vector<uint>   m_triangle_hp5_offsets;
+    uint*               m_triangle_hp5_offsets_d;
+
+    uint                m_vertex_hp5_size;
+    std::vector<uint>   m_vertex_hp5_offsets;
+    uint*               m_vertex_hp5_offsets_d;
 
     cudaEvent_t         m_buildup_event;
 
     uint*               m_vertex_triangle_top_h;    // populated using zero-copy
     uint*               m_vertex_triangle_top_d;
 
-    uint*               m_hp5_offsets_d;
+
     uint4*              m_triangle_pyramid_d;
     uint4*              m_vertex_pyramid_d;
     uint*               m_triangle_sideband_d;     // sideband buffer

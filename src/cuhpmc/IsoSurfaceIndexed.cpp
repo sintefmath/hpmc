@@ -72,7 +72,6 @@ IsoSurfaceIndexed::IsoSurfaceIndexed( Field* field )
 
 
     m_hp5_level_sizes.resize( m_hp5_levels );
-    m_hp5_offsets.resize( m_hp5_levels );
 
     uint N = m_hp5_input_N;
     for(uint l=0; l<m_hp5_levels; l++) {
@@ -80,22 +79,46 @@ IsoSurfaceIndexed::IsoSurfaceIndexed( Field* field )
         N = (N+4)/5;
     }
 
-    m_hp5_offsets[0] = 1;
-    m_hp5_offsets[1] = 2;
-    m_hp5_offsets[2] = 7;
-    m_hp5_size = 32;
+    // --- triangle HP layout
+    // Apex has a fixed layout
+    m_triangle_hp5_offsets.resize( m_hp5_levels );
+    m_triangle_hp5_offsets[0] = 1;
+    m_triangle_hp5_offsets[1] = 2;
+    m_triangle_hp5_offsets[2] = 7;
+    m_triangle_hp5_size = 32;
     for(uint l=m_hp5_first_single_level; l<m_hp5_first_double_level; l++ ) {
-        m_hp5_offsets[l] = m_hp5_size;
-        m_hp5_size += 5*32*((m_hp5_level_sizes[l]+159)/160);
+        m_triangle_hp5_offsets[l] = m_triangle_hp5_size;
+        m_triangle_hp5_size += 5*32*((m_hp5_level_sizes[l]+159)/160);
     }
     for(uint l=m_hp5_first_double_level; l<m_hp5_first_triple_level; l++ ) {
-        m_hp5_offsets[l] = m_hp5_size;
-        m_hp5_size += 5*32*((m_hp5_level_sizes[l]+799)/800);
+        m_triangle_hp5_offsets[l] = m_triangle_hp5_size;
+        m_triangle_hp5_size += 5*32*((m_hp5_level_sizes[l]+799)/800);
     }
     for(uint l=m_hp5_first_triple_level; l<m_hp5_levels; l++ ) {
-        m_hp5_offsets[l] = m_hp5_size;
-        m_hp5_size += 5*32*((m_hp5_level_sizes[l]+799)/800);
+        m_triangle_hp5_offsets[l] = m_triangle_hp5_size;
+        m_triangle_hp5_size += 5*32*((m_hp5_level_sizes[l]+799)/800);
     }
+
+    // --- vertex HP layout
+    m_vertex_hp5_offsets.resize( m_hp5_levels );
+    m_vertex_hp5_offsets[0] = 1;
+    m_vertex_hp5_offsets[1] = 2;
+    m_vertex_hp5_offsets[2] = 7;
+    m_vertex_hp5_size = 32;
+    for(uint l=m_hp5_first_single_level; l<m_hp5_first_double_level; l++ ) {
+        m_vertex_hp5_offsets[l] = m_vertex_hp5_size;
+        m_vertex_hp5_size += 5*32*((m_hp5_level_sizes[l]+159)/160);
+    }
+    for(uint l=m_hp5_first_double_level; l<m_hp5_first_triple_level; l++ ) {
+        m_vertex_hp5_offsets[l] = m_vertex_hp5_size;
+        m_vertex_hp5_size += 5*32*((m_hp5_level_sizes[l]+799)/800);
+    }
+    for(uint l=m_hp5_first_triple_level; l<m_hp5_levels; l++ ) {
+        m_vertex_hp5_offsets[l] = m_vertex_hp5_size;
+        m_vertex_hp5_size += 5*32*((m_hp5_level_sizes[l]+799)/800);
+    }
+
+
 
     std::cerr << "    cells = [" << m_cells.x << ", " << m_cells.y << ", " << m_cells.z << "]\n";
     std::cerr << "    chunks = [" << m_hp5_chunks.x << ", " << m_hp5_chunks.y << ", " << m_hp5_chunks.z << "]\n";
@@ -117,17 +140,17 @@ IsoSurfaceIndexed::IsoSurfaceIndexed( Field* field )
             std::cerr << "triple";
         }
         std::cerr << ", size=" << m_hp5_level_sizes[i];
-        std::cerr << ", offset=" << m_hp5_offsets[i] << "\n";
+        std::cerr << ", offset=" << m_triangle_hp5_offsets[i] << "\n";
     }
 
     cudaError_t error;
 
     // --- set up sideband memory
-    error = cudaMalloc( (void**)&m_triangle_sideband_d, sizeof(uint)*m_hp5_size );
+    error = cudaMalloc( (void**)&m_triangle_sideband_d, sizeof(uint)*m_triangle_hp5_size );
     if( error != cudaSuccess ) {
         throw CUDAErrorException( error );
     }
-    error = cudaMalloc( (void**)&m_vertex_sideband_d, sizeof(uint)*m_hp5_size );
+    error = cudaMalloc( (void**)&m_vertex_sideband_d, sizeof(uint)*m_triangle_hp5_size );
     if( error != cudaSuccess ) {
         throw CUDAErrorException( error );
     }
@@ -150,14 +173,18 @@ IsoSurfaceIndexed::IsoSurfaceIndexed( Field* field )
     }
 
 
-    cudaMalloc( (void**)&m_triangle_pyramid_d, 4*sizeof(uint)* m_hp5_size );
-    cudaMalloc( (void**)&m_vertex_pyramid_d, 4*sizeof(uint)*m_hp5_size );
+    cudaMalloc( (void**)&m_triangle_pyramid_d, 4*sizeof(uint)* m_triangle_hp5_size );
+    cudaMalloc( (void**)&m_vertex_pyramid_d, 4*sizeof(uint)*m_triangle_hp5_size );
     cudaMalloc( (void**)&m_case_d, m_hp5_input_N );
 
-    cudaMalloc( (void**)&m_hp5_offsets_d, sizeof(uint)*32 );
-    cudaMemset( m_hp5_offsets_d, 0, sizeof(uint)*32 );
-    cudaMemcpy( m_hp5_offsets_d, m_hp5_offsets.data(), sizeof(uint)*m_hp5_offsets.size(), cudaMemcpyHostToDevice );
+    cudaMalloc( (void**)&m_triangle_hp5_offsets_d, sizeof(uint)*32 );
+    cudaMemset( m_triangle_hp5_offsets_d, 0, sizeof(uint)*32 );
+    cudaMemcpy( m_triangle_hp5_offsets_d, m_triangle_hp5_offsets.data(), sizeof(uint)*m_triangle_hp5_offsets.size(), cudaMemcpyHostToDevice );
 
+
+    cudaMalloc( (void**)&m_vertex_hp5_offsets_d, sizeof(uint)*32 );
+    cudaMemset( m_vertex_hp5_offsets_d, 0, sizeof(uint)*32 );
+    cudaMemcpy( m_vertex_hp5_offsets_d, m_vertex_hp5_offsets.data(), sizeof(uint)*m_vertex_hp5_offsets.size(), cudaMemcpyHostToDevice );
 
 
 }

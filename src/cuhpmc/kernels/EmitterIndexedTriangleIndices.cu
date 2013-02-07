@@ -110,13 +110,13 @@ EmitterTriIdx::invokeTriangleIndicesKernel( unsigned int* output_d, uint tris, c
     }
     //tris = tris;
     cudaMemcpyToSymbolAsync( triangle_hp5_offsets,
-                             m_iso_surface->hp5LevelOffsetsDev(),
+                             m_iso_surface->triangleHP5OffsetsDev(),
                              sizeof(uint)*32,
                              0,
                              cudaMemcpyDeviceToDevice,
                              stream );
     cudaMemcpyToSymbolAsync( vertex_hp5_offsets,
-                             m_iso_surface->hp5LevelOffsetsDev(),
+                             m_iso_surface->vertexHP5OffsetsDev(),
                              sizeof(uint)*32,
                              0,
                              cudaMemcpyDeviceToDevice,

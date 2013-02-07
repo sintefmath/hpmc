@@ -151,7 +151,7 @@ EmitterTriIdx::invokeVertexN3FV3Fkernel( float* output_d, uint vtx, cudaStream_t
         return;
     }
     cudaMemcpyToSymbolAsync( vertex_hp5_offsets,
-                             m_iso_surface->hp5LevelOffsetsDev(),
+                             m_iso_surface->triangleHP5OffsetsDev(),
                              sizeof(uint)*32,
                              0,
                              cudaMemcpyDeviceToDevice,
