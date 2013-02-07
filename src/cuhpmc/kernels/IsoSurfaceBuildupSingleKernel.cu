@@ -16,6 +16,8 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <cuhpmc/IsoSurface.hpp>
+#include <cuhpmc/IsoSurfaceIndexed.hpp>
 
 namespace cuhpmc {
 
@@ -49,11 +51,11 @@ hp5_buildup_level_single( hp5_buildup_level_single_args a /*uint4* __restrict__ 
 }
 
 void
-run_hp5_buildup_level_single( uint4*        hp_b_d,
-                              uint*         sb_b_d,
-                              const uint*   sb_a_d,
-                              const uint    N_b,
-                              cudaStream_t  stream )
+IsoSurface::invokeSingleBuildup( uint4*        hp_b_d,
+                                 uint*         sb_b_d,
+                                 const uint*   sb_a_d,
+                                 const uint    N_b,
+                                 cudaStream_t  stream )
 {
     uint gs = (N_b+159)/160;
     uint bs = 160;
@@ -65,15 +67,27 @@ run_hp5_buildup_level_single( uint4*        hp_b_d,
     args.N_b    = N_b;
 
     hp5_buildup_level_single<<<gs,bs,0,stream>>>( args );
+}
 
-    /*
-    hp5_buildup_level_single
-            <<< (hp5_level_sizes[i-1]+159)/160, 160 >>>
-            ( hp_d + hp5_offsets[ i-1 ],
-              hp5_sb_d + hp5_offsets[ i-1 ],
-              hp5_sb_d + hp5_offsets[ i   ],
-              hp5_level_sizes[i-1] );
- */
+void
+IsoSurfaceIndexed::invokeSingleBuildup( uint level_a, cudaStream_t stream )
+{
+    uint gs = (m_hp5_level_sizes[level_a-1]+159)/160;
+    uint bs = 160;
+
+    hp5_buildup_level_single_args args;
+    args.hp_b_d = m_triangle_pyramid_d  + m_hp5_offsets[ level_a-1 ];
+    args.sb_b_d = m_triangle_sideband_d + m_hp5_offsets[ level_a-1 ];
+    args.sb_a_d = m_triangle_sideband_d + m_hp5_offsets[ level_a   ];
+    args.N_b    = m_hp5_level_sizes[level_a-1];
+    hp5_buildup_level_single<<<gs,bs,0,stream>>>( args );
+
+    args.hp_b_d = m_vertex_pyramid_d  + m_hp5_offsets[ level_a-1 ];
+    args.sb_b_d = m_vertex_sideband_d + m_hp5_offsets[ level_a-1 ];
+    args.sb_a_d = m_vertex_sideband_d + m_hp5_offsets[ level_a   ];
+    args.N_b    = m_hp5_level_sizes[level_a-1];
+    hp5_buildup_level_single<<<gs,bs,0,stream>>>( args );
+
 }
 
 

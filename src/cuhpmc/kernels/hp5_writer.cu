@@ -37,6 +37,53 @@ __constant__ uint4 hp5_hp_const[528]; // = 2112/4
 __constant__ uint  hp5_const_offsets[32];
 
 
+__device__
+void
+downTraversalStep( uint& pos, uint& key, const uint4& val )
+{
+    pos *= 5;
+    if( val.x <= key ) {
+        pos++;
+        key -=val.x;
+        if( val.y <= key ) {
+            pos++;
+            key-=val.y;
+            if( val.z <= key ) {
+                pos++;
+                key-=val.z;
+                if( val.w <= key ) {
+                    pos++;
+                    key-=val.w;
+                }
+            }
+        }
+    }
+}
+
+__device__
+void
+hp5PosToCellPos( uint3&                             i0,
+                 uint&                              mc_case,
+                 const uint                         pos,
+                 const uint3&                       chunks,
+                 const unsigned char* __restrict__  mc_cases_d )
+{
+    uint c_lix = pos / 800u;
+    uint t_lix = pos % 800u;
+    uint3 ci = make_uint3( 31*( c_lix % chunks.x ),
+                           5*( (c_lix/chunks.x) % chunks.y ),
+                           5*( (c_lix/chunks.x) / chunks.y ) );
+
+    // calc 3D pos within cunk
+    i0 = make_uint3( ci.x + ((t_lix / 5)%32),
+                     ci.y + ((t_lix / 5)/32),
+                     ci.z + ( t_lix%5 ) );
+
+    mc_case = mc_cases_d[ pos ];
+}
+
+
+
 template<bool use_texfetch,bool use_constmem>
 __global__
 void
@@ -64,26 +111,9 @@ dummy_writer( float* __restrict__               output_d,
         if( use_constmem ) {
             for(l=0; l<4; l++ ) {
                 uint4 val = hp5_hp_const[ hp5_const_offsets[l] + pos ];
-                pos *= 5;
-                if( val.x <= key ) {
-                    pos++;
-                    key -=val.x;
-                    if( val.y <= key ) {
-                        pos++;
-                        key-=val.y;
-                        if( val.z <= key ) {
-                            pos++;
-                            key-=val.z;
-                            if( val.w <= key ) {
-                                pos++;
-                                key-=val.w;
-                            }
-                        }
-                    }
-                }
+                downTraversalStep( pos, key, val );
             }
         }
-
         for(; l<max_level; l++) {
             uint4 val;
             if(use_texfetch) {
@@ -92,41 +122,13 @@ dummy_writer( float* __restrict__               output_d,
             else {
                 val = hp5_d[ hp5_const_offsets[l] + pos ];
             }
-            pos *= 5;
-
-            if( val.x <= key ) {
-                pos++;
-                key -=val.x;
-                if( val.y <= key ) {
-                    pos++;
-                    key-=val.y;
-                    if( val.z <= key ) {
-                        pos++;
-                        key-=val.z;
-                        if( val.w <= key ) {
-                            pos++;
-                            key-=val.w;
-                        }
-                    }
-                }
-            }
+            downTraversalStep( pos, key, val );
         }
         uint rem = 3*key;
 
-        // calc 3D grid pos of hp5 chunk
-        uint c_lix = pos / 800u;
-        uint t_lix = pos % 800u;
-        uint3 ci = make_uint3( 31*( c_lix % chunks.x ),
-                               5*( (c_lix/chunks.x) % chunks.y ),
-                               5*( (c_lix/chunks.x) / chunks.y ) );
-
-        // calc 3D pos within cunk
-        uint3 i0 = make_uint3( ci.x + ((t_lix / 5)%32),
-                               ci.y + ((t_lix / 5)/32),
-                               ci.z + ( t_lix%5 ) );
-
-        uint mc_case = mc_cases_d[ pos ];
-
+        uint3 i0;
+        uint mc_case;
+        hp5PosToCellPos( i0, mc_case, pos, chunks, mc_cases_d );
         for(uint i=0; i<3; i++ ) {
             uint isec = case_intersect_edge_d[ 16*mc_case + rem + i ];
 
@@ -172,6 +174,9 @@ dummy_writer( float* __restrict__               output_d,
     }
 }
 
+
+
+
 void
 run_dummy_writer( float*                output_d,
                   const uint4*          hp5_pyramid_d,
@@ -181,15 +186,16 @@ run_dummy_writer( float*                output_d,
                   const uint3           hp5_chunks,
                   const uint            hp5_size,
                   const uint            hp5_max_level,
-                  const uint            triangles,
+                  const uint            vertices,
                   const float           iso,
                   const unsigned char*  field_d,
                   const uint3           field_size,
                   cudaStream_t          stream )
 {
-    if( triangles == 0 ) {
+    if( vertices == 0 ) {
         return;
     }
+    const uint triangles = vertices/3;
 
     bool use_constmem = true;
     bool use_texfetch = true;

@@ -17,17 +17,37 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#include <cuda.h>
-#include <builtin_types.h>
+#include <cuhpmc/cuhpmc.hpp>
+#include <cuhpmc/NonCopyable.hpp>
 
 namespace cuhpmc {
 
-void
-run_hp5_buildup_level_single( uint4*        hp_b_d,
-                              uint*         sb_b_d,
-                              const uint*   sb_a_d,
-                              const uint    N_b,
-                              cudaStream_t  stream );
+class EmitterTriIdx : public NonCopyable
+{
+public:
+    EmitterTriIdx( IsoSurfaceIndexed* iso_surface );
+
+    virtual
+    ~EmitterTriIdx();
+
+    void
+    writeVerticesInterleavedN3FV3F( float* vertex_buffer_d, uint vertices, cudaStream_t stream );
+
+    void
+    writeTriangleIndices( unsigned int* indices_uint3_d, uint triangles, cudaStream_t stream  );
+
+protected:
+    Constants*          m_constants;
+    Field*              m_field;
+    IsoSurfaceIndexed*  m_iso_surface;
+
+    void
+    invokeTriangleIndicesKernel( unsigned int* output_d, uint tris, cudaStream_t stream );
+
+    void
+    invokeVertexN3FV3Fkernel( float* output_d, uint vtx, cudaStream_t stream );
+
+};
+
 
 } // of namespace cuhpmc

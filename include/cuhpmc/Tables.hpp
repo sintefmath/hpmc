@@ -18,7 +18,7 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 namespace cuhpmc {
-    extern int edge_table[12][2];
+    extern int edge_table[12][3];
     extern int vertex_count[256];
     extern int triangle_table[256][16];
 } // of namespace cuhpmc

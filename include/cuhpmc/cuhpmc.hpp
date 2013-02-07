@@ -33,6 +33,9 @@ class IsoSurface;
 class IsoSurfaceCUDA;
 class IsoSurfaceGL;
 
+class IsoSurfaceIndexed;
+
+class EmitterTriIdx;
 class EmitterTriVtx;
 class EmitterTriVtxCUDA;
 class GLWriter;

@@ -20,19 +20,20 @@
 #include <vector>
 #include <cuhpmc/cuhpmc.hpp>
 #include <cuhpmc/NonCopyable.hpp>
+#include <cuhpmc/IsoSurface.hpp>
 
 namespace cuhpmc {
 
-class IsoSurface : public NonCopyable
+class IsoSurfaceIndexed : public NonCopyable
 {
 public:
+    IsoSurfaceIndexed( Field* field );
 
     virtual
-    ~IsoSurface( );
+    ~IsoSurfaceIndexed( );
 
-    virtual
     void
-    build( float iso, cudaStream_t stream ) = 0;
+    build( float iso, cudaStream_t stream );
 
     Constants*
     constants() { return m_constants; }
@@ -56,17 +57,29 @@ public:
     const uint3
     cells() const { return m_cells; }
 
-    /** Returns the number of vertices in the mesh.
-     *
-     * Since surface is not indexed, the number of vertices is three times the
-     * number of triangles.
-     */
+    uint
+    triangles();
+
     uint
     vertices();
 
     /** Return the ISO value for which this surface was most recently built. */
     float
     iso() const { return m_iso; }
+
+    /** Returns a device pointer to the hp5 histopyramid data. */
+    const uint4*
+    trianglePyramidDev() const { return m_triangle_pyramid_d; }
+
+    const uint4*
+    vertexPyramidDev() const { return m_vertex_pyramid_d; }
+
+    /** Returns a device pointer to an array of hp5 level offsets. */
+    const uint*
+    hp5LevelOffsetsDev() const { return m_hp5_offsets_d; }
+
+    const unsigned char*
+    mcCasesDev() const { return m_case_d; }
 
 protected:
     Constants*          m_constants;
@@ -83,54 +96,30 @@ protected:
     std::vector<uint>   m_hp5_level_sizes;
     std::vector<uint>   m_hp5_offsets;
 
-    uint*               m_hp5_sb_d;     // sideband buffer
 
     cudaEvent_t         m_buildup_event;
 
-    uint*               m_hp5_top_h;    // populated using zero-copy
-    uint*               m_hp5_top_d;
+    uint*               m_vertex_triangle_top_h;    // populated using zero-copy
+    uint*               m_vertex_triangle_top_d;
 
-    IsoSurface( Field* field );
-
-    void
-    buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, cudaStream_t stream );
-
-    void
-    invokeBaseBuildup( uint4*               hp_c_d,
-                       uint*                sb_c_d,
-                       const uint           hp2_N,
-                       uint4*               hp_b_d,
-                       uint4*               hp_a_d,
-                       unsigned char*       case_d,
-                       const float          iso,
-                       const uint3          chunks,
-                       const unsigned char* field,
-                       const uint3          field_size,
-                       const unsigned char *case_vtxcnt,
-                       cudaStream_t         stream );
-
-    /** Build levels b and c from sideband of a. */
-    void
-    invokeDoubleBuildup( uint4*         pyramid_c_d,
-                         uint*          sideband_c_d,
-                         uint4*         pyramid_b_d,
-                         const uint*    sideband_a_d,
-                         const uint     N_b,
-                         cudaStream_t   stream );
+    uint*               m_hp5_offsets_d;
+    uint4*              m_triangle_pyramid_d;
+    uint4*              m_vertex_pyramid_d;
+    uint*               m_triangle_sideband_d;     // sideband buffer
+    uint*               m_vertex_sideband_d;     // sideband buffer
+    unsigned char*      m_case_d;
 
     void
-    invokeSingleBuildup( uint4*        hp_b_d,
-                         uint*         sb_b_d,
-                         const uint*   sb_a_d,
-                         const uint    N_b,
-                         cudaStream_t  stream );
+    invokeBaseBuildup( cudaStream_t stream );
 
     void
-    invokeApexBuildup( uint*         sum_d,
-                       uint4*        hp_dcb_d,
-                       const uint*   sb_a_d,
-                       const uint    N_a,
-                       cudaStream_t  stream );
+    invokeDoubleBuildup( uint level_a, cudaStream_t stream );
+
+    void
+    invokeSingleBuildup( uint level_a, cudaStream_t stream );
+
+    void
+    invokeApexBuildup( cudaStream_t stream );
 
 };
 

@@ -19,15 +19,41 @@ FIND_PACKAGE( OpenGL REQUIRED )
 FIND_PACKAGE( GLUT REQUIRED )
 FIND_PACKAGE( GLEW REQUIRED )
 IF( ENABLE_CUHPMC )
+    OPTION( HPMC_CUDA_GEN_SM20 "Generate compute capability 2.0 code" ON )
+    OPTION( HPMC_CUDA_GEN_SM30 "Generate compute capability 3.0 code" ON )
+    OPTION( HPMC_CUDA_GEN_FWD  "Generate beyond 3.0 compatible ptx code" OFF )
+    OPTION( HPMC_CUDA_DEBUG_GDB "Add flags thad cuda-gdb wants" OFF )
+    OPTION( HPMC_CUDA_VERBOSE_PTXAS "Let ptxas be verbose about resource usage" ON )
     FIND_PACKAGE( CUDA REQUIRED )
     SET( HPMC_NVCC_OPTIONS )
+
+    IF( HPMC_CUDA_VERBOSE_PTXAS )
+        SET( CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --ptxas-options=-v"  )
+    ENDIF( HPMC_CUDA_VERBOSE_PTXAS )
+
+    IF( HPMC_CUDA_DEBUG_GDB )
+        SET( CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -g -G -lineinfo " )
+    ENDIF( HPMC_CUDA_DEBUG_GDB )
+
+    IF( HPMC_CUDA_GEN_SM20 )
+        SET( CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode=arch=compute_20,code=sm_20" )
+    ENDIF( HPMC_CUDA_GEN_SM20 )
+
+    IF( HPMC_CUDA_GEN_SM30 )
+        SET( CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode=arch=compute_30,code=sm_30" )
+    ENDIF( HPMC_CUDA_GEN_SM30 )
+
+    IF( HPMC_CUDA_GEN_FWD )
+        SET( CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode=arch=compute_30,code=compute_30" )
+    ENDIF( HPMC_CUDA_GEN_FWD )
+
 ENDIF( ENABLE_CUHPMC )
 
 
 IF( UNIX )
     SET( CMAKE_CXX_FLAGS "-O2 ${CMAKE_CXX_FLAGS}" )
     IF( ENABLE_DEBUG )
-        SET( CMAKE_CXX_FLAGS "-DDEBUG ${CMAKE_CXX_FLAGS}" )
+        SET( CMAKE_CXX_FLAGS "-DDEBUG -g1 ${CMAKE_CXX_FLAGS}" )
     ENDIF( ENABLE_DEBUG )
     IF( SINTEF_INTERNAL )
         SET( CMAKE_CXX_FLAGS "-DSINTEF_INTERNAL ${CMAKE_CXX_FLAGS}" )
@@ -36,6 +62,7 @@ ENDIF( UNIX )
 IF( WIN32 )
     ADD_DEFINITIONS( -D_USE_MATH_DEFINES )
 ENDIF( WIN32 )
+
 
 INCLUDE_DIRECTORIES( "./include" )
 
