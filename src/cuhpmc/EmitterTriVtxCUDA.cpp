@@ -18,6 +18,7 @@
  */
 
 #include <cuda.h>
+#include <iostream>
 #include <builtin_types.h>
 #include <vector_functions.h>
 #include <cuhpmc/Constants.hpp>
@@ -33,7 +34,7 @@ EmitterTriVtxCUDA::EmitterTriVtxCUDA( IsoSurface* iso_surface )
 {}
 
 void
-EmitterTriVtxCUDA::writeInterleavedNormalPosition( float* interleaved_buffer_d, uint triangles, cudaStream_t stream )
+EmitterTriVtxCUDA::writeInterleavedNormalPosition( float* interleaved_buffer_d, uint vertices, cudaStream_t stream )
 {
     if( IsoSurfaceCUDA* iso_surface = dynamic_cast<IsoSurfaceCUDA*>( m_iso_surface ) ) {
 
@@ -47,7 +48,7 @@ EmitterTriVtxCUDA::writeInterleavedNormalPosition( float* interleaved_buffer_d, 
                               iso_surface->hp5Chunks(),
                               iso_surface->hp5Size(),
                               iso_surface->hp5Levels(),
-                              triangles,
+                              vertices,
                               iso_surface->iso(),
                               field->fieldDev(),
                               make_uint3( field->width(),

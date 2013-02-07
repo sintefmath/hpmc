@@ -33,12 +33,34 @@
 #include <cuhpmc/IsoSurfaceGL.hpp>
 #include <cuhpmc/EmitterTriVtxCUDA.hpp>
 #include <cuhpmc/EmitterTriVtxGL.hpp>
+#include <cuhpmc/IsoSurfaceIndexed.hpp>
+#include <cuhpmc/EmitterTriIdx.hpp>
 
 namespace resources {
     extern std::string phong_vbo_vs_420;
     extern std::string phong_fs_130;
     extern std::string cayley_fetch;
 }
+
+#define CHECK_CUDA do { \
+    cudaError_t error = cudaGetLastError(); \
+    if( error != cudaSuccess ) { \
+        std::cerr << __FILE__ << '@' << __LINE__ \
+                  << ": " << cudaGetErrorString( error )  \
+                  << std::endl; \
+        exit( EXIT_FAILURE ); \
+    } \
+} while(0)
+
+#define CUDA_CHECKED(a) do { \
+    cudaError_t error = (a); \
+    if( error != cudaSuccess ) { \
+        std::cerr << __FILE__ << '@' << __LINE__ \
+                  << ": " << cudaGetErrorString( error )  \
+                  << std::endl; \
+        exit( EXIT_FAILURE ); \
+    } \
+} while(0)
 
 using std::cerr;
 using std::endl;
@@ -48,16 +70,47 @@ int                             volume_size_y       = 128;
 int                             volume_size_z       = 128;
 float                           iso                 = 0.5f;
 
-cuhpmc::Constants*              constants           = NULL;
-unsigned char*                  field_data_dev      = NULL;
-cuhpmc::Field*          field               = NULL;
-cuhpmc::IsoSurface*     iso_surface         = NULL;
-cuhpmc::EmitterTriVtx*         writer              = NULL;
+enum Mode {
+    OPENGL_NON_INDEXED,
+    CUDA_NON_INDEXED,
+    CUDA_INDEXED
 
-GLuint                          surface_vao         = 0;
-GLuint                          surface_vbo         = 0;
-GLsizei                         surface_vbo_n       = 0;
-cudaGraphicsResource*           surface_resource    = NULL;
+};
+Mode                            mode                = CUDA_INDEXED;
+
+unsigned char*                  field_data_dev      = NULL;
+
+// mode OpenGL non-indexed
+cuhpmc::Constants*              gl_n_constants           = NULL;
+cuhpmc::FieldGLBufferUChar*     gl_n_field               = NULL;
+cuhpmc::IsoSurfaceGL*           gl_n_isurf         = NULL;
+cuhpmc::GLWriter*               gl_n_writer              = NULL;
+
+
+// mode CUDA non-indexed
+cuhpmc::Constants*              cu_n_constants           = NULL;
+cuhpmc::FieldGlobalMemUChar*    cu_n_field               = NULL;
+cuhpmc::IsoSurfaceCUDA*         cu_n_isurf         = NULL;
+cuhpmc::EmitterTriVtxCUDA*      cu_n_writer              = NULL;
+
+
+// mode CUDA indexed
+cuhpmc::Constants*              cu_i_constants           = NULL;
+cuhpmc::FieldGlobalMemUChar*    cu_i_field               = NULL;
+cuhpmc::IsoSurfaceIndexed*      cu_i_isurf           = NULL;
+cuhpmc::EmitterTriIdx*          cu_i_writer         = NULL;
+
+
+GLuint                          vertices_vao         = 0;
+GLuint                          vertices_vbo         = 0;
+GLsizei                         vertices_vbo_n       = 0;
+cudaGraphicsResource*           vertices_resource    = NULL;
+
+GLuint                          triangles_vao         = 0;
+GLuint                          triangles_vbo         = 0;
+GLsizei                         triangles_vbo_n       = 0;
+cudaGraphicsResource*           triangles_resource    = NULL;
+
 cudaStream_t                    stream              = 0;
 float*                          surface_cuda_d      = NULL;
 cudaEvent_t                     pre_buildup         = 0;
@@ -71,7 +124,8 @@ float                           write_ms            = 0.f;
 uint                            runs                = 0;
 
 bool                            profile             = false;
-bool                            gl_direct_draw      = false;
+
+
 GLuint                          gl_field_buffer     = 0;
 
 
@@ -137,10 +191,9 @@ printHelp( const std::string& appname )
     cerr << endl;
     cerr << "Options specific for this app:" << std::endl;
     cerr << "    --device <int>  Specify which CUDA device to use." << endl;
-    cerr << "    --gl-direct     Enable direct rendering in OpenGL (i.e., do not store" << endl;
-    cerr << "                    geomtry in a buffer)." << endl;
-    cerr << "    --no-gl-direct  Disable direct rendering in OpenGL (i.e., geometry is stored" << endl;
-    cerr << "                    in a buffer by CUDA, which OpenGL then renders)." << endl;
+    cerr << "    --opengl-nonindexed  Direct OpenGL rendering, extracting 3 x tris vertices." << endl;
+    cerr << "    --cuda-nonindexed    Use CUDA to extract 3 x tris vertices." << endl;
+    cerr << "    --cuda-indexed       Use CUDA to extract vertices and triangle indices." << endl;
     cerr << "    --profile       Enable profiling of CUDA passes." << endl;
     cerr << "    --no-profile    Disable profiling of CUDA passes." << endl;
     cerr << endl;
@@ -159,12 +212,16 @@ init( int argc, char** argv )
             device = atoi( argv[i+1] );
             eat = 2;
         }
-        else if( (arg == "--gl-direct" ) ) {
-            gl_direct_draw = true;
+        else if( (arg == "--opengl-nonindexed" ) ) {
+            mode = OPENGL_NON_INDEXED;
             eat = 1;
         }
-        else if( (arg == "--no-gl-direct" ) ) {
-            gl_direct_draw = false;
+        else if( (arg == "--cuda-nonindexed" ) ) {
+            mode = CUDA_NON_INDEXED;
+            eat = 1;
+        }
+        else if( (arg == "--cuda-indexed" ) ) {
+            mode = CUDA_INDEXED;
             eat = 1;
         }
         else if( (arg == "--profile" ) ) {
@@ -210,6 +267,7 @@ init( int argc, char** argv )
         exit( EXIT_FAILURE );
     }
 
+
     int device_n = 0;
     cudaGetDeviceCount( &device_n );
     if( device_n == 0 ) {
@@ -240,11 +298,22 @@ init( int argc, char** argv )
         std::cerr << "Illegal CUDA device " << device << endl;
         exit( EXIT_FAILURE );
     }
+    //    cudaSetDevice( device );
     cudaGLSetGLDevice( device );
-//    cudaSetDevice( device );
+    switch( mode ) {
+    case OPENGL_NON_INDEXED:
+        std::cerr << "Mode is OpenGL non-indexed." << std::endl;
+        break;
+    case CUDA_NON_INDEXED:
+        std::cerr << "Mode is CUDA non-indexed." << std::endl;
+        break;
+    case CUDA_INDEXED:
+        std::cerr << "Mode is CUDA indexed." << std::endl;
+        break;
+    }
 
-    // create field
 
+    // --- create field --------------------------------------------------------
     cudaMalloc( (void**)&field_data_dev, sizeof(unsigned char)*volume_size_x*volume_size_y*volume_size_z );
     bumpyCayley<unsigned char, true, false>
             <<< dim3( (volume_size_x+31)/32, volume_size_z*((volume_size_y+31)/32)), dim3(32,32) >>>
@@ -255,26 +324,112 @@ init( int argc, char** argv )
               volume_size_x,
               volume_size_x*volume_size_y,
               (volume_size_y+31)/32 );
+    if( mode == OPENGL_NON_INDEXED ) {
+        // we need the field as an OpenGL buffer
+        // copy scalar field generated by cuda into host mem
+        std::vector<unsigned char> foo( volume_size_x*volume_size_y*volume_size_z );
+        cudaMemcpy( foo.data(), field_data_dev, foo.size(), cudaMemcpyDeviceToHost );
+        cudaFree( field_data_dev );
+        field_data_dev = NULL;
 
-    std::vector<unsigned char> moo( volume_size_x*volume_size_y*volume_size_z );
-    cudaMemcpy( moo.data(), field_data_dev, moo.size(), cudaMemcpyDeviceToHost );
+        // copy scalar field into an opengl buffer
+        glGenBuffers( 1, &gl_field_buffer );
+        glBindBuffer( GL_TEXTURE_BUFFER, gl_field_buffer );
+        glBufferData( GL_TEXTURE_BUFFER,
+                      foo.size(),
+                      foo.data(),
+                      GL_STATIC_DRAW );
+        glBindBuffer( GL_TEXTURE_BUFFER, 0 );
+    }
 
-    // Generate OpenGL VBO that we lend to CUDA
-    surface_vbo_n = 100;
-    glGenBuffers( 1, &surface_vbo );
-    glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
-    glBufferData( GL_ARRAY_BUFFER,
-                  3*2*3*sizeof(GLfloat)*surface_vbo_n,
-                  NULL,
-                  GL_DYNAMIC_COPY );
-    glGenVertexArrays( 1, &surface_vao );
-    glBindVertexArray( surface_vao );
-    glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*6, (void*)(3*sizeof(GLfloat)) );
-    glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*6, NULL );
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glBindVertexArray( 0);
-    glBindBuffer( GL_ARRAY_BUFFER, 0 );
+    // --- If CUDA generates geometry, create GL buffers to write into
+    if( (mode == CUDA_NON_INDEXED) || (mode== CUDA_INDEXED ) ) {
+
+        vertices_vbo_n = 100;
+        glGenBuffers( 1, &vertices_vbo );
+        glBindBuffer( GL_ARRAY_BUFFER, vertices_vbo );
+        glBufferData( GL_ARRAY_BUFFER, 3*2*sizeof(GLfloat)*vertices_vbo_n, NULL, GL_DYNAMIC_COPY );
+        glGenVertexArrays( 1, &vertices_vao );
+        glBindVertexArray( vertices_vao );
+        glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*6, (void*)(3*sizeof(GLfloat)) );
+        glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*6, NULL );
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glBindVertexArray( 0);
+        glBindBuffer( GL_ARRAY_BUFFER, 0 );
+
+        CUDA_CHECKED( cudaGraphicsGLRegisterBuffer( &vertices_resource, vertices_vbo, cudaGraphicsRegisterFlagsWriteDiscard ) );
+    }
+
+    if( mode == CUDA_INDEXED ) {
+        triangles_vbo_n = 100;
+
+        glGenBuffers( 1, &triangles_vbo );
+        glBindBuffer( GL_ARRAY_BUFFER, triangles_vbo );
+        glBufferData( GL_ARRAY_BUFFER, 3*2*sizeof(GLfloat)*triangles_vbo_n, NULL, GL_DYNAMIC_COPY );
+        glGenVertexArrays( 1, &triangles_vao );
+        glBindVertexArray( triangles_vao );
+        glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*6, (void*)(3*sizeof(GLfloat)) );
+        glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*6, NULL );
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glBindVertexArray( 0);
+        glBindBuffer( GL_ARRAY_BUFFER, 0 );
+
+        CUDA_CHECKED( cudaGraphicsGLRegisterBuffer( &triangles_resource, triangles_vbo, cudaGraphicsRegisterFlagsWriteDiscard ) );
+    }
+
+    // --- Create shader program to render the VBO results ---------------------
+    if( (mode == CUDA_NON_INDEXED) || (mode == CUDA_INDEXED) ) {
+        GLuint vs = compileShader( resources::phong_vbo_vs_420, GL_VERTEX_SHADER );
+        GLuint fs = compileShader( resources::phong_fs_130, GL_FRAGMENT_SHADER );
+        vbo_render_prog = glCreateProgram();
+        glAttachShader( vbo_render_prog, vs );
+        glAttachShader( vbo_render_prog, fs );
+        linkProgram( vbo_render_prog, "phong_vbo" );
+        vbo_render_loc_pm = glGetUniformLocation( vbo_render_prog, "PM" );
+        vbo_render_loc_nm = glGetUniformLocation( vbo_render_prog, "NM" );
+        vbo_render_loc_col = glGetUniformLocation( vbo_render_prog, "color" );
+    }
+
+    // --- create CUHPMC objectes ----------------------------------------------
+    switch( mode ) {
+    case OPENGL_NON_INDEXED:
+        // create CUHPMC objects
+        gl_n_constants = new cuhpmc::Constants();
+        gl_n_field = new cuhpmc::FieldGLBufferUChar( gl_n_constants,
+                                                     gl_field_buffer,
+                                                     volume_size_x,
+                                                     volume_size_y,
+                                                     volume_size_z );
+        gl_n_isurf = new cuhpmc::IsoSurfaceGL( gl_n_field );
+        gl_n_writer = new cuhpmc::GLWriter( gl_n_isurf );
+        break;
+    case CUDA_NON_INDEXED:
+        // create CUHPMC objects
+        cu_n_constants = new cuhpmc::Constants();
+        cu_n_field = new cuhpmc::FieldGlobalMemUChar( cu_n_constants,
+                                                      field_data_dev,
+                                                      volume_size_x,
+                                                      volume_size_y,
+                                                      volume_size_z );
+        cu_n_isurf = new cuhpmc::IsoSurfaceCUDA( cu_n_field );
+        cu_n_writer = new cuhpmc::EmitterTriVtxCUDA( cu_n_isurf );
+        break;
+
+    case CUDA_INDEXED:
+        // create CUHPMC objects
+        cu_i_constants = new cuhpmc::Constants();
+        cu_i_field = new cuhpmc::FieldGlobalMemUChar( cu_i_constants,
+                                                 field_data_dev,
+                                                 volume_size_x,
+                                                 volume_size_y,
+                                                 volume_size_z );
+
+        cu_i_isurf = new cuhpmc::IsoSurfaceIndexed( cu_i_field );
+        cu_i_writer = new cuhpmc::EmitterTriIdx( cu_i_isurf );
+        break;
+    }
 
     cudaStreamCreate( &stream );
 
@@ -286,57 +441,6 @@ init( int argc, char** argv )
         cudaEventCreate( &post_write );
     }
 
-    cudaGraphicsGLRegisterBuffer( &surface_resource,
-                                  surface_vbo,
-                                  cudaGraphicsRegisterFlagsWriteDiscard );
-
-
-    constants = new cuhpmc::Constants();
-    if( gl_direct_draw ) {
-        std::vector<unsigned char> foo( volume_size_x*volume_size_y*volume_size_z );
-        cudaMemcpy( foo.data(), field_data_dev, foo.size(), cudaMemcpyDeviceToHost );
-        cudaFree( field_data_dev );
-        field_data_dev = NULL;
-
-        glGenBuffers( 1, &gl_field_buffer );
-        glBindBuffer( GL_TEXTURE_BUFFER, gl_field_buffer );
-        glBufferData( GL_TEXTURE_BUFFER,
-                      foo.size(),
-                      foo.data(),
-                      GL_STATIC_DRAW );
-        glBindBuffer( GL_TEXTURE_BUFFER, 0 );
-
-        field = new cuhpmc::FieldGLBufferUChar( constants,
-                                                gl_field_buffer,
-                                                volume_size_x,
-                                                volume_size_y,
-                                                volume_size_z );
-
-        cuhpmc::IsoSurfaceGL* srf = new cuhpmc::IsoSurfaceGL( field );
-        iso_surface = srf;
-        writer = new cuhpmc::GLWriter( srf );
-    }
-    else {
-        field = new cuhpmc::FieldGlobalMemUChar( constants,
-                                                 field_data_dev,
-                                                 volume_size_x,
-                                                 volume_size_y,
-                                                 volume_size_z );
-        iso_surface = new cuhpmc::IsoSurfaceCUDA( field );
-        writer = new cuhpmc::EmitterTriVtxCUDA( iso_surface );
-
-        // Create shader program to render the VBO results
-
-        GLuint vs = compileShader( resources::phong_vbo_vs_420, GL_VERTEX_SHADER );
-        GLuint fs = compileShader( resources::phong_fs_130, GL_FRAGMENT_SHADER );
-        vbo_render_prog = glCreateProgram();
-        glAttachShader( vbo_render_prog, vs );
-        glAttachShader( vbo_render_prog, fs );
-        linkProgram( vbo_render_prog, "phong_vbo" );
-        vbo_render_loc_pm = glGetUniformLocation( vbo_render_prog, "PM" );
-        vbo_render_loc_nm = glGetUniformLocation( vbo_render_prog, "NM" );
-        vbo_render_loc_col = glGetUniformLocation( vbo_render_prog, "color" );
-    }
 
     cudaError_t error = cudaGetLastError();
     if( error != cudaSuccess ) {
@@ -360,99 +464,178 @@ render( float t,
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glEnable( GL_DEPTH_TEST );
 
-    iso = 0.48f*(sin(t)+1.f)+0.01f;
+    iso = 0.5f;//0.48f*(sin(t)+1.f)+0.01f;
+
+#if 0
+    static int foobar = 0;
+    if( foobar >= 10 ) {
+        exit( EXIT_SUCCESS );
+    }
+    foobar++;
+#endif
 
     // build histopyramid
     if( profile ) {
         cudaEventRecord( pre_buildup, stream );
     }
-    iso_surface->build( iso, stream );
+    switch( mode ) {
+    case OPENGL_NON_INDEXED:
+        gl_n_isurf->build( iso, stream );
+        break;
+    case CUDA_NON_INDEXED:
+        cu_n_isurf->build( iso, stream );
+        break;
+
+    case CUDA_INDEXED:
+        cu_i_isurf->build( iso, stream );
+        break;
+    }
     if( profile ) {
         cudaEventRecord( post_buildup, stream );
     }
 
     // resize buffers if we run unless we do direct GL rendering
+    uint vertices = 0;
     uint triangles = 0;
-    if( !gl_direct_draw ) {
+    switch( mode ) {
+    case OPENGL_NON_INDEXED:
+        break;
 
-        triangles = iso_surface->triangles();
-        if( surface_vbo_n < triangles ) {
-            if( cudaGraphicsUnregisterResource( surface_resource ) == cudaSuccess ) {
-                if( surface_cuda_d != NULL ) {
-                    cudaFree( surface_cuda_d );
-                    surface_cuda_d = NULL;
-                }
+    case CUDA_NON_INDEXED:
+        vertices = cu_n_isurf->vertices();
+        if( vertices_vbo_n < vertices ) {
+            CUDA_CHECKED( cudaStreamSynchronize( stream ) );
+            CUDA_CHECKED( cudaGraphicsUnregisterResource( vertices_resource ) );
 
-                surface_vbo_n = 1.1f*triangles;
+            vertices_vbo_n = 1.1f*vertices;
+            GLsizei vbuf_size = 2*3*sizeof(GLfloat)*vertices_vbo_n;
+            glBindBuffer( GL_ARRAY_BUFFER, vertices_vbo );
+            glBufferData( GL_ARRAY_BUFFER, vbuf_size, NULL, GL_DYNAMIC_COPY );
+            glBindBuffer( GL_ARRAY_BUFFER, 0);
 
-                std::vector<GLfloat> foo( 6*3*surface_vbo_n, 0.25f );
-                for(size_t i=0; i<3*surface_vbo_n; i++ ) {
-                    foo[6*i+3] = 0.5f*(cos( 0.1f*i )+1.f);
-                    foo[6*i+4] = 0.5f*(cos( 0.2f*i )+1.f);
-                    foo[6*i+5] = 0.5f*(cos( 0.3f*i )+1.f);
-                }
+            CUDA_CHECKED( cudaGraphicsGLRegisterBuffer( &vertices_resource, vertices_vbo, cudaGraphicsRegisterFlagsWriteDiscard ) );
 
-                glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
-                glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
-                glBufferData( GL_ARRAY_BUFFER,
-                              3*2*3*sizeof(GLfloat)*surface_vbo_n,
-                              foo.data(),
-                              GL_DYNAMIC_COPY );
-                glBindBuffer( GL_ARRAY_BUFFER, surface_vbo );
-
-                cudaGraphicsGLRegisterBuffer( &surface_resource,
-                                              surface_vbo,
-                                              cudaGraphicsRegisterFlagsWriteDiscard );
-            }
-            std::cerr << "Resized VBO to hold " << triangles << " triangles (" << (3*2*3*sizeof(GLfloat)*surface_vbo_n) << " bytes)\n";
+            std::cerr << "Resized VBO to hold " << vertices << " vertices (" << vbuf_size << " bytes)\n";
         }
+        break;
+
+    case CUDA_INDEXED:
+        vertices  = cu_i_isurf->vertices();
+        triangles = cu_i_isurf->triangles();
+#if 0
+        std::cerr << vertices << " vertices \n";
+        std::cerr << triangles << " triangles\n";
+        exit( EXIT_SUCCESS );
+#endif
+
+        if( vertices_vbo_n < triangles ) {
+            CUDA_CHECKED( cudaStreamSynchronize( stream ) );
+            CUDA_CHECKED( cudaGraphicsUnregisterResource( vertices_resource ) );
+            CUDA_CHECKED( cudaGraphicsUnregisterResource( triangles_resource ) );
+
+            vertices_vbo_n = 1.1f*3*triangles;
+            triangles_vbo_n = 1.1f*3*triangles;
+            GLsizei vbuf_size = 2*3*sizeof(GLfloat)*vertices_vbo_n;
+            GLsizei tbuf_size = 2*3*sizeof(GLfloat)*triangles_vbo_n;
+
+            glBindBuffer( GL_ARRAY_BUFFER, vertices_vbo );
+            glBufferData( GL_ARRAY_BUFFER, vbuf_size, NULL, GL_DYNAMIC_COPY );
+
+            glBindBuffer( GL_ARRAY_BUFFER, triangles_vbo );
+            glBufferData( GL_ARRAY_BUFFER, tbuf_size, NULL, GL_DYNAMIC_COPY );
+            glBindBuffer( GL_ARRAY_BUFFER, 0 );
+
+            CUDA_CHECKED( cudaGraphicsGLRegisterBuffer( &vertices_resource, vertices_vbo, cudaGraphicsRegisterFlagsWriteDiscard ) );
+            CUDA_CHECKED( cudaGraphicsGLRegisterBuffer( &triangles_resource, triangles_vbo, cudaGraphicsRegisterFlagsWriteDiscard ) );
+
+            std::cerr << "Resized VBO to hold " << vertices << " vertices (" << vbuf_size << " bytes)\n";
+            std::cerr << "Resized VBO to hold " << triangles << " triangles (" << tbuf_size << " bytes)\n";
+        }
+        break;
     }
 
     if( profile ) {
         cudaEventRecord( pre_write );
     }
 
-    // direct rendering through OpenGL
-    if( gl_direct_draw ) {
+    // extract surfaces and render
+    switch( mode ) {
+    case OPENGL_NON_INDEXED:
+        gl_n_writer->render( PM, NM, stream );
+        gl_n_isurf->build( iso, stream );
+        break;
+    case CUDA_NON_INDEXED:
+    {
+        float* vertices_d = NULL;
+        size_t vertices_s = 0;
+        CUDA_CHECKED( cudaGraphicsMapResources( 1, &vertices_resource, stream ) );
+        CUDA_CHECKED( cudaGraphicsResourceGetMappedPointer( (void**)&vertices_d, &vertices_s, vertices_resource ) );
 
-        if( cuhpmc::GLWriter* w = dynamic_cast<cuhpmc::GLWriter*>( writer ) ) {
-            w->render( PM, NM, stream );
-        }
+        cu_n_writer->writeInterleavedNormalPosition( vertices_d, vertices, stream );
+
+        CUDA_CHECKED( cudaGraphicsUnmapResources( 1, &vertices_resource, stream ) );
+
+        glUseProgram( vbo_render_prog );
+        glUniformMatrix4fv( vbo_render_loc_pm, 1, GL_FALSE, PM );
+        glUniformMatrix3fv( vbo_render_loc_nm, 1, GL_FALSE, NM );
+        glUniform4f( vbo_render_loc_col, 0.8f, 0.8f, 1.f, 1.f );
+
+        glBindVertexArray( vertices_vao );
+        glDrawArrays( GL_TRIANGLES, 0, vertices );
+        glBindVertexArray( 0 );
+        glUseProgram( 0 );
+    }
+        break;
+
+    case CUDA_INDEXED:
+    {
+        float* vertices_d = NULL;
+        unsigned int* triangles_d = NULL;
+        size_t vertices_s = 0;
+        size_t triangles_s = 0;
+        cudaGraphicsResource* resources[2] = {
+            vertices_resource,
+            triangles_resource
+        };
+        CUDA_CHECKED( cudaGraphicsMapResources( 2, resources, stream ) );
+        CUDA_CHECKED( cudaGraphicsResourceGetMappedPointer( (void**)&vertices_d, &vertices_s, vertices_resource ) );
+        CUDA_CHECKED( cudaGraphicsResourceGetMappedPointer( (void**)&triangles_d, &triangles_s, triangles_resource ) );
+
+        cu_i_writer->writeVerticesInterleavedN3FV3F( vertices_d, vertices, stream );
+        cu_i_writer->writeTriangleIndices( triangles_d, triangles, stream );
+
+        CUDA_CHECKED( cudaGraphicsUnmapResources( 2, resources, stream ) );
+
+        glUseProgram( vbo_render_prog );
+        glUniformMatrix4fv( vbo_render_loc_pm, 1, GL_FALSE, PM );
+        glUniformMatrix3fv( vbo_render_loc_nm, 1, GL_FALSE, NM );
+        glUniform4f( vbo_render_loc_col, 0.8f, 0.8f, 1.f, 1.f );
+
+        /*
+        glBindVertexArray( triangles_vao );
+        glDrawArrays( GL_TRIANGLES, 0, 3*triangles );
+        */
+
+        glPointSize( 1.f );
+        glBindVertexArray( vertices_vao );
+
+        glPolygonOffset( 1.f, 1.f );
+        glEnable( GL_POLYGON_OFFSET_FILL );
+        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, triangles_vbo );
+        glDrawElements( GL_TRIANGLES, 3*triangles, GL_UNSIGNED_INT, NULL );
+        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+        glDisable( GL_POLYGON_OFFSET_FILL );
+
+        glUniform4f( vbo_render_loc_col, 1.f, 0.f, 0.f, 1.f );
+        glDrawArrays( GL_POINTS, 0, vertices );
+
+        glBindVertexArray( 0 );
+        glUseProgram( 0 );
+
+
 
     }
-    // Let CUDA write, but don't use interop (i.e., no rendering)
-    else if( wireframe ) {
-        if( cuhpmc::EmitterTriVtxCUDA* w = dynamic_cast<cuhpmc::EmitterTriVtxCUDA*> ( writer ) ) {
-            if( surface_cuda_d == NULL ) {
-                cudaMalloc( &surface_cuda_d, 3*2*3*sizeof(GLfloat)*surface_vbo_n );
-            }
-            w->writeInterleavedNormalPosition( surface_cuda_d, triangles, stream );
-        }
-    }
-    // Let CUDA write and let GL render the resulting buffer
-    else {
-        if( cuhpmc::EmitterTriVtxCUDA* w = dynamic_cast<cuhpmc::EmitterTriVtxCUDA*> ( writer ) ) {
-            if( cudaGraphicsMapResources( 1, &surface_resource, stream ) == cudaSuccess ) {
-                float* surface_d = NULL;
-                size_t surface_size = 0;
-                if( cudaGraphicsResourceGetMappedPointer( (void**)&surface_d,
-                                                          &surface_size,
-                                                          surface_resource ) == cudaSuccess )
-                {
-                    w->writeInterleavedNormalPosition( surface_d, triangles, stream );
-                }
-                cudaGraphicsUnmapResources( 1, &surface_resource, stream );
-            }
-            glUseProgram( vbo_render_prog );
-            glUniformMatrix4fv( vbo_render_loc_pm, 1, GL_FALSE, PM );
-            glUniformMatrix3fv( vbo_render_loc_nm, 1, GL_FALSE, NM );
-            glUniform4f( vbo_render_loc_col, 0.8f, 0.8f, 1.f, 1.f );
-
-            glBindVertexArray( surface_vao );
-            glDrawArrays( GL_TRIANGLES, 0, 3*triangles );
-            glBindVertexArray( 0 );
-            glUseProgram( 0 );
-        }
+        break;
     }
 
     if( profile ) {
@@ -466,6 +649,51 @@ render( float t,
         write_ms += ms;
         runs++;
     }
+
+    glMatrixMode( GL_PROJECTION );
+    glLoadMatrixf( P );
+    glMatrixMode( GL_MODELVIEW );
+    glLoadMatrixf( MV );
+    glBegin( GL_LINES );
+    glColor3f( 0.f, 0.f, 0.f ); glVertex3f( 0.f, 0.f, 0.f );
+    glColor3f( 1.f, 0.f, 0.f ); glVertex3f( 1.f, 0.f, 0.f );
+
+    glColor3f( 1.f, 0.f, 0.f ); glVertex3f( 1.f, 0.f, 0.f );
+    glColor3f( 1.f, 1.f, 0.f ); glVertex3f( 1.f, 1.f, 0.f );
+
+    glColor3f( 1.f, 1.f, 0.f ); glVertex3f( 1.f, 1.f, 0.f );
+    glColor3f( 0.f, 1.f, 0.f ); glVertex3f( 0.f, 1.f, 0.f );
+
+    glColor3f( 0.f, 1.f, 0.f ); glVertex3f( 0.f, 1.f, 0.f );
+    glColor3f( 0.f, 0.f, 0.f ); glVertex3f( 0.f, 0.f, 0.f );
+
+    glColor3f( 0.f, 0.f, 1.f ); glVertex3f( 0.f, 0.f, 1.f );
+    glColor3f( 1.f, 0.f, 1.f ); glVertex3f( 1.f, 0.f, 1.f );
+
+    glColor3f( 1.f, 0.f, 1.f ); glVertex3f( 1.f, 0.f, 1.f );
+    glColor3f( 1.f, 1.f, 1.f ); glVertex3f( 1.f, 1.f, 1.f );
+
+    glColor3f( 1.f, 1.f, 1.f ); glVertex3f( 1.f, 1.f, 1.f );
+    glColor3f( 0.f, 1.f, 1.f ); glVertex3f( 0.f, 1.f, 1.f );
+
+    glColor3f( 0.f, 1.f, 1.f ); glVertex3f( 0.f, 1.f, 1.f );
+    glColor3f( 0.f, 0.f, 1.f ); glVertex3f( 0.f, 0.f, 1.f );
+
+
+    glColor3f( 0.f, 0.f, 0.f ); glVertex3f( 0.f, 0.f, 0.f );
+    glColor3f( 0.f, 0.f, 1.f ); glVertex3f( 0.f, 0.f, 1.f );
+
+    glColor3f( 1.f, 0.f, 0.f ); glVertex3f( 1.f, 0.f, 0.f );
+    glColor3f( 1.f, 0.f, 1.f ); glVertex3f( 1.f, 0.f, 1.f );
+
+    glColor3f( 1.f, 1.f, 0.f ); glVertex3f( 1.f, 1.f, 0.f );
+    glColor3f( 1.f, 1.f, 1.f ); glVertex3f( 1.f, 1.f, 1.f );
+
+    glColor3f( 0.f, 1.f, 0.f ); glVertex3f( 0.f, 1.f, 0.f );
+    glColor3f( 0.f, 1.f, 1.f ); glVertex3f( 0.f, 1.f, 1.f );
+
+    glEnd();
+
 
     cudaError_t error = cudaGetLastError();
     if( error != cudaSuccess ) {
@@ -483,7 +711,6 @@ infoString( float fps )
     write_ms = 0.f;
     runs = 0;
 
-
     std::stringstream o;
     o << std::setprecision(5) << fps << " fps, "
       << volume_size_x << 'x'
@@ -495,8 +722,22 @@ infoString( float fps )
         o << "build=" << avg_buildup << "ms, "
           << "write=" << avg_write << "ms, ";
     }
-    o << iso_surface->triangles()
-      << " triangles, iso=" << iso
+    switch( mode ) {
+    case OPENGL_NON_INDEXED:
+        o << "n_vtx=" << gl_n_isurf->vertices() << ", "
+          << "n_tri=" << (gl_n_isurf->vertices()/3u) << ", ";
+        break;
+    case CUDA_NON_INDEXED:
+        o << "n_vtx=" << cu_n_isurf->vertices() << ", "
+          << "n_tri=" << (cu_n_isurf->vertices()/3u) << ", ";
+        break;
+
+    case CUDA_INDEXED:
+        o << "n_vtx=" << cu_i_isurf->vertices() << ", "
+          << "n_tri=" << cu_i_isurf->triangles() << ", ";
+        break;
+    }
+    o << "iso=" << iso
       << (wireframe?"[wireframe]":"");
     return o.str();
 }

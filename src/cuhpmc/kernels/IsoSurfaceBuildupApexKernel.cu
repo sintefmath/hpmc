@@ -18,6 +18,8 @@
  */
 #include <cuda.h>
 #include <builtin_types.h>
+#include <cuhpmc/IsoSurface.hpp>
+#include <cuhpmc/IsoSurfaceIndexed.hpp>
 
 namespace cuhpmc {
 
@@ -66,11 +68,29 @@ hp5_buildup_apex( hp5_buildup_apex_args a /*uint4* __restrict__  d_hp_012,
 }
 
 void
-run_hp5_buildup_apex( uint*         sum_d,
-                      uint4*        hp_dcb_d,
-                      const uint*   sb_a_d,
-                      const uint    N_a,
-                      cudaStream_t  stream )
+IsoSurfaceIndexed::invokeApexBuildup(cudaStream_t stream)
+{
+    hp5_buildup_apex_args args;
+    args.sum_d      = m_vertex_triangle_top_d;
+    args.hp_dcb_d   = m_triangle_pyramid_d;
+    args.sb_a_d     = m_triangle_sideband_d + 32;
+    args.N_a        = m_hp5_level_sizes[2];
+    hp5_buildup_apex<<<1,128,0,stream>>>( args );
+
+    args.sum_d      = m_vertex_triangle_top_d + 1;
+    args.hp_dcb_d   = m_vertex_pyramid_d;
+    args.sb_a_d     = m_vertex_sideband_d + 32;
+    args.N_a        = m_hp5_level_sizes[2];
+    hp5_buildup_apex<<<1,128,0,stream>>>( args );
+}
+
+
+void
+IsoSurface::invokeApexBuildup( uint*         sum_d,
+                               uint4*        hp_dcb_d,
+                               const uint*   sb_a_d,
+                               const uint    N_a,
+                               cudaStream_t  stream )
 {
     hp5_buildup_apex_args args;
     args.sum_d      = sum_d;

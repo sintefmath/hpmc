@@ -1,4 +1,3 @@
-#pragma once
 /* Copyright STIFTELSEN SINTEF 2012
  *
  * This file is part of the HPMC Library.
@@ -20,21 +19,40 @@
 
 #include <cuda.h>
 #include <builtin_types.h>
+#include <vector_functions.h>
+#include <iostream>
+#include <cuhpmc/EmitterTriIdx.hpp>
+#include <cuhpmc/Field.hpp>
+#include <cuhpmc/Constants.hpp>
+#include <cuhpmc/FieldGlobalMemUChar.hpp>
+#include <cuhpmc/IsoSurfaceIndexed.hpp>
+#include "kernels/hp5_writer.hpp"
 
 namespace cuhpmc {
 
+EmitterTriIdx::EmitterTriIdx(IsoSurfaceIndexed *iso_surface )
+    : m_constants( iso_surface->constants() ),
+      m_field( iso_surface->field() ),
+      m_iso_surface( iso_surface )
+{
+}
+
+EmitterTriIdx::~EmitterTriIdx()
+{
+}
+
 void
-run_hp5_buildup_base_triple_gb_ub( uint4*               hp_c_d,
-                                   uint*                sb_c_d,
-                                   const uint           hp2_N,
-                                   uint4*               hp_b_d,
-                                   uint4*               hp_a_d,
-                                   unsigned char*       case_d,
-                                   const float          iso,
-                                   const uint3          chunks,
-                                   const unsigned char* field,
-                                   const uint3          field_size,
-                                   const unsigned char* case_vtxcnt,
-                                   cudaStream_t         stream );
+EmitterTriIdx::writeVerticesInterleavedN3FV3F( float* vertex_buffer_d, uint vertices, cudaStream_t stream )
+{
+    invokeVertexN3FV3Fkernel( vertex_buffer_d, vertices, stream );
+}
+
+
+void
+EmitterTriIdx::writeTriangleIndices( unsigned int* indices_uint3_d, uint triangles, cudaStream_t stream  )
+{
+    invokeTriangleIndicesKernel( indices_uint3_d, triangles, stream );
+}
+
 
 } // of namespace cuhpmc

@@ -30,7 +30,7 @@ public:
 
 
     void
-    writeInterleavedNormalPosition( float* interleaved_buffer_d, uint triangles, cudaStream_t stream  );
+    writeInterleavedNormalPosition( float* interleaved_buffer_d, uint vertices, cudaStream_t stream  );
 
 protected:
 
