@@ -41,6 +41,8 @@ namespace cuhpmc {
 __constant__ uint  hp5_const_offsets[32];
 
 
+
+static
 __device__
 __forceinline__
 void
@@ -65,27 +67,15 @@ downTraversalStep( uint& pos, uint& key, const uint4& val )
     }
 }
 
+static
 __device__
 __forceinline__
-void
-hp5PosToCellPos( uint3&                             i0,
-                 uint&                              mc_case,
-                 const uint                         pos,
-                 const uint3&                       chunks,
-                 const unsigned char* __restrict__  mc_cases_d )
+uint
+__bitfieldextract( uint src, uint offset, uint bits )
 {
-    uint c_lix = pos / 800u;
-    uint t_lix = pos % 800u;
-    uint3 ci = make_uint3( 31*( c_lix % chunks.x ),
-                           5*( (c_lix/chunks.x) % chunks.y ),
-                           5*( (c_lix/chunks.x) / chunks.y ) );
-
-    // calc 3D pos within cunk
-    i0 = make_uint3( ci.x + ((t_lix / 5)%32),
-                     ci.y + ((t_lix / 5)/32),
-                     ci.z + ( t_lix%5 ) );
-
-    mc_case = mc_cases_d[ pos ];
+    uint ret;
+    asm volatile( "bfe.u32 %0, %1, %2, %3;" : "=r"(ret) : "r"(src), "r"(offset), "r"(bits) );
+    return ret;
 }
 
 
@@ -116,24 +106,52 @@ TriangleIndicesKernel( uint* __restrict__                output_d,
             }
             for(int l=max_level-3; l<max_level-1; l++) {
                 // l1 -> fetch lower byte of 16-bit value
-                uchar4 val_ = ((uchar4*)(hp5_d + hp5_const_offsets[ l ]))[pos];
-                uint4 val = make_uint4( val_.x,
-                                        val_.y,
-                                        val_.z,
-                                        val_.w );
-                downTraversalStep( pos, key, val );
+                uint val = ((uint*)(hp5_d + hp5_const_offsets[ l ]))[pos];
+                pos = 5*pos;
+                uint t = __bitfieldextract( val, 0, 8 );
+                if( t <= key ) {
+                    pos++;
+                    key -= t;
+                    uint t = __bitfieldextract( val, 8, 8 );
+                    if( t <= key ) {
+                        pos++;
+                        key -= t;
+                        uint t = __bitfieldextract( val, 16, 8 );
+                        if( t <= key ) {
+                            pos++;
+                            key -= t;
+                            uint t = __bitfieldextract( val, 24, 8 );
+                            if( t <= key ) {
+                                pos++;
+                                key -= t;
+                            }
+                        }
+                    }
+                }
             }
             {   // l0 -> fetch lower nibble of 8-bit value
-                short1 val_ = ((short1*)(hp5_d + hp5_const_offsets[ max_level-1 ] ))[ pos ];
-                uint4 val = make_uint4( val_.x & 0xfu,
-                                        (val_.x>>4) & 0xfu,
-                                        (val_.x>>8) & 0xfu,
-                                        (val_.x>>12) & 0xfu );
-                val.x = val.x & 0xfu;
-                val.y = val.y & 0xfu;
-                val.z = val.z & 0xfu;
-                val.w = val.w & 0xfu;
-                downTraversalStep( pos, key, val );
+                uint val = ((unsigned short int*)(hp5_d + hp5_const_offsets[ max_level-1 ] ))[ pos ];
+                pos = 5*pos;
+                uint t = __bitfieldextract( val, 0, 4 );
+                if( t <= key ) {
+                    pos++;
+                    key -= t;
+                    t = __bitfieldextract( val, 4, 4 );
+                    if( t <= key ) {
+                        pos++;
+                        key -= t;
+                        t = __bitfieldextract( val, 8, 4 );
+                        if( t <= key ) {
+                            pos++;
+                            key -= t;
+                            t = __bitfieldextract( val, 12, 4 );
+                            if( t <= key ) {
+                                pos++;
+                                key -= t;
+                            }
+                        }
+                    }
+                }
             }
             uint mc_case = mc_cases_d[pos];
             isec_off = 16*mc_case + 3*key;
@@ -181,28 +199,20 @@ TriangleIndicesKernel( uint* __restrict__                output_d,
                 uint component = adjusted_pos % 5;
                 adjusted_pos = adjusted_pos/5;
                 unsigned char val_ = ((unsigned char*)(vertex_pyramid_d + hp5_const_offsets[ max_level-1 ] ))[ adjusted_pos ];
-                uint4 val = make_uint4( (val_   ) & 0x3u,
-                                        (val_>>2) & 0x3u,
-                                        (val_>>4) & 0x3u,
-                                        (val_>>6) & 0x3u );
-                if( component > 3 ) { index += val.w; }
-                if( component > 2 ) { index += val.z; }
-                if( component > 1 ) { index += val.y; }
-                if( component > 0 ) { index += val.x; }
+                if( component > 3 ) { index += __bitfieldextract(val_, 6, 2); }
+                if( component > 2 ) { index += __bitfieldextract(val_, 4, 2); }
+                if( component > 1 ) { index += __bitfieldextract(val_, 2, 2); }
+                if( component > 0 ) { index += __bitfieldextract(val_, 0, 2); }
             }
             // -- Up-traversal step 1
             {
                 uint component = adjusted_pos % 5;
                 adjusted_pos = adjusted_pos/5;
-                short1 val_ = ((short1*)(vertex_pyramid_d + hp5_const_offsets[ max_level-2 ] ))[ adjusted_pos ];
-                uint4 val = make_uint4( (val_.x   )  & 0xfu,
-                                        (val_.x>>4)  & 0xfu,
-                                        (val_.x>>8)  & 0xfu,
-                                        (val_.x>>12) & 0xfu );
-                if( component > 3 ) { index += val.w; }
-                if( component > 2 ) { index += val.z; }
-                if( component > 1 ) { index += val.y; }
-                if( component > 0 ) { index += val.x; }
+                uint val_ = ((unsigned short int*)(vertex_pyramid_d + hp5_const_offsets[ max_level-2 ] ))[ adjusted_pos ];
+                if( component > 3 ) { index += __bitfieldextract(val_,12, 2); }
+                if( component > 2 ) { index += __bitfieldextract(val_, 8, 2); }
+                if( component > 1 ) { index += __bitfieldextract(val_, 4, 2); }
+                if( component > 0 ) { index += __bitfieldextract(val_, 0, 4); }
             }
             // -- Up-traversal step 2
             {
@@ -254,20 +264,16 @@ EmitterTriIdx::invokeTriangleIndicesKernel( unsigned int* output_d, uint tris, c
     dim3 gs( ((tris+255)/256), 1, 1 );
     dim3 bs( 256, 1, 1 );
 
-    if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
-        TriangleIndicesKernel<<<gs,bs,0,stream>>>( output_d,
-                                                   m_iso_surface->trianglePyramidDev(),
-                                                   m_iso_surface->vertexPyramidDev(),
-                                                   m_iso_surface->mcCasesDev(),
-                                                   m_constants->caseIndexIntersectEdgeDev(),
-                                                   tris,
-                                                   m_iso_surface->hp5Levels(),
-                                                   800*m_iso_surface->hp5Chunks().x-4*5*32,
-                                                   800*m_iso_surface->hp5Chunks().x*m_iso_surface->hp5Chunks().y-4 );
-    }
-    else {
-        throw std::runtime_error( "EmitterTriIdx::invokeKernel: unsupported field type" );
-    }
+    TriangleIndicesKernel<<<gs,bs,0,stream>>>( output_d,
+                                               m_iso_surface->trianglePyramidDev(),
+                                               m_iso_surface->vertexPyramidDev(),
+                                               m_iso_surface->mcCasesDev(),
+                                               m_constants->caseIndexIntersectEdgeDev(),
+                                               tris,
+                                               m_iso_surface->hp5Levels(),
+                                               800*m_iso_surface->hp5Chunks().x-4*5*32,
+                                               800*m_iso_surface->hp5Chunks().x*m_iso_surface->hp5Chunks().y-4 );
+
     cudaError_t error = cudaGetLastError();
     if( error != cudaSuccess ) {
         throw CUDAErrorException( error );
