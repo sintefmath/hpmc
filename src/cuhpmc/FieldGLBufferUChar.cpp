@@ -29,7 +29,7 @@ FieldGLBufferUChar::FieldGLBufferUChar( Constants*     constants,
                                         uint           width,
                                         uint           height,
                                         uint           depth )
-    : Field( constants, width, height, depth ),
+    : FieldGL( constants, width, height, depth ),
       m_mapped(false ),
       m_field_buf( field_buf ),
       m_field_resource( NULL )
@@ -61,6 +61,7 @@ FieldGLBufferUChar::~FieldGLBufferUChar()
     }
 }
 
+/*
 const unsigned char*
 FieldGLBufferUChar::mapFieldBuffer( cudaStream_t stream )
 {
@@ -91,6 +92,6 @@ FieldGLBufferUChar::unmapFieldBuffer( cudaStream_t stream )
     cudaGraphicsUnmapResources( 1, &m_field_resource, stream );
     m_mapped = false;
 }
-
+*/
 
 } // of namespace cuhpmc

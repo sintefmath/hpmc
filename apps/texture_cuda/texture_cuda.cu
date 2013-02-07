@@ -76,7 +76,7 @@ enum Mode {
     CUDA_INDEXED
 
 };
-Mode                            mode                = CUDA_INDEXED;
+Mode                            mode                = OPENGL_NON_INDEXED;
 
 unsigned char*                  field_data_dev      = NULL;
 
@@ -503,6 +503,11 @@ render( float t,
 
     case CUDA_NON_INDEXED:
         vertices = cu_n_isurf->vertices();
+#if 0
+        std::cerr << vertices << " vertices \n";
+        std::cerr << triangles << " triangles\n";
+        exit( EXIT_SUCCESS );
+#endif
         if( vertices_vbo_n < vertices ) {
             CUDA_CHECKED( cudaStreamSynchronize( stream ) );
             CUDA_CHECKED( cudaGraphicsUnregisterResource( vertices_resource ) );
@@ -522,11 +527,6 @@ render( float t,
     case CUDA_INDEXED:
         vertices  = cu_i_isurf->vertices();
         triangles = cu_i_isurf->triangles();
-#if 0
-        std::cerr << vertices << " vertices \n";
-        std::cerr << triangles << " triangles\n";
-        exit( EXIT_SUCCESS );
-#endif
 
         if( vertices_vbo_n < triangles ) {
             CUDA_CHECKED( cudaStreamSynchronize( stream ) );
@@ -562,7 +562,6 @@ render( float t,
     switch( mode ) {
     case OPENGL_NON_INDEXED:
         gl_n_writer->render( PM, NM, stream );
-        gl_n_isurf->build( iso, stream );
         break;
     case CUDA_NON_INDEXED:
     {

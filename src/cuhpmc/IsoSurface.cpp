@@ -167,6 +167,7 @@ IsoSurface::vertices()
 void
 IsoSurface::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, cudaStream_t stream )
 {
+/*
     m_iso = iso;
     uint3 field_size = make_uint3( m_field->width(), m_field->height(), m_field->depth() );
 
@@ -227,6 +228,7 @@ IsoSurface::buildNonIndexed( float iso, uint4* hp5_hp_d, unsigned char* case_d, 
                        m_hp5_level_sizes[2],
                        stream );
     cudaEventRecord( m_buildup_event, stream );
+*/
 }
 
 

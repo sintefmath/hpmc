@@ -138,6 +138,8 @@ GLWriter::render( const GLfloat* modelview_projection,
     if( FieldGLBufferUChar* f = dynamic_cast<FieldGLBufferUChar*>( m_field ) ) {
         glActiveTexture( GL_TEXTURE1 );
         glBindTexture( GL_TEXTURE_BUFFER, f->fieldGLTex() );
+
+
         if( IsoSurfaceGL* i = dynamic_cast<IsoSurfaceGL*>( m_iso_surface ) ) {
             glActiveTexture( GL_TEXTURE2 );
             glBindTexture( GL_TEXTURE_BUFFER, i->hp5GLTex() );
@@ -149,6 +151,7 @@ GLWriter::render( const GLfloat* modelview_projection,
             }
 
             glUseProgram( m_program );
+
             glUniform1f( m_loc_iso, m_iso_surface->iso() );
             glUniformMatrix4fv( m_loc_mvp, 1, GL_FALSE, modelview_projection );
             glUniformMatrix3fv( m_loc_nm, 1, GL_FALSE, normal_matrix );
@@ -162,6 +165,7 @@ GLWriter::render( const GLfloat* modelview_projection,
     if( m_conf_constmem_apex ) {
         glBindBufferBase( GL_UNIFORM_BUFFER, m_block_ix_apex, 0 );
     }
+    glUseProgram( 0 );
     glActiveTexture( GL_TEXTURE3 );
     glBindTexture( GL_TEXTURE_BUFFER, 0);
     glActiveTexture( GL_TEXTURE0 );

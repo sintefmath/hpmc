@@ -26,8 +26,8 @@ namespace cuhpmc {
 class Constants;
 
 class Field;
-class FieldGlobalMemUChar;
-class FieldGLBufferUChar;
+class FieldGL;
+class FieldCUDA;
 
 class IsoSurface;
 class IsoSurfaceCUDA;

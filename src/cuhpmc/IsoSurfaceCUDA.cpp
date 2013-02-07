@@ -50,52 +50,48 @@ IsoSurfaceCUDA::~IsoSurfaceCUDA( )
 void
 IsoSurfaceCUDA::build( float iso, cudaStream_t stream )
 {
-    buildNonIndexed( iso, m_hp5_hp_d, m_case_d, stream );
-
-    /*
+    m_iso = iso;
+    m_hp5_top_h[0] = 0;
     uint3 field_size = make_uint3( m_field->width(), m_field->height(), m_field->depth() );
 
     if( FieldGlobalMemUChar* field = dynamic_cast<FieldGlobalMemUChar*>( m_field ) ) {
-        run_hp5_buildup_base_triple_gb_ub( m_hp5_hp_d + m_hp5_offsets[ m_hp5_levels-3 ],
-                                           m_hp5_sb_d + m_hp5_offsets[ m_hp5_levels-3 ],
-                                           m_hp5_level_sizes[ m_hp5_levels-1 ],
-                                           m_hp5_hp_d + m_hp5_offsets[ m_hp5_levels-2 ],
-                                           m_hp5_hp_d + m_hp5_offsets[ m_hp5_levels-1 ],
-                                           m_case_d,
-                                           iso,
-                                           m_hp5_chunks,
-                                           field->fieldDev(),
-                                           field_size,
-                                           m_constants->triangleIndexCountDev(),
-                                           stream );
-
-
+        invokeBaseBuildup( m_hp5_hp_d + m_hp5_offsets[ m_hp5_levels-3 ],
+                m_hp5_sb_d + m_hp5_offsets[ m_hp5_levels-3 ],
+                m_hp5_level_sizes[ m_hp5_levels-1 ],
+                m_hp5_hp_d + m_hp5_offsets[ m_hp5_levels-2 ],
+                m_hp5_hp_d + m_hp5_offsets[ m_hp5_levels-1 ],
+                m_case_d,
+                m_iso,
+                m_hp5_chunks,
+                field->fieldDev(),
+                field_size,
+                m_constants->triangleCountDev(),
+                stream );
     }
     else {
         throw std::runtime_error( "Unsupported field type" );
     }
     for( uint i=m_hp5_first_triple_level; i>m_hp5_first_double_level; i-=2 ) {
-        run_hp5_buildup_level_double( m_hp5_hp_d + m_hp5_offsets[i-2],
-                                      m_hp5_sb_d + m_hp5_offsets[i-2],
-                                      m_hp5_hp_d + m_hp5_offsets[i-1],
-                                      m_hp5_sb_d + m_hp5_offsets[i],
-                                      m_hp5_level_sizes[i-1],
-                                      stream );
+        invokeDoubleBuildup(  m_hp5_hp_d + m_hp5_offsets[i-2],
+                              m_hp5_sb_d + m_hp5_offsets[i-2],
+                              m_hp5_hp_d + m_hp5_offsets[i-1],
+                              m_hp5_sb_d + m_hp5_offsets[i],
+                              m_hp5_level_sizes[i-1],
+                              stream );
     }
     for( uint i=m_hp5_first_double_level; i>m_hp5_first_single_level; --i ) {
-        run_hp5_buildup_level_single( m_hp5_hp_d + m_hp5_offsets[ i-1 ],
-                                      m_hp5_sb_d + m_hp5_offsets[ i-1 ],
-                                      m_hp5_sb_d + m_hp5_offsets[ i   ],
-                                      m_hp5_level_sizes[i-1],
-                                      stream );
+        invokeSingleBuildup( m_hp5_hp_d  + m_hp5_offsets[ i-1 ],
+                             m_hp5_sb_d + m_hp5_offsets[ i-1 ],
+                             m_hp5_sb_d + m_hp5_offsets[ i   ],
+                             m_hp5_level_sizes[i-1],
+                             stream );
     }
-    run_hp5_buildup_apex( m_hp5_top_d,
-                          m_hp5_hp_d,
-                          m_hp5_sb_d + 32,
-                          m_hp5_level_sizes[2],
-                          stream );
+    invokeApexBuildup( m_hp5_top_d,
+                       m_hp5_hp_d,
+                       m_hp5_sb_d + 32,
+                       m_hp5_level_sizes[2],
+                       stream );
     cudaEventRecord( m_buildup_event, stream );
-*/
 }
 
 

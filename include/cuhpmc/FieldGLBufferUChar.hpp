@@ -19,11 +19,11 @@
  */
 #include <GL/glew.h>
 #include <cuhpmc/cuhpmc.hpp>
-#include <cuhpmc/Field.hpp>
+#include <cuhpmc/FieldGL.hpp>
 
 namespace cuhpmc {
 
-class FieldGLBufferUChar : public Field
+class FieldGLBufferUChar : public FieldGL
 {
 public:
     FieldGLBufferUChar( Constants*     constants,
@@ -37,11 +37,15 @@ public:
     GLuint
     fieldGLTex() const { return m_field_gl_tex; }
 
-    const unsigned char*
-    mapFieldBuffer( cudaStream_t stream );
+    virtual
+    cudaGraphicsResource*
+    resource() { return m_field_resource; }
 
-    void
-    unmapFieldBuffer( cudaStream_t stream );
+//    const unsigned char*
+//    mapFieldBuffer( cudaStream_t stream );
+
+//    void
+//    unmapFieldBuffer( cudaStream_t stream );
 
 
 protected:

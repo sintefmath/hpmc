@@ -27,7 +27,7 @@ FieldGlobalMemUChar::FieldGlobalMemUChar( Constants*     constants,
                                           uint           width,
                                           uint           height,
                                           uint           depth )
-    : Field( constants, width, height, depth ),
+    : FieldCUDA( constants, width, height, depth ),
       m_field_dev( field_dev )
 {
 

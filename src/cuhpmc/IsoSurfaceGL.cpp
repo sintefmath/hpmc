@@ -25,15 +25,15 @@
 #include <iostream>
 #include <stdexcept>
 #include <cuhpmc/IsoSurfaceGL.hpp>
-#include <cuhpmc/Field.hpp>
 #include <cuhpmc/FieldGLBufferUChar.hpp>
 #include <cuhpmc/Constants.hpp>
 #include <cuhpmc/CUDAErrorException.hpp>
 
 namespace cuhpmc {
 
-IsoSurfaceGL::IsoSurfaceGL( Field* field )
-    : IsoSurface( field )
+IsoSurfaceGL::IsoSurfaceGL( FieldGL *field )
+    : IsoSurface( field ),
+      m_field_gl( field )
 {
     glGenBuffers( 1, &m_hp5_hp_buf );
     glBindBuffer( GL_TEXTURE_BUFFER, m_hp5_hp_buf );
@@ -85,36 +85,97 @@ void
 IsoSurfaceGL::build( float iso, cudaStream_t stream )
 {
     cudaError_t error;
+    cudaGraphicsResource* resources[3] = {
+        m_resources[0],
+        m_resources[1],
+        m_field_gl->resource()
+    };
 
-    error = cudaGraphicsMapResources( 2, m_resources, stream );
+
+    m_iso = iso;
+    m_hp5_top_h[0] = 0;
+    uint3 field_size = make_uint3( m_field->width(), m_field->height(), m_field->depth() );
+
+    error = cudaGraphicsMapResources( 3, resources, stream );
+    if( error != cudaSuccess ) {
+        throw CUDAErrorException( error );
+    }
+    try {
+        uint4* hp5_hp_d = NULL;
+        size_t hp5_hp_size = 0;
+        error = cudaGraphicsResourceGetMappedPointer( (void**)&hp5_hp_d, &hp5_hp_size, resources[0] );
+        if( error != cudaSuccess ) {
+            throw CUDAErrorException( error );
+        }
+
+        unsigned char* case_d = NULL;
+        size_t case_size = 0;
+        error = cudaGraphicsResourceGetMappedPointer( (void**)&case_d, &case_size, resources[1] );
+        if( error != cudaSuccess ) {
+            throw CUDAErrorException( error );
+        }
+
+        if( FieldGLBufferUChar* field = dynamic_cast<FieldGLBufferUChar*>( m_field_gl ) ) {
+            unsigned char* field_ptr = NULL;
+            size_t field_ptr_size = 0;
+
+            error = cudaGraphicsResourceGetMappedPointer( (void**)&field_ptr, &field_ptr_size, resources[2] );
+            if( error != cudaSuccess ) {
+                throw CUDAErrorException( error );
+            }
+
+            invokeBaseBuildup( hp5_hp_d + m_hp5_offsets[ m_hp5_levels-3 ],
+                               m_hp5_sb_d + m_hp5_offsets[ m_hp5_levels-3 ],
+                               m_hp5_level_sizes[ m_hp5_levels-1 ],
+                               hp5_hp_d + m_hp5_offsets[ m_hp5_levels-2 ],
+                               hp5_hp_d + m_hp5_offsets[ m_hp5_levels-1 ],
+                               case_d,
+                               m_iso,
+                               m_hp5_chunks,
+                               field_ptr,
+                               field_size,
+                               m_constants->triangleCountDev(),
+                               stream );
+
+        }
+        else {
+            throw std::runtime_error( "Unsupported field type" );
+        }
+
+        for( uint i=m_hp5_first_triple_level; i>m_hp5_first_double_level; i-=2 ) {
+            invokeDoubleBuildup(  hp5_hp_d + m_hp5_offsets[i-2],
+                                  m_hp5_sb_d + m_hp5_offsets[i-2],
+                                  hp5_hp_d + m_hp5_offsets[i-1],
+                                  m_hp5_sb_d + m_hp5_offsets[i],
+                                  m_hp5_level_sizes[i-1],
+                                  stream );
+        }
+        for( uint i=m_hp5_first_double_level; i>m_hp5_first_single_level; --i ) {
+            invokeSingleBuildup( hp5_hp_d   + m_hp5_offsets[ i-1 ],
+                                          m_hp5_sb_d + m_hp5_offsets[ i-1 ],
+                                          m_hp5_sb_d + m_hp5_offsets[ i   ],
+                                          m_hp5_level_sizes[i-1],
+                                          stream );
+        }
+        invokeApexBuildup( m_hp5_top_d,
+                           hp5_hp_d,
+                           m_hp5_sb_d + 32,
+                           m_hp5_level_sizes[2],
+                           stream );
+
+    }
+    catch( ... ) {
+        error = cudaGraphicsUnmapResources( 3, resources, stream );
+        if( error != cudaSuccess ) {
+            throw CUDAErrorException( error );
+        }
+        throw;
+    }
+    error = cudaGraphicsUnmapResources( 3, resources, stream );
     if( error != cudaSuccess ) {
         throw CUDAErrorException( error );
     }
 
-    uint4* hp5_hp_d = NULL;
-    size_t hp5_hp_size = 0;
-    error = cudaGraphicsResourceGetMappedPointer( (void**)&hp5_hp_d, &hp5_hp_size, m_resources[0] );
-    if( error != cudaSuccess ) {
-        throw CUDAErrorException( error );
-    }
-
-    unsigned char* case_d = NULL;
-    size_t case_size = 0;
-    error = cudaGraphicsResourceGetMappedPointer( (void**)&case_d, &case_size, m_resources[1] );
-    if( error != cudaSuccess ) {
-        throw CUDAErrorException( error );
-    }
-
-
-    buildNonIndexed( iso, hp5_hp_d, case_d, stream );
-
-
-//    std::vector<unsigned int> foobar( 4*m_hp5_size );
-
-    error = cudaGraphicsUnmapResources( 2, m_resources, stream );
-    if( error != cudaSuccess ) {
-        throw CUDAErrorException( error );
-    }
 
 }
 

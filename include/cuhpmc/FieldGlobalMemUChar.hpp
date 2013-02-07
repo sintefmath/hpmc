@@ -18,11 +18,11 @@
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <cuhpmc/cuhpmc.hpp>
-#include <cuhpmc/Field.hpp>
+#include <cuhpmc/FieldCUDA.hpp>
 
 namespace cuhpmc {
 
-class FieldGlobalMemUChar : public Field
+class FieldGlobalMemUChar : public FieldCUDA
 {
 public:
     FieldGlobalMemUChar( Constants*     constants,

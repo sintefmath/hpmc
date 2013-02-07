@@ -91,8 +91,8 @@ void
 __launch_bounds__( 160 )
 hp5_buildup_base_triple_gb( hp5_buildup_base_triple_gb_args<T> a )
 {
-    __shared__ uint sb[800];
-    __shared__ uint sh[801];
+    volatile __shared__ uint sb[800];
+    volatile __shared__ uint sh[801];
 
     const uint w  = threadIdx.x / 32;                                   // warp
     const uint wt = threadIdx.x % 32;                                   // thread-in-warp

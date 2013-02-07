@@ -17,47 +17,27 @@
  * You should have received a copy of the GNU General Public License along with
  * HPMC.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <GL/glew.h>
+#include <cuda_gl_interop.h>
 #include <cuhpmc/cuhpmc.hpp>
-#include <cuhpmc/IsoSurface.hpp>
+#include <cuhpmc/Field.hpp>
 
 namespace cuhpmc {
 
-/** Iso-surface that keeps the buffers needed for direct renderering in OpenGL.
- */
-class IsoSurfaceGL : public IsoSurface
+/** Abstract class for fields where OpenGL manages the data storage. */
+class FieldGL : public Field
 {
 public:
-    IsoSurfaceGL( FieldGL* field );
+    ~FieldGL() {}
 
-    ~IsoSurfaceGL( );
-
-    void
-    build( float iso, cudaStream_t stream );
-
-
-
-    GLuint
-    caseBuf() const { return m_case_buf; }
-
-    GLuint
-    caseGLTex() const { return m_case_gl_tex; }
-
-    GLuint
-    hp5GLBuf() const { return m_hp5_hp_buf; }
-
-    GLuint
-    hp5GLTex() const { return m_hp5_gl_tex; }
+    virtual
+    cudaGraphicsResource*
+    resource() = 0;
 
 protected:
-    FieldGL*                m_field_gl;
-    GLuint                  m_hp5_hp_buf;
-    GLuint                  m_case_buf;
-    GLuint                  m_hp5_gl_tex;
-    GLuint                  m_case_gl_tex;
+    FieldGL( Constants* constants, uint width, uint height, uint depth )
+        : Field( constants, width, height, depth )
+    {}
 
-    cudaGraphicsResource*   m_resources[2];
 };
-
 
 } // of namespace cuhpmc
