@@ -27,6 +27,29 @@
 
 namespace cuhpmc {
 
+static
+__device__
+__forceinline__
+uint
+__bitfieldinsert( uint base, uint insert, uint offset, uint bits )
+{
+    uint ret;
+    asm volatile( "bfi.b32 %0, %1, %2, %3, %4;" : "=r"(ret) : "r"(insert), "r"(base), "r"(offset), "r"(bits) );
+    return ret;
+}
+
+static
+__device__
+__forceinline__
+uint
+__bitfieldextract( uint src, uint offset, uint bits )
+{
+    uint ret;
+    asm volatile( "bfe.u32 %0, %1, %2, %3;" : "=r"(ret) : "r"(src), "r"(offset), "r"(bits) );
+    return ret;
+}
+
+
 template<class T>
 static __device__ __inline__
 void
@@ -268,22 +291,19 @@ hp5_buildup_base_indexed_triple_gb( hp5_buildup_base_indexed_triple_gb_args<T> a
                 // sb  = %00000000 0000vvvv 00000000 000ttttt
                 sb[ ix_o_1 ] = ((sum<<11)&0xf0000u) | (sum&0x1fu);
                 if( sum > 0 ) {
-                    // triangle count stored as 4 x 4 bits = 16 bits
-                    ((short1*)(a.tri_pyramid_level_a_d))[ 5*160*blockIdx.x + ix_o_1 ] =
-                            make_short1( ((cnt_a_0 & 0xf)) |
-                                         ((cnt_a_1 & 0xf)<<4) |
-                                         ((cnt_a_2 & 0xf)<<8) |
-                                         ((cnt_a_3 & 0xf)<<12) );
+                    unsigned short int t0;
+                    t0 = cnt_a_0 & 0x0fu;
+                    t0 = __bitfieldinsert( t0, cnt_a_1,  4, 4 );
+                    t0 = __bitfieldinsert( t0, cnt_a_2,  8, 4 );
+                    t0 = __bitfieldinsert( t0, cnt_a_3, 12, 4 );
+                    ((unsigned short int*)a.tri_pyramid_level_a_d)[ 5*160*blockIdx.x + ix_o_1 ] = t0;
+                    unsigned char v0;
+                    v0 = cnt_a_0 >> 5u;
+                    v0 = __bitfieldinsert( v0, cnt_a_1 >> 5u, 2, 2 );
+                    v0 = __bitfieldinsert( v0, cnt_a_2 >> 5u, 4, 2 );
+                    v0 = __bitfieldinsert( v0, cnt_a_3 >> 5u, 6, 2 );
+                    ((unsigned char*)(a.vtx_pyramid_level_a_d))[ 5*160*blockIdx.x + ix_o_1 ] = v0;
 
-                    // vertex count stored as 4 x 2 bits = 8 bits
-                    ((unsigned char*)(a.vtx_pyramid_level_a_d))[ 5*160*blockIdx.x + ix_o_1 ]
-                            = ((cnt_a_0>>5u)
-                               |  (cnt_a_1>>3u)
-                               |  ((cnt_a_2>>1u)&0x30u)
-                               |  ((cnt_a_3<<1u)&0xc0u) ) & 0xffu;
-
-
-                    //   a.tri_pyramid_level_a_d[ 5*160*blockIdx.x + ix_o_1 ] = make_uint4( s0_1, s1_1, s2_1, s3_1 );
                     a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 0 ] = bc0;
                     a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 1 ] = bc1;
                     a.d_case[ 5*(5*160*blockIdx.x + 160*w + 32*q + wt) + 2 ] = bc2;

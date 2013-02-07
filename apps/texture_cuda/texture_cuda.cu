@@ -76,7 +76,7 @@ enum Mode {
     CUDA_INDEXED
 
 };
-Mode                            mode                = OPENGL_NON_INDEXED;
+Mode                            mode                = CUDA_INDEXED;
 
 unsigned char*                  field_data_dev      = NULL;
 

@@ -19,6 +19,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <cuda.h>
+#include <cassert>
 #include <builtin_types.h>
 #include <cuhpmc/Constants.hpp>
 #include <cuhpmc/FieldGlobalMemUChar.hpp>
@@ -101,11 +102,12 @@ TriangleIndicesKernel( uint* __restrict__                output_d,
         {
             uint key = triangle;
             for(int l=0; l<max_level-3; l++) {
+                // stored as 4 x 32 = 128 bits
                 uint4 val = hp5_d[ hp5_const_offsets[l] + pos ];
                 downTraversalStep( pos, key, val );
             }
             for(int l=max_level-3; l<max_level-1; l++) {
-                // l1 -> fetch lower byte of 16-bit value
+                // stored as 4 x 8 = 32 bits
                 uint val = ((uint*)(hp5_d + hp5_const_offsets[ l ]))[pos];
                 pos = 5*pos;
                 uint t = __bitfieldextract( val, 0, 8 );
@@ -129,7 +131,8 @@ TriangleIndicesKernel( uint* __restrict__                output_d,
                     }
                 }
             }
-            {   // l0 -> fetch lower nibble of 8-bit value
+            {
+                // stored as 4 x 4 = 16 bits
                 uint val = ((unsigned short int*)(hp5_d + hp5_const_offsets[ max_level-1 ] ))[ pos ];
                 pos = 5*pos;
                 uint t = __bitfieldextract( val, 0, 4 );
@@ -190,32 +193,36 @@ TriangleIndicesKernel( uint* __restrict__                output_d,
             const uint this_vertex_mask = edge_flags & 0x16;
             // Mask out edge intersections before the current intersection
 
+            assert( this_vertex_mask & vertices );
+
             const uint lower_vertices = vertices & (this_vertex_mask-1);
 
             uint index = __popc( lower_vertices );
+            assert( index < 3 );
 
             // -- Up-traversal step 0
-            {
+            {   // stored as 4 x 2 = 8 bits
                 uint component = adjusted_pos % 5;
                 adjusted_pos = adjusted_pos/5;
                 unsigned char val_ = ((unsigned char*)(vertex_pyramid_d + hp5_const_offsets[ max_level-1 ] ))[ adjusted_pos ];
+
                 if( component > 3 ) { index += __bitfieldextract(val_, 6, 2); }
                 if( component > 2 ) { index += __bitfieldextract(val_, 4, 2); }
                 if( component > 1 ) { index += __bitfieldextract(val_, 2, 2); }
                 if( component > 0 ) { index += __bitfieldextract(val_, 0, 2); }
             }
             // -- Up-traversal step 1
-            {
+            {   // stored as 4 x 4 = 16 bits
                 uint component = adjusted_pos % 5;
                 adjusted_pos = adjusted_pos/5;
                 uint val_ = ((unsigned short int*)(vertex_pyramid_d + hp5_const_offsets[ max_level-2 ] ))[ adjusted_pos ];
-                if( component > 3 ) { index += __bitfieldextract(val_,12, 2); }
-                if( component > 2 ) { index += __bitfieldextract(val_, 8, 2); }
-                if( component > 1 ) { index += __bitfieldextract(val_, 4, 2); }
+                if( component > 3 ) { index += __bitfieldextract(val_,12, 4); }
+                if( component > 2 ) { index += __bitfieldextract(val_, 8, 4); }
+                if( component > 1 ) { index += __bitfieldextract(val_, 4, 4); }
                 if( component > 0 ) { index += __bitfieldextract(val_, 0, 4); }
             }
             // -- Up-traversal step 2
-            {
+            {   // stored as 4 x 8 = 32 bits
                 uint component = adjusted_pos % 5;
                 adjusted_pos = adjusted_pos/5;
                 uchar4 val_ = ((uchar4*)(vertex_pyramid_d + hp5_const_offsets[ max_level-3 ]))[adjusted_pos];
