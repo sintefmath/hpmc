@@ -50,9 +50,27 @@ static
 __device__
 __forceinline__
 void
-downTraverseStep( uint& pos, uint& key, const uint4& val )
+stepDown32( uint& pos, uint& key, const uint4& val )
 {
 #if 0
+    pos *= 5;
+    if( val.x <= key ) {
+        pos++;
+        key -=val.x;
+        if( val.y <= key ) {
+            pos++;
+            key-=val.y;
+            if( val.z <= key ) {
+                pos++;
+                key-=val.z;
+                if( val.w <= key ) {
+                    pos++;
+                    key-=val.w;
+                }
+            }
+        }
+    }
+#elif 0
     pos = 5*pos;
     bool m = (val.x <= key);
     if( m ) {
@@ -183,6 +201,265 @@ downTraverseStep( uint& pos, uint& key, const uint4& val )
 #endif
 }
 
+static
+__device__
+__forceinline__
+void
+stepDown8( uint& pos, uint& key, const uint& val )
+{
+#if 0
+    pos = 5*pos;
+    uint t = __bitfieldextract( val, 0, 8 );
+    if( t <= key ) {
+        pos++;
+        key -= t;
+        uint t = __bitfieldextract( val, 8, 8 );
+        if( t <= key ) {
+            pos++;
+            key -= t;
+            uint t = __bitfieldextract( val, 16, 8 );
+            if( t <= key ) {
+                pos++;
+                key -= t;
+                uint t = __bitfieldextract( val, 24, 8 );
+                if( t <= key ) {
+                    pos++;
+                    key -= t;
+                }
+            }
+        }
+    }
+#else
+    uint q0, q1, q2, q3;
+#if 1
+    asm(
+    "{  .reg .u8    x,y,z,w;"
+    "   cvt.u32.u8  %0, %4;"
+    "   prmt.b32    %1, %4, 0, 0x4441;"
+    "   prmt.b32    %2, %4, 0, 0x4442;"
+    "   prmt.b32    %3, %4, 0, 0x4443;"
+    "}"
+    : "=r"(q0),"=r"(q1),"=r"(q2),"=r"(q3) : "r"(val) );
+#elif 1
+    asm(
+    "{  .reg .u8    x,y,z,w;"
+    "   mov.b32     {x,y,z,w}, %4;"
+    "   cvt.u32.u8  %0, x;"
+    "   cvt.u32.u8  %1, y;"
+    "   cvt.u32.u8  %2, z;"
+    "   cvt.u32.u8  %3, w;"
+    "}"
+    : "=r"(q0),"=r"(q1),"=r"(q2),"=r"(q3) : "r"(val) );
+#else
+    asm( "bfe.u32 %0, %4,  0, 8;"
+         "bfe.u32 %1, %4,  8, 8;"
+         "bfe.u32 %2, %4, 16, 8;"
+         "bfe.u32 %3, %4, 24, 8;"
+   : "=r"(q0),"=r"(q1),"=r"(q2),"=r"(q3) : "r"(val) );
+#endif
+    //    uint q0 = __bitfieldextract( val, 0, 8 );
+//    uint q1 = __bitfieldextract( val, 8, 8 );
+//    uint q2 = __bitfieldextract( val, 16, 8 );
+//    uint q3 = __bitfieldextract( val, 24, 8 );
+#if 1
+    pos = 5*pos;
+    bool m = (q0 <= key);
+    if( m ) {
+        pos += 1;
+        key = key - q0;
+    }
+    m = m && (q1 <= key);
+    if( m ) {
+        pos += 1;
+        key = key - q1;
+    }
+    m = m && (q2 <= key);
+    if( m ) {
+        pos += 1;
+        key = key - q2;
+    }
+    m = m && (q3 <= key );
+    if( m ) {
+        pos += 1;
+        key = key - q3;
+    }
+#elif 1
+    asm volatile(
+    "{"
+    "    .reg .pred p;"
+    "    .reg .u32 t,u,v;"
+
+    "    setp.hs.u32        p, %1, %2;"
+    "    selp.u32           t, 1, 0, p;"
+    "    selp.u32           v, %2, 0, p;"
+    "    sub.u32            %1, %1, v;"
+
+    "    setp.hs.and.u32    p, %1, %3, p;"
+    "    selp.u32           u, 1, 0, p;"
+    "    selp.u32           v, %3, 0, p;"
+    "    sub.u32            %1, %1, v;"
+    "    add.u32            t, t, u;"
+
+    "    setp.hs.and.u32    p, %1, %4, p;"
+    "    selp.u32           u, 1, 0, p;"
+    "    selp.u32           v, %4, 0, p;"
+    "    sub.u32            %1, %1, v;"
+    "    add.u32            t, t, u;"
+
+    "    setp.hs.and.u32    p, %1, %5, p;"
+    "    selp.u32           u, 1, 0, p;"
+    "    selp.u32           v, %5, 0, p;"
+    "    sub.u32            %1, %1, v;"
+    "    add.u32            t, t, u;"
+    "    mad.lo.u32         %0, 5, %0, t;"
+    "}"
+    : "=r"(pos), "=r"(key) : "r"(q0), "r"(q1), "r"(q2), "r"(q3) );
+#endif
+#endif
+}
+
+static
+__device__
+__forceinline__
+void
+stepDown4( uint& pos, uint& key, const unsigned short int& valt )
+{
+#if 0
+    uint val = valt;
+    pos = 5*pos;
+    uint t = __bitfieldextract( val, 0, 4 );
+    if( t <= key ) {
+        pos++;
+        key -= t;
+        t = __bitfieldextract( val, 4, 4 );
+        if( t <= key ) {
+            pos++;
+            key -= t;
+            t = __bitfieldextract( val, 8, 4 );
+            if( t <= key ) {
+                pos++;
+                key -= t;
+                t = __bitfieldextract( val, 12, 4 );
+                if( t <= key ) {
+                    pos++;
+                    key -= t;
+                }
+            }
+        }
+    }
+#else
+    uint q0, q1, q2, q3;
+    asm(
+    "{"
+    "   .reg .u32   t;"
+    "   cvt.u32.u16 t, %4;"
+    //"   and.b32     %0, t, 0xf;"
+    "   bfe.u32     %0, t,  0, 4;"
+    "   bfe.u32     %1, t,  4, 4;"
+    "   bfe.u32     %2, t,  8, 4;"
+    "   bfe.u32     %3, t, 12, 4;"
+    "}"
+    : "=r"(q0),"=r"(q1),"=r"(q2),"=r"(q3) : "h"(valt) );
+    pos = 5*pos;
+    bool m = (q0 <= key);
+    if( m ) {
+        pos += 1;
+        key = key - q0;
+    }
+    m = m && (q1 <= key);
+    if( m ) {
+        pos += 1;
+        key = key - q1;
+    }
+    m = m && (q2 <= key);
+    if( m ) {
+        pos += 1;
+        key = key - q2;
+    }
+    m = m && (q3 <= key );
+    if( m ) {
+        pos += 1;
+        key = key - q3;
+    }
+#endif
+}
+
+static
+__device__
+__forceinline__
+void
+stepDown2( uint& pos, uint& key, const uint& valt )
+{
+#if 0
+    uint4 val = make_uint4( (valt   ) & 0x3u,
+                            (valt>>2) & 0x3u,
+                            (valt>>4) & 0x3u,
+                            (valt>>6) & 0x3u );
+    pos *= 5;
+    if( val.x <= key ) {
+        pos++;
+        key -=val.x;
+        if( val.y <= key ) {
+            pos++;
+            key-=val.y;
+            if( val.z <= key ) {
+                pos++;
+                key-=val.z;
+                if( val.w <= key ) {
+                    pos++;
+                    key-=val.w;
+                }
+            }
+        }
+    }
+#else
+    uint q0, q1, q2, q3;
+    asm(
+    "{"
+    "   bfe.u32     %0, %4,  0, 2;"
+    "   bfe.u32     %1, %4,  2, 2;"
+    "   bfe.u32     %2, %4,  4, 2;"
+    "   bfe.u32     %3, %4,  6, 2;"
+    "}"
+    : "=r"(q0),"=r"(q1),"=r"(q2),"=r"(q3) : "r"(valt) );
+    pos = 5*pos;
+    bool m = (q0 <= key);
+    if( m ) {
+        pos += 1;
+        key = key - q0;
+    }
+    m = m && (q1 <= key);
+    if( m ) {
+        pos += 1;
+        key = key - q1;
+    }
+    m = m && (q2 <= key);
+    if( m ) {
+        pos += 1;
+        key = key - q2;
+    }
+    m = m && (q3 <= key );
+    if( m ) {
+        pos += 1;
+        key = key - q3;
+    }
+#endif
+}
+
+static
+__device__
+__forceinline__
+void
+stepUp( uint& index, const uint& component, const uint4& val )
+{
+#if 1
+    if( component > 3 ) { index += val.w; }
+    if( component > 2 ) { index += val.z; }
+    if( component > 1 ) { index += val.y; }
+    if( component > 0 ) { index += val.x; }
+#endif
+}
+
 
 static
 __device__
@@ -194,78 +471,20 @@ trianglePyramidDownTraverse( uint& pos,
                              const uint4* hp5_d )
 {
     pos = 0;
+
     for(int l=0; l<max_level-3; l++) {
         // stored as 4 x 32 = 128 bitsc
         uint4 val = hp5_d[ triangle_hp5_offsets[l] + pos ];
-        downTraverseStep( pos, key, val );
-/*        pos *= 5;
-        if( val.x <= key ) {
-            pos++;
-            key -=val.x;
-            if( val.y <= key ) {
-                pos++;
-                key-=val.y;
-                if( val.z <= key ) {
-                    pos++;
-                    key-=val.z;
-                    if( val.w <= key ) {
-                        pos++;
-                        key-=val.w;
-                    }
-                }
-            }
-        }*/
+        stepDown32( pos, key, val );
     }
     for(int l=max_level-3; l<max_level-1; l++) {
         // stored as 4 x 8 = 32 bits
         uint val = ((uint*)(hp5_d + triangle_hp5_offsets[ l ]))[pos];
-//        downTraverseStep( pos, key, val );
-        pos = 5*pos;
-        uint t = __bitfieldextract( val, 0, 8 );
-        if( t <= key ) {
-            pos++;
-            key -= t;
-            uint t = __bitfieldextract( val, 8, 8 );
-            if( t <= key ) {
-                pos++;
-                key -= t;
-                uint t = __bitfieldextract( val, 16, 8 );
-                if( t <= key ) {
-                    pos++;
-                    key -= t;
-                    uint t = __bitfieldextract( val, 24, 8 );
-                    if( t <= key ) {
-                        pos++;
-                        key -= t;
-                    }
-                }
-            }
-        }
+        stepDown8( pos, key, val );
     }
-    {
-        // stored as 4 x 4 = 16 bits
-        uint val = ((unsigned short int*)(hp5_d + triangle_hp5_offsets[ max_level-1 ] ))[ pos ];
-        pos = 5*pos;
-        uint t = __bitfieldextract( val, 0, 4 );
-        if( t <= key ) {
-            pos++;
-            key -= t;
-            t = __bitfieldextract( val, 4, 4 );
-            if( t <= key ) {
-                pos++;
-                key -= t;
-                t = __bitfieldextract( val, 8, 4 );
-                if( t <= key ) {
-                    pos++;
-                    key -= t;
-                    t = __bitfieldextract( val, 12, 4 );
-                    if( t <= key ) {
-                        pos++;
-                        key -= t;
-                    }
-                }
-            }
-        }
+    {   // stored as 4 x 4 = 16 bits
+        unsigned short int val = ((unsigned short int*)(hp5_d + triangle_hp5_offsets[ max_level-1 ] ))[ pos ];
+        stepDown4( pos, key, val );
     }
 }
 
@@ -284,96 +503,20 @@ vertexPyramidDownTraverse( uint& pos,
     int l = 0;
     for(; l<max_level-3; l++) {
         uint4 val = vertex_pyramid_d[ vertex_hp5_offsets[l] + pos ];
-        pos *= 5;
-        if( val.x <= key ) {
-            pos++;
-            key -=val.x;
-            if( val.y <= key ) {
-                pos++;
-                key-=val.y;
-                if( val.z <= key ) {
-                    pos++;
-                    key-=val.z;
-                    if( val.w <= key ) {
-                        pos++;
-                        key-=val.w;
-                    }
-                }
-            }
-        }
+        stepDown32( pos, key, val );
     }
     {   // second reduction is 4 x 8 bits = 32 bits
-        uchar4 val_ = ((uchar4*)(vertex_pyramid_d + vertex_hp5_offsets[ max_level-3 ]))[pos];
-        uint4 val = make_uint4( val_.x,
-                                val_.y,
-                                val_.z,
-                                val_.w );
-        pos *= 5;
-        if( val.x <= key ) {
-            pos++;
-            key -=val.x;
-            if( val.y <= key ) {
-                pos++;
-                key-=val.y;
-                if( val.z <= key ) {
-                    pos++;
-                    key-=val.z;
-                    if( val.w <= key ) {
-                        pos++;
-                        key-=val.w;
-                    }
-                }
-            }
-        }
+        uint val = ((uint*)(vertex_pyramid_d + vertex_hp5_offsets[ max_level-3 ]))[pos];
+        stepDown8( pos, key, val );
     }
     {   // first reduction is 4 x 4 bits = 16 bits
-        short1 val_ = ((short1*)(vertex_pyramid_d + vertex_hp5_offsets[ max_level-2 ] ))[ pos ];
-        uint4 val = make_uint4( (val_.x   )  & 0xfu,
-                                (val_.x>>4)  & 0xfu,
-                                (val_.x>>8)  & 0xfu,
-                                (val_.x>>12) & 0xfu );
-        pos *= 5;
-        if( val.x <= key ) {
-            pos++;
-            key -=val.x;
-            if( val.y <= key ) {
-                pos++;
-                key-=val.y;
-                if( val.z <= key ) {
-                    pos++;
-                    key-=val.z;
-                    if( val.w <= key ) {
-                        pos++;
-                        key-=val.w;
-                    }
-                }
-            }
-        }
+        unsigned short int val = ((unsigned short int*)(vertex_pyramid_d + vertex_hp5_offsets[ max_level-2 ] ))[ pos ];
+        stepDown4( pos, key, val );
     }
     {   // base layer is 4 x 2 bits = 8 bits
         unsigned char val_ = ((unsigned char*)(vertex_pyramid_d + vertex_hp5_offsets[ max_level-1 ] ))[ pos ];
-        uint4 val = make_uint4( (val_   ) & 0x3u,
-                                (val_>>2) & 0x3u,
-                                (val_>>4) & 0x3u,
-                                (val_>>6) & 0x3u );
-        pos *= 5;
-        if( val.x <= key ) {
-            pos++;
-            key -=val.x;
-            if( val.y <= key ) {
-                pos++;
-                key-=val.y;
-                if( val.z <= key ) {
-                    pos++;
-                    key-=val.z;
-                    if( val.w <= key ) {
-                        pos++;
-                        key-=val.w;
-                    }
-                }
-            }
-        }    }
-
+        stepDown2( pos, key, val_ );
+    }
 }
 
 static
