@@ -44,6 +44,146 @@ __bitfieldextract( uint src, uint offset, uint bits )
 
 static __constant__ uint  triangle_hp5_offsets[32];
 
+
+
+static
+__device__
+__forceinline__
+void
+downTraverseStep( uint& pos, uint& key, const uint4& val )
+{
+#if 0
+    pos = 5*pos;
+    bool m = (val.x <= key);
+    if( m ) {
+        pos += 1;
+        key = key - val.x;
+    }
+    m = m && (val.y <= key);
+    if( m ) {
+        pos += 1;
+        key = key - val.y;
+    }
+    m = m && (val.z <= key);
+    if( m ) {
+        pos += 1;
+        key = key - val.z;
+    }
+    m = m && (val.w <= key);
+    if( m ) {
+        pos += 1;
+        key = key - val.w;
+    }
+#elif 1
+    asm(
+    "{"
+    "    .reg .pred p;"
+    "    .reg .f32 t;"
+    "    .reg .u32 q;"
+    "    setp.hs.u32        p, %1, %2;"
+    "@p  sub.u32            %1, %1, %2;"
+    "    selp.f32           t, 1.0, 0.0, p;"
+    "    setp.hs.and.u32    p, %1, %3, p;"
+    "@p  sub.u32            %1, %1, %3;"
+    "@p  add.f32            t, t, 1.0;"
+    "    setp.hs.and.u32    p, %1, %4, p;"
+    "@p  sub.u32            %1, %1, %4;"
+    "@p  add.f32            t, t, 1.0;"
+    "    setp.hs.and.u32    p, %1, %5, p;"
+    "@p  sub.u32            %1, %1, %5;"
+    "@p  add.f32            t, t, 1.0;"
+    "    cvt.u32.f32.rni    q, t;"
+    "    mad.lo.u32         %0, 5, %0, q;"
+    "}"
+    : "=r"(pos), "=r"(key) : "r"(val.x), "r"(val.y), "r"(val.z), "r"(val.w) );
+#elif 1
+    asm(
+    "{"
+    "    .reg .pred p;"
+    "    .reg .u32 v,w;"
+    "    .reg .f32 t,u;"
+
+    "    setp.hs.u32        p, %1, %2;"
+    "    selp.u32           v, %2, 0, p;"
+    "    selp.f32           t, 1.0, 0.0, p;"
+    "    sub.u32            %1, %1, v;"
+
+    "    setp.hs.and.u32    p, %1, %3, p;"
+    "    selp.u32           v, %3, 0, p;"
+    "    selp.f32           u, 1.0, 0.0, p;"
+    "    sub.u32            %1, %1, v;"
+    "    add.f32            t, t, u;"
+
+    "    setp.hs.and.u32    p, %1, %4, p;"
+    "    selp.u32           v, %4, 0, p;"
+    "    selp.f32           u, 1.0, 0.0, p;"
+    "    sub.u32            %1, %1, v;"
+    "    add.f32            t, t, u;"
+
+    "    setp.hs.and.u32    p, %1, %5, p;"
+    "    selp.u32           v, %5, 0, p;"
+    "    selp.f32           u, 1.0, 0.0, p;"
+    "    sub.u32            %1, %1, v;"
+    "    add.f32            t, t, u;"
+    "    cvt.u32.f32.rni    w, t;"
+    "    mad.lo.u32         %0, 5, %0, w;"
+    "}"
+    : "=r"(pos), "=r"(key) : "r"(val.x), "r"(val.y), "r"(val.z), "r"(val.w) );
+#elif 1
+    asm(
+    "{"
+    "    .reg .pred p;"
+    "    .reg .u32 t,u,v;"
+
+    "    setp.hs.u32        p, %1, %2;"
+    "    selp.u32           t, 1, 0, p;"
+    "    selp.u32           v, %2, 0, p;"
+    "    sub.u32            %1, %1, v;"
+
+    "    setp.hs.and.u32    p, %1, %3, p;"
+    "    selp.u32           u, 1, 0, p;"
+    "    selp.u32           v, %3, 0, p;"
+    "    sub.u32            %1, %1, v;"
+    "    add.u32            t, t, u;"
+
+    "    setp.hs.and.u32    p, %1, %4, p;"
+    "    selp.u32           u, 1, 0, p;"
+    "    selp.u32           v, %4, 0, p;"
+    "    sub.u32            %1, %1, v;"
+    "    add.u32            t, t, u;"
+
+    "    setp.hs.and.u32    p, %1, %5, p;"
+    "    selp.u32           u, 1, 0, p;"
+    "    selp.u32           v, %5, 0, p;"
+    "    sub.u32            %1, %1, v;"
+    "    add.u32            t, t, u;"
+    "    mad.lo.u32         %0, 5, %0, t;"
+    "}"
+    : "=r"(pos), "=r"(key) : "r"(val.x), "r"(val.y), "r"(val.z), "r"(val.w) );
+#elif 1
+    asm(
+    "{"
+    "    .reg .pred p;"
+    "    .reg .u32 t;"
+    "    setp.hs.u32        p, %1, %2;"
+    "@p  sub.u32            %1, %1, %2;"
+    "    selp.u32           t, 1, 0, p;"
+    "    setp.hs.and.u32    p, %1, %3, p;"
+    "@p  sub.u32            %1, %1, %3;"
+    "@p  add.u32            t, t, 1;"
+    "    setp.hs.and.u32    p, %1, %4, p;"
+    "@p  sub.u32            %1, %1, %4;"
+    "@p  add.u32            t, t, 1;"
+    "    setp.hs.and.u32    p, %1, %5, p;"
+    "@p  sub.u32            %1, %1, %5;"
+    "@p  add.u32            t, t, 1;"
+    "    mad.lo.u32         %0, 5, %0, t;"
+    "}"
+    : "=r"(pos), "=r"(key) : "r"(val.x), "r"(val.y), "r"(val.z), "r"(val.w) );
+#endif
+}
+
+
 static
 __device__
 __inline__
@@ -57,7 +197,8 @@ trianglePyramidDownTraverse( uint& pos,
     for(int l=0; l<max_level-3; l++) {
         // stored as 4 x 32 = 128 bitsc
         uint4 val = hp5_d[ triangle_hp5_offsets[l] + pos ];
-        pos *= 5;
+        downTraverseStep( pos, key, val );
+/*        pos *= 5;
         if( val.x <= key ) {
             pos++;
             key -=val.x;
@@ -73,11 +214,12 @@ trianglePyramidDownTraverse( uint& pos,
                     }
                 }
             }
-        }
+        }*/
     }
     for(int l=max_level-3; l<max_level-1; l++) {
         // stored as 4 x 8 = 32 bits
         uint val = ((uint*)(hp5_d + triangle_hp5_offsets[ l ]))[pos];
+//        downTraverseStep( pos, key, val );
         pos = 5*pos;
         uint t = __bitfieldextract( val, 0, 8 );
         if( t <= key ) {

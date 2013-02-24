@@ -373,6 +373,7 @@ display()
     static int frames = 0;
     static double fps = 0.0;
     static bool first = true;
+    static std::string message = "";
     if( first ) {
         first = false;
         start = t;
@@ -381,11 +382,17 @@ display()
     t = t-start;
     float dt = max(0.0, min(1.0, t-pt));
     frames++;
-    if( t-last_fps_t > (1.0/30.0 ) ) {
+    if( t-last_fps_t > 1.f ) {
         fps = frames / (t-last_fps_t);
         last_fps_t = t;
         frames = 0;
+
+        message = infoString( fps );
+        if( glhpmc::HPMC_TARGET_GL31_GLSL140 < hpmc_target ) {
+            std::cerr << message << std::endl;
+        }
     }
+
 
     GLfloat P[16];
     GLfloat MV[16];
@@ -457,14 +464,6 @@ display()
     render( t, dt, fps, P, MV, PMV, NM, MVi );
 #endif
 
-    static std::string message = "";
-
-    if( floor(5.0*(t-dt)) != floor(5.0*(t)) ) {
-        message = infoString( fps );
-        if( glhpmc::HPMC_TARGET_GL31_GLSL140 < hpmc_target ) {
-            std::cerr << message << std::endl;
-        }
-    }
     if( hpmc_target <= glhpmc::HPMC_TARGET_GL31_GLSL140 ) {
         glUseProgram( 0 );
         glMatrixMode( GL_PROJECTION );
