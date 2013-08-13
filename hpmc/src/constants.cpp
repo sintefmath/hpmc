@@ -105,6 +105,7 @@ HPMCcreateConstants( GLint max_gl_major, GLint max_gl_minor )
     struct HPMCConstants *s = new HPMCConstants;
     s->m_enumerate_vbo = 0;
     s->m_edge_decode_tex = 0;
+    s->m_edge_decode_normal_tex = 0;
     s->m_vertex_count_tex = 0;
     s->m_gpgpu_quad_vbo = 0;
 
@@ -212,7 +213,47 @@ HPMCcreateConstants( GLint max_gl_major, GLint max_gl_minor )
     glUnmapBuffer( GL_ARRAY_BUFFER );
 
     // --- build edge decode table ---------------------------------------------
+
+    std::vector<GLfloat> edge_normals( 256*6*4 );
+
+    // for each marching cubes case
+    for(int j=0; j<256; j++) {
+
+        // for each triangle in a case (why 6, should be 5?)
+        for(int i=0; i<6; i++) {
+
+            // Pick out the three indices defining a triangle. Snap illegal
+            // indices to zero for simplicity (the data will never be used).
+            // Then, create pointers to the appropriate vertex positions.
+            GLfloat* vp[3];
+            for(int k=0; k<3; k++) {
+                int ix = std::max( 0, HPMC_triangle_table[j][ std::min(15,3*i+k) ] );
+                vp[k] = &( HPMC_midpoint_table[ ix ][0] );
+            }
+
+            GLfloat u[3], v[3];
+            for(int k=0; k<3; k++) {
+                u[k] = vp[2][k]-vp[0][k];
+                v[k] = vp[1][k]-vp[0][k];
+            }
+            GLfloat n[3];
+            n[0] = u[1]*v[2] - u[2]*v[1];
+            n[1] = u[2]*v[0] - u[0]*v[2];
+            n[2] = u[0]*v[1] - u[1]*v[0];
+            GLfloat s = 0.5f*std::sqrt( n[0]*n[0] + n[1]*n[1] + n[2]*n[2] );
+            for(int k=0; k<3; k++) {
+                float tmp = s*n[k]+0.5f;
+                if( tmp < 0.f ) tmp  = 0.000001f;
+                if( tmp >= 1.f ) tmp = 0.999999f;
+                edge_normals[ 4*(6*remapCode(j)+i) + k ] = tmp;
+            }
+            edge_normals[ 4*(6*remapCode(j)+i) + 3 ] = 0.f;
+        }
+    }
+    
+    
     vector<GLfloat> edge_decode( 256*16*4 );
+    vector<GLfloat> edge_decode_normal( 256*16*4 );
 
     for(size_t j=0; j<256; j++ ) {
         for(size_t i=0; i<16; i++) {
@@ -222,6 +263,16 @@ HPMCcreateConstants( GLint max_gl_major, GLint max_gl_minor )
         }
     }
 
+    for(int j=0; j<256; j++ ) {
+        for(int i=0; i<15; i++) {
+            for(int k=0; k<4; k++ ) {
+                edge_decode_normal[ 4*(16*j+i) +k ] = edge_decode[ 4*(16*j+i) + k ]
+                                                    + edge_normals[ 4*(6*j+i/3 ) + k ];
+            }
+        }
+    }
+    
+    
     glGenTextures( 1, &s->m_edge_decode_tex );
     glBindTexture( GL_TEXTURE_2D, s->m_edge_decode_tex );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0 );
@@ -229,12 +280,26 @@ HPMCcreateConstants( GLint max_gl_major, GLint max_gl_minor )
     glTexImage2D( GL_TEXTURE_2D, 0,
                   GL_RGBA32F_ARB, 16, 256,0,
                   GL_RGBA, GL_FLOAT,
-                  &edge_decode[0] );
+                  edge_decode.data() );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
 
+    
+    glGenTextures( 1, &s->m_edge_decode_normal_tex );
+    glBindTexture( GL_TEXTURE_2D, s->m_edge_decode_normal_tex );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0 );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0 );
+    glTexImage2D( GL_TEXTURE_2D, 0,
+                  GL_RGBA32F_ARB, 16, 256,0,
+                  GL_RGBA, GL_FLOAT,
+                  edge_decode_normal.data() );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+    
     // --- build vertex count table --------------------------------------------
     vector<GLfloat> tricount( 256 );
     for(size_t j=0; j<256; j++) {
@@ -304,6 +369,10 @@ HPMCdestroyConstants( struct HPMCConstants* s )
         glDeleteTextures( 1, &s->m_edge_decode_tex );
     }
 
+    if( s->m_edge_decode_normal_tex != 0 ) {
+        glDeleteTextures( 1, &s->m_edge_decode_normal_tex );
+    }
+    
     if( s->m_vertex_count_tex != 0 ) {
         glDeleteTextures( 1, &s->m_vertex_count_tex );
     }

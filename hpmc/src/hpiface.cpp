@@ -76,6 +76,7 @@ HPMCcreateHistoPyramid( struct HPMCConstants* constants )
     h->m_field.m_extent[0] = 1.0f;
     h->m_field.m_extent[1] = 1.0f;
     h->m_field.m_extent[2] = 1.0f;
+    h->m_field.m_binary = false;
 
     h->m_fetch.m_mode = HPMC_VOLUME_LAYOUT_TEXTURE_3D;
     h->m_fetch.m_shader_source = "";
@@ -124,6 +125,20 @@ HPMCsetGridSize( struct HPMCHistoPyramid*  h,
     h->m_field.m_cells[2] = z_size;
     h->m_tainted = true;
     h->m_broken = false;
+}
+
+// -----------------------------------------------------------------------------
+void
+HPMCsetFieldAsBinary( struct HPMCHistoPyramid* h )
+{
+    h->m_field.m_binary = true;
+}
+
+// -----------------------------------------------------------------------------
+void
+HPMCsetFieldAsContinuous( struct HPMCHistoPyramid* h )
+{
+    h->m_field.m_binary = false;    
 }
 
 // -----------------------------------------------------------------------------
@@ -188,8 +203,20 @@ HPMCsetFieldCustom( struct HPMCHistoPyramid*  h,
 GLuint
 HPMCgetBuilderProgram( struct HPMCHistoPyramid*  h )
 {
-    if( h == NULL || h->m_broken ) {
+    if( h == NULL ) {
+#ifdef DEBUG
+        cerr << "HPMC error: h == NULL." << endl;
+#endif
         return 0;
+    }
+    if( h->m_broken ) {
+#ifdef DEBUG
+        cerr << "HPMC error: h is broken." << endl;
+#endif
+        return 0;
+    }
+    if( h->m_tainted ) {
+        HPMCsetup( h );
     }
     return h->m_hp_build.m_base.m_program;
 }
