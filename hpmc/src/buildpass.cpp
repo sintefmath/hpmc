@@ -82,7 +82,9 @@ HPMCtriggerHistopyramidBuildPasses( struct HPMCHistoPyramid* h )
     glBindTexture( GL_TEXTURE_1D, h->m_constants->m_vertex_count_tex );
 
     // Update the threshold uniform
-    glUniform1f( base.m_loc_threshold, h->m_threshold );
+    if( !h->m_field.m_binary ) {
+        glUniform1f( base.m_loc_threshold, h->m_threshold );
+    }
 
     // And trigger computation.
     if( h->m_constants->m_target < HPMC_TARGET_GL30_GLSL130 ) {

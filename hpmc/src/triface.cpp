@@ -283,12 +283,17 @@ HPMCsetTraversalHandleProgram( struct  HPMCTraversalHandle *th,
 #endif
         return false;
     }
-    th->m_threshold_loc = glGetUniformLocation( program, "HPMC_threshold" );
-    if( th->m_threshold_loc == -1 ) {
+    if( th->m_handle->m_field.m_binary ) {
+        th->m_threshold_loc = -1;
+    }
+    else {
+        th->m_threshold_loc = glGetUniformLocation( program, "HPMC_threshold" );
+        if( th->m_threshold_loc == -1 ) {
 #ifdef DEBUG
-        cerr << "HPMC error: cannot find threshold uniform variable." << endl;
+            cerr << "HPMC error: cannot find threshold uniform variable." << endl;
 #endif
-        return false;
+            return false;
+        }
     }
 
     // --- store info in handle ------------------------------------------------
@@ -372,6 +377,8 @@ HPMCextractVerticesHelper( struct HPMCTraversalHandle*  th,
     }
 
     // --- setup state ---------------------------------------------------------
+    glUseProgram( th->m_program );
+
     glActiveTextureARB( GL_TEXTURE0_ARB + th->m_histopyramid_unit );
     glBindTexture( GL_TEXTURE_2D, th->m_handle->m_histopyramid.m_tex );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0 );
@@ -381,15 +388,20 @@ HPMCextractVerticesHelper( struct HPMCTraversalHandle*  th,
     glActiveTextureARB( GL_TEXTURE0_ARB + th->m_scalarfield_unit );
     glBindTexture( GL_TEXTURE_3D, th->m_handle->m_fetch.m_tex );
 
-    glActiveTextureARB( GL_TEXTURE0_ARB + th->m_edge_decode_unit );
-    glBindTexture( GL_TEXTURE_2D, th->m_handle->m_constants->m_edge_decode_tex );
+    if( th->m_handle->m_field.m_binary ) {
+        glActiveTextureARB( GL_TEXTURE0_ARB + th->m_edge_decode_unit );
+        glBindTexture( GL_TEXTURE_2D, th->m_handle->m_constants->m_edge_decode_normal_tex );
+    }
+    else {
+        glUniform1f( th->m_threshold_loc, th->m_handle->m_threshold );
+        glActiveTextureARB( GL_TEXTURE0_ARB + th->m_edge_decode_unit );
+        glBindTexture( GL_TEXTURE_2D, th->m_handle->m_constants->m_edge_decode_tex );
+    }
 
     glBindBuffer( GL_ARRAY_BUFFER, th->m_handle->m_constants->m_enumerate_vbo );
     glVertexPointer( 3, GL_FLOAT, 0, NULL );
     glEnableClientState( GL_VERTEX_ARRAY );
 
-    glUseProgram( th->m_program );
-    glUniform1f( th->m_threshold_loc, th->m_handle->m_threshold );
 
     // --- render triangles ----------------------------------------------------
     if( transform_feedback_mode == 1 ) {
