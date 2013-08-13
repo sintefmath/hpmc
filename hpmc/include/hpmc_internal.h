@@ -134,6 +134,8 @@ struct HPMCHistoPyramid
         GLsizei       m_cells[3];
         /** The extent of the MC grid when outputted from the traversal shader. */
         GLfloat       m_extent[3];
+        
+        bool          m_binary;
     }
     m_field;
 

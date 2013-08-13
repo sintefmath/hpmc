@@ -302,7 +302,7 @@ HPMCgenerateExtractVertexFunction( struct HPMCHistoPyramid* h )
         src << "uniform float      HPMC_key_offset;"                            << endl;
         src << "uniform float      HPMC_threshold;"                             << endl;
         src << "void"                                                           << endl;
-        src << "extractVertex( out vec3 p, out vec3 n )"                        << endl;
+        src << "extractVertex( out vec3 a, out vec3 b, out vec3 p, out vec3 n )"                        << endl;
         src << "{"                                                              << endl;
         //          The key index is determined from offset + x-value of vertex.
         src << "    float key_ix = gl_Vertex.x + HPMC_key_offset;"              << endl;
@@ -375,6 +375,8 @@ HPMCgenerateExtractVertexFunction( struct HPMCHistoPyramid* h )
         src << "            + vec3(1.0/HPMC_FUNC_X_F, 1.0/HPMC_FUNC_Y_F, 1.0)*shift;" << endl;
         src << "    vec3 pb = pa" << endl;
         src << "            + vec3(1.0/HPMC_FUNC_X_F, 1.0/HPMC_FUNC_Y_F, 1.0)*axis;" << endl;
+        src << "    a = vec3(pa.x, pa.y, (pa.z+0.5)*(1.0/float(HPMC_FUNC_Z)) );" << endl;
+        src << "    b = vec3(pb.x, pb.y, (pb.z+0.5)*(1.0/float(HPMC_FUNC_Z)) );" << endl;
         if( !h->m_fetch.m_gradient ) {
             //          If we don't have gradient info, we approximate the gradient using forward
             //          differences. The sample at pb is one of the forward samples at pa, so we
@@ -421,9 +423,9 @@ HPMCgenerateExtractVertexFunction( struct HPMCHistoPyramid* h )
         src << "uniform float      HPMC_key_offset;" << endl;
         src << "uniform float      HPMC_threshold;" << endl;
         src << "void" << endl;
-        src << "extractVertex( out vec3 p, out vec3 n )" << endl;
+        src << "extractVertex( out vec3 a, out vec3 b, out vec3 p, out vec3 n )" << endl;
         src << "{" << endl;
-        src << "    float key_ix = gl_Vertex.x + HPMC_key_offset;"              << endl;
+        src << "    float key_ix = gl_VertexID + HPMC_key_offset;"              << endl;
         src << "    ivec2 texpos = ivec2(0,0);"                                 << endl;
         // --- Traverse upper levels of histopyramid ---------------------------
         src << "    for(int i=HPMC_HP_SIZE_L2; i>0; i--) {"                     << endl;
@@ -491,6 +493,8 @@ HPMCgenerateExtractVertexFunction( struct HPMCHistoPyramid* h )
         src << "            + vec3(1.0/HPMC_FUNC_X_F, 1.0/HPMC_FUNC_Y_F, 1.0)*shift;" << endl;
         src << "    vec3 pb = pa"                                               << endl;
         src << "            + vec3(1.0/HPMC_FUNC_X_F, 1.0/HPMC_FUNC_Y_F, 1.0)*axis;" << endl;
+        src << "    a = vec3(pa.x, pa.y, (pa.z+0.5)*(1.0/float(HPMC_FUNC_Z)) );" << endl;
+        src << "    b = vec3(pb.x, pb.y, (pb.z+0.5)*(1.0/float(HPMC_FUNC_Z)) );" << endl;
         if( !h->m_fetch.m_gradient ) {
             //          If we don't have gradient info, we approximate the gradient using forward
             //          differences. The sample at pb is one of the forward samples at pa, so we
@@ -531,6 +535,11 @@ HPMCgenerateExtractVertexFunction( struct HPMCHistoPyramid* h )
         src << "}"                                                              << endl;
 
     }
-
+    src << "void"                                                           << endl;
+    src << "extractVertex( out vec3 p, out vec3 n )"                        << endl;
+    src << "{"                                                              << endl;
+    src << "    vec3 a, b;"                                                 << endl;
+    src << "    extractVertex( a, b, p, n );"                               << endl;
+    src << "}"                                                              << endl;
     return src.str();
 }
