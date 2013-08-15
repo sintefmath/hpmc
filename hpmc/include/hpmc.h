@@ -348,6 +348,13 @@ HPMCsetLatticeSize( struct HPMCHistoPyramid*  h,
                     GLsizei                   y_size,
                     GLsizei                   z_size );
 
+void
+HPMCsetFieldAsBinary( struct HPMCHistoPyramid* h );
+
+void
+HPMCsetFieldAsContinuous( struct HPMCHistoPyramid* h );
+
+
 /** Specify the number of cells in the grid of Marching Cubes cells.
   *
   * Since the cells reside in-between the scalar field lattice points, the

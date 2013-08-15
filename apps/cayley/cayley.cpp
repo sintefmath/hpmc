@@ -167,8 +167,10 @@ init()
                         0,
                         GL_TRUE );
 
-
-
+#if 1
+    // Enable if field is to be interpreted as a binary field
+    HPMCsetFieldAsBinary( hpmc_h );
+#endif
      // --- create traversal vertex shader --------------------------------------
     hpmc_th_shaded = HPMCcreateTraversalHandle( hpmc_h );
 

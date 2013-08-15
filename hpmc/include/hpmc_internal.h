@@ -68,6 +68,7 @@ struct HPMCConstants
 {
     GLuint            m_vertex_count_tex;
     GLuint            m_edge_decode_tex;
+    GLuint            m_edge_decode_normal_tex;
     GLuint            m_enumerate_vbo;
     GLsizei           m_enumerate_vbo_n;
     GLuint            m_gpgpu_quad_vbo;
@@ -134,6 +135,8 @@ struct HPMCHistoPyramid
         GLsizei       m_cells[3];
         /** The extent of the MC grid when outputted from the traversal shader. */
         GLfloat       m_extent[3];
+        
+        bool          m_binary;
     }
     m_field;
 
@@ -219,6 +222,9 @@ extern int      HPMC_triangle_table[256][16];
 extern GLfloat  HPMC_edge_table[12][4];
 
 extern GLfloat  HPMC_gpgpu_quad_vertices[3*4];
+
+extern GLfloat HPMC_midpoint_table[12][3];
+
 
 /** Sets up hp textures and shaders.
   *

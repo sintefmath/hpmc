@@ -150,7 +150,12 @@ HPMCbuildHPBuildShaders( struct HPMCHistoPyramid* h )
 
     // --- configure base level construction program ---------------------------
     glUseProgram( base.m_program );
-    base.m_loc_threshold = HPMCgetUniformLocation( base.m_program, "HPMC_threshold" );
+    if( h->m_field.m_binary ) {
+        base.m_loc_threshold = -1;
+    }
+    else {
+        base.m_loc_threshold = HPMCgetUniformLocation( base.m_program, "HPMC_threshold" );
+    }
     GLint loc_vertex_count = HPMCgetUniformLocation( base.m_program, "HPMC_vertex_count" );
     if( loc_vertex_count != -1 ) {
         glUniform1i( loc_vertex_count, hpb.m_tex_unit_1 );

@@ -306,6 +306,22 @@ GLfloat HPMC_edge_table[12][4] =
     { 1.0, 0.0, 1.0, 1.0f }, { 0.0, 0.0, 1.0, 1.0f }
 };
 
+/** Midpoint table
+ *
+ * This is just a convenience deduction of \ref HPMC_edge_table. We use the edge
+ * midpoints to calculate normal vectors in the table we use for binary fields.
+ */
+GLfloat HPMC_midpoint_table[12][3] =
+{
+    { 0.5, 0.0, 0.0 }, { 1.0, 0.0, 0.5 },
+    { 0.5, 0.0, 1.0 }, { 0.0, 0.0, 0.5 },
+    { 0.5, 1.0, 0.0 }, { 1.0, 1.0, 0.5 },
+    { 0.5, 1.0, 1.0 }, { 0.0, 1.0, 0.5 },
+    { 0.0, 0.5, 0.0 }, { 1.0, 0.5, 0.0 },
+    { 1.0, 0.5, 1.0 }, { 0.0, 0.5, 1.0 }
+
+};
+
 // -----------------------------------------------------------------------------
 GLfloat HPMC_gpgpu_quad_vertices[3*4] =
 {
