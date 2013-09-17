@@ -21,10 +21,6 @@
 #include <glhpmc/Constants.hpp>
 #include <glhpmc/Logger.hpp>
 
-// Missing from GLEW 1.9.0, should appear in 1.9.1
-extern "C" {
-    void glPopDebugGroup();
-}
 
 namespace glhpmc {
 
